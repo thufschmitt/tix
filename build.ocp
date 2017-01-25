@@ -1,0 +1,10 @@
+comp += [ "-w" "+A-4" ]
+
+begin library "onix"
+  files = [
+    "lib/onix/onix_lexer.mll"
+    "lib/onix/onix_parser.mly"
+    "lib/onix/onix_ast.ml"
+  ]
+  ocamlyacc = "menhir"
+end

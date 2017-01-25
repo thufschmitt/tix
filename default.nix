@@ -12,6 +12,7 @@ ocamlPackages.buildOcaml rec {
   '';
   createFindlibDestdir = false;
   propagatedBuildInputs = [
+    ocamlPackages.ocpBuild
   ] ++ pkgs.envs.camlEnv;
 
   src = ./.;
