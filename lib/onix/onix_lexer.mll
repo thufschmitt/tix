@@ -12,13 +12,19 @@ rule read =
   | white {read lexbuf }
   | newline { Lexing.new_line lexbuf; read lexbuf }
   | "or" { OR_KW }
+  | "rec" { REC_KW }
+  | "inherit" { INHERIT_KW }
   | number { INTEGER (int_of_string @@ Lexing.lexeme lexbuf)}
   | '.' { DOT }
   | ',' { COMMA }
   | ':' { COLON }
+  | ';' { SEMICOLON }
   | '}' { BRACE_R }
   | '{' { BRACE_L }
+  | '(' { PAREN_L }
+  | ')' { PAREN_R }
   | '?' { QUESTION_MARK }
+  | '=' { EQUAL }
   | "${" { DOLLAR_BRACE }
   | id { ID (Lexing.lexeme lexbuf ) }
   | eof { EOF }

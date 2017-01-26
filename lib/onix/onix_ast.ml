@@ -48,11 +48,10 @@ and closed_flag =
   | Closed
   | Open
 
-and record = rec_flag * field list
-
-and rec_flag =
-  | Rec
-  | Nonrec
+and record = {
+  recursive : bool;
+  fields : field list;
+}
 
 and field =
   | Field_definition of access_path * expression
