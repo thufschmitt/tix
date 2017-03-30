@@ -23,6 +23,7 @@ onix:
   | e = expression EOF { e }
 
 expression:
+  | PAREN_L e = expression PAREN_R { e }
   | ap = access_path { Onix_ast.Access_path ap }
   | c = constant { Onix_ast.Constant c }
   | p = pattern COLON e = expression { Onix_ast.Lambda ( p, e) }
