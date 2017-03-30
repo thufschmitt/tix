@@ -3,13 +3,8 @@
 }:
 with import nixpkgs { inherit system; };
 ocamlPackages.buildOcaml rec {
-  name = "f_gadt";
+  name = "onix";
   version = "0.0";
-  shellHook = ''
-  export SHELL=$(${busybox}/bin/which zsh)
-  export REALRPROMPT=" — ${name}"
-  exec zsh
-  '';
   createFindlibDestdir = false;
   propagatedBuildInputs = [
     ocamlPackages.ocpBuild
