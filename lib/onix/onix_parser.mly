@@ -3,6 +3,7 @@
 %token SEMICOLON
 %token COMMA
 %token DOT
+%token AROBASE
 %token EQUAL
 %token OR_KW
 %token REC_KW
@@ -46,6 +47,12 @@ constant:
 
 pattern:
   | x = ID { Onix_ast.Pvar x }
+  | p = nontrivial_pattern { Onix_ast.Pnontrivial p }
+  | p = nontrivial_pattern AROBASE x = ID
+  | x = ID AROBASE p = nontrivial_pattern
+  { Onix_ast.Paliased (p, x) }
+
+nontrivial_pattern:
   | BRACE_L fields = separated_list(COMMA, field_pattern) BRACE_R
   { Onix_ast.Precord (fields, Onix_ast.Closed, None) }
 

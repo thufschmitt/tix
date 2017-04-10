@@ -41,6 +41,10 @@ and lambda = pattern * expression
 
 and pattern =
   | Pvar of string
+  | Pnontrivial of nontrivial_pattern
+  | Paliased of nontrivial_pattern * string
+
+and nontrivial_pattern =
   | Precord of (string * expression option) list * closed_flag * string option
   (* fields * '...' * @a *)
 

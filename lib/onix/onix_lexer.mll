@@ -25,6 +25,7 @@ rule read =
   | ')' { PAREN_R }
   | '?' { QUESTION_MARK }
   | '=' { EQUAL }
+  | '@' { AROBASE }
   | "${" { DOLLAR_BRACE }
   | id { ID (Lexing.lexeme lexbuf ) }
   | eof { EOF }
