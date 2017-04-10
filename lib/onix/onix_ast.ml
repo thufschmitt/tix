@@ -59,11 +59,15 @@ and record = {
 
 and field =
   | Field_definition of access_path * expression
-  | Inherit of expression option * string list
+  | Inherit of inherit_
   (* inherit x y z...;
    * inherit (e) x y z...;
    *)
 
-and binding = string * expression
+and binding =
+  | Bdef of access_path * expression
+  | Binherit of inherit_
+
+and inherit_ = expression option * string list
 
 and interpol = expression

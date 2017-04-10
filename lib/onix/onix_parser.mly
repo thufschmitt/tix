@@ -8,6 +8,8 @@
 %token OR_KW
 %token REC_KW
 %token INHERIT_KW
+%token LET_KW
+%token IN_KW
 %token DOLLAR_BRACE
 %token BRACE_L
 %token BRACE_R
@@ -30,6 +32,9 @@ expression:
   | p = pattern COLON e = expression { Onix_ast.Lambda ( p, e) }
   | e1 = expression; e2 = expression { Onix_ast.Fun_app (e1, e2) }
   | record = record_expr { Onix_ast.Record record }
+  | LET_KW bindings = list(letb_def) IN_KW e = expression
+  { Onix_ast.Let (bindings, e) }
+
 
 access_path:
   | x = ID { Onix_ast.Ap_var x }
@@ -78,3 +83,9 @@ field_def:
 
 inherit_base_expr:
   | PAREN_L e = expression PAREN_R { e }
+
+letb_def:
+  | ap = access_path EQUAL e = expression SEMICOLON
+  { Onix_ast.Bdef (ap, e) }
+  | INHERIT_KW base_e = option(inherit_base_expr) es = list(ID) SEMICOLON
+  { Onix_ast.Binherit (base_e, es) }

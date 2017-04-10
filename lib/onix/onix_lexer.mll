@@ -14,6 +14,8 @@ rule read =
   | "or" { OR_KW }
   | "rec" { REC_KW }
   | "inherit" { INHERIT_KW }
+  | "let" { LET_KW }
+  | "in" { IN_KW }
   | number { INTEGER (int_of_string @@ Lexing.lexeme lexbuf)}
   | '.' { DOT }
   | ',' { COMMA }
