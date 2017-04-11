@@ -19,6 +19,7 @@ ocamlPackages.buildOcaml rec {
   createFindlibDestdir = false;
   propagatedBuildInputs = with ocamlPackages; [
     ocamlbuild ocaml_oasis
+    ounit
     menhir
     ocaml_wrapped
   ];

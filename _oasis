@@ -16,3 +16,16 @@ Library "onix"
     Onix_lexer,
     Onix_parser,
     Onix_ast
+
+Executable onix_test
+  Path: tests/onix/
+  Install: false
+  MainIs: parser_test.ml
+  BuildDepends:
+    onix,
+    oUnit
+
+Test onix
+  Command: ./parser_test.byte
+  TestTools: onix_test
+  Run: true
