@@ -15,6 +15,7 @@ Library "onix"
   Modules:
     Onix_lexer,
     Onix_parser,
+    Onix_location,
     Onix_ast
 
 Executable onix_test

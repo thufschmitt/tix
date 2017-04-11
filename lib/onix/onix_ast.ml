@@ -1,4 +1,8 @@
-type expression =
+type 'a with_loc = 'a Onix_location.with_loc [@@deriving show]
+
+type expression = expression_desc with_loc
+
+and expression_desc =
   | Var of string
   | Access_path of access_path
   (*
@@ -18,10 +22,12 @@ type expression =
   | Let of binding list * expression
 
 and access_path =
-  | Ap_field of expression * field_desc * expression option
+  | Ap_field of expression * ap_field * expression option
   (* e.f or e' *)
 
-and field_desc =
+and ap_field = ap_field_desc with_loc
+
+and ap_field_desc =
   | Fdesc_identifier of string
   | Fdesc_string of str
   | Fdesc_interpol of interpol
@@ -31,7 +37,7 @@ and constant =
   | Cst_path of string
   | Cst_url of string
 
-and str = str_element list
+and str = (str_element with_loc) list
 
 and str_element =
   | Str_constant of string
@@ -39,7 +45,9 @@ and str_element =
 
 and lambda = pattern * expression
 
-and pattern =
+and pattern = pattern_desc with_loc
+
+and pattern_desc =
   | Pvar of string
   | Pnontrivial of nontrivial_pattern
   | Paliased of nontrivial_pattern * string
@@ -54,7 +62,7 @@ and closed_flag =
 
 and record = {
   recursive : bool;
-  fields : field list;
+  fields : (field with_loc) list;
 }
 
 and field =
@@ -68,6 +76,9 @@ and binding =
   | Bdef of access_path * expression
   | Binherit of inherit_
 
-and inherit_ = expression option * string list
+and inherit_ = expression option * (string with_loc) list
 
 and interpol = expression
+[@@deriving show]
+
+let _ = show_expression
