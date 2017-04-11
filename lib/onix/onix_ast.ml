@@ -1,4 +1,5 @@
 type expression =
+  | Var of string
   | Access_path of access_path
   (*
    * x
@@ -17,9 +18,8 @@ type expression =
   | Let of binding list * expression
 
 and access_path =
-  | Ap_var of string
-  | Ap_field of string * field_desc * expression option
-  (* x.f or e *)
+  | Ap_field of expression * field_desc * expression option
+  (* e.f or e' *)
 
 and field_desc =
   | Fdesc_identifier of string

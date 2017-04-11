@@ -26,6 +26,7 @@ onix:
   | e = expression EOF { e }
 
 expression:
+  | x = ID { Onix_ast.Var x }
   | PAREN_L e = expression PAREN_R { e }
   | ap = access_path { Onix_ast.Access_path ap }
   | c = constant { Onix_ast.Constant c }
@@ -37,10 +38,9 @@ expression:
 
 
 access_path:
-  | x = ID { Onix_ast.Ap_var x }
-  | x = ID DOT f = field_desc { Onix_ast.Ap_field (x, f, None) }
-  | x = ID DOT f = field_desc OR_KW e = expression
-    { Onix_ast.Ap_field (x, f, Some e) }
+  | e = expression DOT f = field_desc { Onix_ast.Ap_field (e, f, None) }
+  | e = expression DOT f = field_desc OR_KW e2 = expression
+    { Onix_ast.Ap_field (e, f, Some e2) }
 
 field_desc:
   | x = ID { Onix_ast.Fdesc_identifier x }
