@@ -1,0 +1,18 @@
+Name: tix
+Version: 0.1
+Synopsis: A type system for nix
+Authors: regnat <regnat@regnat.ovh>
+License: wtfpl with OCaml linking exception
+
+OasisFormat: 0.4
+BuildTools: ocamlbuild
+Plugins: META (0.4), DevFiles (0.4), StdFiles(0.4)
+AlphaFeatures: stdfiles_markdown, ocamlbuild_more_args
+XOCamlbuildExtraArgs: -tag safe_string -cflags -w,+A-4 -use-menhir
+
+Library "onix"
+  Path: lib/onix
+  Modules:
+    Onix_lexer,
+    Onix_parser,
+    Onix_ast

@@ -6,9 +6,10 @@ ocamlPackages.buildOcaml rec {
   name = "onix";
   version = "0.0";
   createFindlibDestdir = false;
-  propagatedBuildInputs = [
-    ocamlPackages.ocpBuild
-  ] ++ pkgs.envs.camlEnv;
+  propagatedBuildInputs = with ocamlPackages; [
+    ocaml ocamlbuild ocaml_oasis
+    menhir
+  ];
 
   src = ./.;
 }
