@@ -17,6 +17,8 @@ Library "onix"
     Onix_parser,
     Onix_location,
     Onix_ast
+  BuildDepends:
+    ppx_deriving.std
 
 Executable onix_test
   Path: tests/onix/

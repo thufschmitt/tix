@@ -22,6 +22,7 @@ ocamlPackages.buildOcaml rec {
     ounit
     menhir
     ocaml_wrapped
+    ppx_deriving
   ];
 
   # Hack to make the wrapper the real ocaml
