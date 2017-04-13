@@ -6,6 +6,7 @@ let white = [' ' '\t']+
 let newline = ('\r' | '\n' | "\r\n")
 let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '-']*
 let number = [ '0'-'9' ]+
+let brace_open_close = '{' white? '}'
 
 rule read =
   parse
@@ -21,6 +22,7 @@ rule read =
   | ',' { COMMA }
   | ':' { COLON }
   | ';' { SEMICOLON }
+  | brace_open_close { BRACE_LR }
   | '}' { BRACE_R }
   | '{' { BRACE_L }
   | '(' { PAREN_L }

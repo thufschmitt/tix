@@ -16,6 +16,7 @@
 %token LET_KW
 %token IN_KW
 %token DOLLAR_BRACE
+%token BRACE_LR
 %token BRACE_L
 %token BRACE_R
 %token PAREN_L
@@ -87,7 +88,8 @@ pattern_desc:
   { Onix_ast.Paliased (p, x) }
 
 nontrivial_pattern:
-  | BRACE_L fields = separated_list(COMMA, field_pattern) BRACE_R
+  | BRACE_LR { Onix_ast.Precord ([], Onix_ast.Closed, None) }
+  | BRACE_L fields = separated_nonempty_list(COMMA, field_pattern) BRACE_R
   { Onix_ast.Precord (fields, Onix_ast.Closed, None) }
 
 field_pattern:
@@ -101,7 +103,8 @@ record_expr:
   | re = record_def { Onix_ast.{ recursive = false; fields = re } }
 
 record_def:
-  | BRACE_L fields = list(field_def) BRACE_R
+  | BRACE_LR { [] }
+  | BRACE_L fields = nonempty_list(field_def) BRACE_R
   { fields }
 
 field_def:
