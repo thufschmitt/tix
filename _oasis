@@ -21,14 +21,14 @@ Library "onix"
     ppx_deriving.std
 
 Executable onix_test
-  Path: tests/onix/
+  Path: tests
   Install: false
-  MainIs: parser_test.ml
+  MainIs: tests.ml
   BuildDepends:
     onix,
     oUnit
 
 Test onix
-  Command: ./parser_test.byte
+  Command: $onix_test
   TestTools: onix_test
   Run: true
