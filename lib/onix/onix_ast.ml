@@ -67,6 +67,7 @@ and record = {
 
 and field =
   | Field_definition of access_path * expression
+  | Field_simple_definition of string * expression
   | Inherit of inherit_
   (* inherit x y z...;
    * inherit (e) x y z...;

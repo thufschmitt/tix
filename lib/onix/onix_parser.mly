@@ -113,6 +113,8 @@ field_def:
 field_def_descr:
   | ap = access_path EQUAL e = expression SEMICOLON
   { Onix_ast.Field_definition (ap, e) }
+  | x = ID EQUAL e = expression SEMICOLON
+  { Onix_ast.Field_simple_definition (x, e) }
   | INHERIT_KW base_e = option(inherit_base_expr) es = list(mkrhs (ID)) SEMICOLON
   { Onix_ast.Inherit (base_e, es) }
 
