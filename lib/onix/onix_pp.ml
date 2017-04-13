@@ -8,7 +8,7 @@ let ident = F.pp_print_string
 let kwd   = F.pp_print_string
 
 let const fmt = function
-  (* | P.Cbool b -> F.pp_print_bool fmt b *)
+  | P.Cbool b -> F.pp_print_bool fmt b
   | P.Cint i-> F.pp_print_int  fmt i
 
 let rec pp_expr fmt = drop_loc %> function

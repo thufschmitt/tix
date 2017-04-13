@@ -7,6 +7,7 @@ let newline = ('\r' | '\n' | "\r\n")
 let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '-']*
 let number = [ '0'-'9' ]+
 let brace_open_close = '{' white? '}'
+let boolean = "true" | "false"
 
 rule read =
   parse
@@ -18,6 +19,7 @@ rule read =
   | "let" { LET_KW }
   | "in" { IN_KW }
   | number { INTEGER (int_of_string @@ Lexing.lexeme lexbuf)}
+  | boolean { BOOL (bool_of_string @@ Lexing.lexeme lexbuf) }
   | '.' { DOT }
   | ',' { COMMA }
   | ':' { COLON }

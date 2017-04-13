@@ -23,6 +23,7 @@
 %token PAREN_R
 %token QUESTION_MARK
 %token<string> ID
+%token<bool> BOOL
 %token<int> INTEGER
 
 (* %nonassoc OR_KW *)
@@ -76,6 +77,7 @@ ap_field_desc:
 
 constant:
   | i = INTEGER { Onix_ast.Cint i }
+  | b = BOOL { Onix_ast.Cbool b }
 
 pattern:
   | desc = mkrhs(pattern_desc) { desc }
