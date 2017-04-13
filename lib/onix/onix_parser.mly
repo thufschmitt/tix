@@ -29,7 +29,7 @@
 (* %left DOT (* Below OR_KW (a.b or c.d) *) *)
 (* %nonassoc COLON *)
 
-%start<Onix_ast.expression> onix
+%start<Onix_ast.expr> onix
 %%
 
 %inline mkrhs(symb): symb
@@ -49,33 +49,33 @@ simple_expression:
   | ed = mkrhs(simple_expression_desc) { ed }
 
 simple_expression_desc:
-  | x = ID { Onix_ast.Var x }
-  | c = constant { Onix_ast.Constant c }
+  | x = ID { Onix_ast.Evar x }
+  | c = constant { Onix_ast.Econstant c }
 
 expression_desc:
-  | e1 = simple_expression; e2 = simple_expression { Onix_ast.Fun_app (e1, e2) }
-  | ap = access_path { Onix_ast.Access_path ap }
-  | p = pattern COLON e = expression { Onix_ast.Lambda ( p, e) }
-  | record = record_expr { Onix_ast.Record record }
+  | e1 = simple_expression; e2 = simple_expression { Onix_ast.EfunApp (e1, e2) }
+  | ap = access_path { Onix_ast.EaccessPath ap }
+  | p = pattern COLON e = expression { Onix_ast.Elambda ( p, e) }
+  | record = record_expr { Onix_ast.Erecord record }
   | LET_KW bindings = list(letb_def) IN_KW e = expression
-  { Onix_ast.Let (bindings, e) }
+  { Onix_ast.Elet (bindings, e) }
 
 
 access_path:
-  | e = simple_expression DOT f = ap_field { Onix_ast.Ap_field (e, f, None) }
+  | e = simple_expression DOT f = ap_field { Onix_ast.Afield (e, f, None) }
   | e = simple_expression DOT f = ap_field OR_KW e2 = expression
-    { Onix_ast.Ap_field (e, f, Some e2) }
+    { Onix_ast.Afield (e, f, Some e2) }
 
 ap_field:
   | fd = mkrhs(ap_field_desc) { fd }
 
 ap_field_desc:
-  | x = ID { Onix_ast.Fdesc_identifier x }
-  | DOLLAR_BRACE e = expression BRACE_R { Onix_ast.Fdesc_interpol e }
+  | x = ID { Onix_ast.AFidentifier x }
+  | DOLLAR_BRACE e = expression BRACE_R { Onix_ast.AFinterpol e }
   (* TODO : add strings *)
 
 constant:
-  | i = INTEGER { Onix_ast.Cst_int i }
+  | i = INTEGER { Onix_ast.Cint i }
 
 pattern:
   | desc = mkrhs(pattern_desc) { desc }
@@ -88,9 +88,9 @@ pattern_desc:
   { Onix_ast.Paliased (p, x) }
 
 nontrivial_pattern:
-  | BRACE_LR { Onix_ast.Precord ([], Onix_ast.Closed, None) }
+  | BRACE_LR { Onix_ast.NPrecord ([], Onix_ast.Closed, None) }
   | BRACE_L fields = separated_nonempty_list(COMMA, field_pattern) BRACE_R
-  { Onix_ast.Precord (fields, Onix_ast.Closed, None) }
+  { Onix_ast.NPrecord (fields, Onix_ast.Closed, None) }
 
 field_pattern:
   | x = ID default = option(default_value) { (x, default) }
@@ -112,11 +112,11 @@ field_def:
 
 field_def_descr:
   | ap = access_path EQUAL e = expression SEMICOLON
-  { Onix_ast.Field_definition (ap, e) }
+  { Onix_ast.Fdef (ap, e) }
   | x = ID EQUAL e = expression SEMICOLON
-  { Onix_ast.Field_simple_definition (x, e) }
+  { Onix_ast.FstaticDef (x, e) }
   | INHERIT_KW base_e = option(inherit_base_expr) es = list(mkrhs (ID)) SEMICOLON
-  { Onix_ast.Inherit (base_e, es) }
+  { Onix_ast.Finherit (base_e, es) }
 
 inherit_base_expr:
   | PAREN_L e = expression PAREN_R { e }
