@@ -1,1 +1,4 @@
 B _build/**
+
+PKG ppx_deriving.std
+PKG oUnit
