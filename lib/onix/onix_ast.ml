@@ -34,8 +34,6 @@ and ap_field_desc =
 
 and constant =
   | Cint of int
-  | Cpath of string
-  | Curl of string
 
 and str = (str_element with_loc) list
 
