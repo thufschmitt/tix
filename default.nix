@@ -13,24 +13,17 @@ let ocaml_wrapped =
     '';
   };
 in
-ocamlPackages.buildOcaml rec {
+stdenv.mkDerivation rec {
   name = "onix";
   version = "0.0";
-  createFindlibDestdir = false;
   propagatedBuildInputs = with ocamlPackages; [
+    findlib
     ocamlbuild ocaml_oasis
     ounit
     menhir
     ocaml_wrapped
     ppx_deriving
   ];
-
-  # Hack to make the wrapper the real ocaml
-  shellHook = ''
-    export PATH=${ocaml_wrapped}/bin:$PATH
-  '';
-
-  preConfigure = shellHook;
 
   src = ./.;
 }
