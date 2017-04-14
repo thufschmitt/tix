@@ -20,6 +20,15 @@ Library "onix"
   BuildDepends:
     ppx_deriving.std
 
+Library "nix-light"
+  Path: lib/nix-light
+  Modules:
+    Nl_ast,
+    Nl_pp
+  BuildDepends:
+    ppx_deriving.std,
+    onix
+
 Executable onix_test
   Path: tests
   Install: false
