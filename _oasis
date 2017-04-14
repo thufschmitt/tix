@@ -24,7 +24,8 @@ Library "nix-light"
   Path: lib/nix-light
   Modules:
     Nl_ast,
-    Nl_pp
+    Nl_pp,
+    Nl_of_onix
   BuildDepends:
     ppx_deriving.std,
     onix
