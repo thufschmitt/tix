@@ -36,6 +36,7 @@ Executable onix_test
   MainIs: tests.ml
   BuildDepends:
     onix,
+    nix-light,
     oUnit
 
 Test onix

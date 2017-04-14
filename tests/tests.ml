@@ -1,1 +1,7 @@
-OUnit2.run_test_tt_main Onix.testsuite
+open OUnit2
+
+let () = run_test_tt_main
+    ("all_tests">::: [
+        Onix.testsuite;
+        Nix_light.testsuite;
+      ])
