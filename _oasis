@@ -10,6 +10,13 @@ Plugins: META (0.4), DevFiles (0.4), StdFiles(0.4)
 AlphaFeatures: stdfiles_markdown, ocamlbuild_more_args
 XOCamlbuildExtraArgs: -tag safe_string -cflags -w,+A-4 -use-menhir
 
+Library "tix-types"
+  Path: lib/types
+  Modules:
+    Tix_types
+  BuildDepends:
+    ppx_deriving.std
+
 Library "onix"
   Path: lib/onix
   Modules:
@@ -18,6 +25,7 @@ Library "onix"
     Onix_location,
     Onix_ast
   BuildDepends:
+    tix-types,
     ppx_deriving.std
 
 Library "nix-light"
@@ -28,6 +36,7 @@ Library "nix-light"
     Nl_of_onix
   BuildDepends:
     ppx_deriving.std,
+    tix-types,
     onix
 
 Executable onix_test

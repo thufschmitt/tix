@@ -1,4 +1,5 @@
 module P = Onix_ast
+module T = Tix_types
 module F = Format
 
 let drop_loc { Onix_location.description = it; _ } = it
@@ -24,8 +25,14 @@ let rec pp_expr fmt = drop_loc %> function
       F.fprintf fmt "@[%a@ %a@]"
         pp_expr e1
         pp_expr e2
+  | P.EtyAnnot (e, ty) ->
+      F.fprintf fmt "@[(%a /*:@ %a */)@]"
+        pp_expr e
+        pp_typ ty
   | _ -> failwith "TODO"
 
 and pp_pattern fmt = drop_loc %> function
   | P.Pvar v -> ident fmt v
   | _ -> failwith "TODO"
+
+and pp_typ fmt = T.pp fmt

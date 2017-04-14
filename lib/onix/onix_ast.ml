@@ -20,6 +20,7 @@ and expr_desc =
   | Ewith of expr * expr
   (* with e; e *)
   | Elet of binding list * expr
+  | EtyAnnot of expr * Tix_types.t
 
 and access_path =
   | Afield of expr * ap_field * expr option

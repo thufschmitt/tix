@@ -21,11 +21,15 @@
 %token BRACE_R
 %token PAREN_L
 %token PAREN_R
+%token TY_START
+%token TY_END
+%token ARROW_R
 %token QUESTION_MARK
 %token<string> ID
 %token<bool> BOOL
 %token<int> INTEGER
 
+%right ARROW_R
 (* %nonassoc OR_KW *)
 (* %left DOT (* Below OR_KW (a.b or c.d) *) *)
 (* %nonassoc COLON *)
@@ -52,6 +56,8 @@ simple_expression:
 simple_expression_desc:
   | x = ID { Onix_ast.Evar x }
   | c = constant { Onix_ast.Econstant c }
+  | PAREN_L e = expression TY_START t = typ TY_END PAREN_R
+  { Onix_ast.EtyAnnot (e, t) }
 
 expression_desc:
   | e1 = simple_expression; e2 = simple_expression { Onix_ast.EfunApp (e1, e2) }
@@ -128,3 +134,7 @@ letb_def:
   { Onix_ast.Bdef (ap, e) }
   | INHERIT_KW base_e = option(inherit_base_expr) es = list(mkrhs (ID)) SEMICOLON
   { Onix_ast.Binherit (base_e, es) }
+
+typ:
+  | ty = ID { Tix_types.(BaseType (read_base ty)) }
+  | typ ARROW_R typ { Tix_types.Arrow ($1, $3) }

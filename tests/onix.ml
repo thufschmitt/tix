@@ -31,6 +31,8 @@ let testsuite =
       "test_lambda_app", "(x: y) z", "(x: y) z";
       "test_app_lambda", "x: y z", "(x: y z)";
       "test_Y_comb", "(x: x x) (x: x x)", "(x: x x) (x: x x)";
+      "test_annot", "(x /*: int */)", "(x /*: int */)";
+      "test_annot_arrow", "(x /*: int -> int */)", "(x /*: (int) -> int */)";
     ] @
     [
       "test_list" >:: test_parse_pp_str ~isTodo "[1 2 3]" "[1 2 3]";

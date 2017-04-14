@@ -29,6 +29,9 @@ rule read =
   | '{' { BRACE_L }
   | '(' { PAREN_L }
   | ')' { PAREN_R }
+  | "/*:" { TY_START }
+  | "*/" { TY_END }
+  | "->" { ARROW_R }
   | '?' { QUESTION_MARK }
   | '=' { EQUAL }
   | '@' { AROBASE }
