@@ -1,1 +1,1 @@
-OUnit2.run_test_tt_main Parser.testsuite
+OUnit2.run_test_tt_main Onix.testsuite

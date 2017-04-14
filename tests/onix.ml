@@ -3,7 +3,8 @@ open OUnit2
 exception ParseError
 
 
-let test_parse_pp_str input expected_output _ =
+let test_parse_pp_str ?(isTodo=false) input expected_output _ =
+  if isTodo then todo "Not implemented yet";
   let output =
     Onix_parser.onix Onix_lexer.read (Lexing.from_string input)
     |> fun s -> Onix_pp.pp_expr Format.str_formatter s;
@@ -13,6 +14,8 @@ let test_parse_pp_str input expected_output _ =
     ~printer:(fun x -> x)
     expected_output
     output
+
+let isTodo = true (* To use [~isTodo] as a shortcut for [~isTodo=true] *)
 
 let testsuite =
   "onix_parser">:::
@@ -28,4 +31,7 @@ let testsuite =
       "test_lambda_app", "(x: y) z", "(x: y) z";
       "test_app_lambda", "x: y z", "(x: y z)";
       "test_Y_comb", "(x: x x) (x: x x)", "(x: x x) (x: x x)";
+    ] @
+    [
+      "test_list" >:: test_parse_pp_str ~isTodo "[1 2 3]" "[1 2 3]";
     ]
