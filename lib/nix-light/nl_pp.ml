@@ -25,9 +25,14 @@ let rec pp_expr fmt = drop_loc %> function
       F.fprintf fmt "@[%a@ %a@]"
         pp_expr e1
         pp_expr e2
+  | P.EtyAnnot (e, ty) ->
+      F.fprintf fmt "@[(%a /*:@ %a */)@]"
+        pp_expr e
+        pp_typ ty
   | _ -> failwith "TODO"
 
 and pp_pattern fmt = drop_loc %> function
   | P.Pvar v -> ident fmt v
   | _ -> failwith "TODO"
 
+and pp_typ fmt = Tix_types.pp fmt

@@ -14,6 +14,7 @@ let rec expr_desc : O.expr_desc -> N.expr_desc = function
   | O.Econstant c -> N.Econstant (constant c)
   | O.Elambda (pat, e) -> N.Elambda (pattern pat, expr e)
   | O.EfunApp (e1, e2) -> N.EfunApp (expr e1, expr e2)
+  | O.EtyAnnot (e, t)  -> N.EtyAnnot (expr e, t)
   | _ -> failwith "Not implemented"
 
 and expr e = map_loc expr_desc e
