@@ -21,6 +21,8 @@
 %token BRACE_R
 %token PAREN_L
 %token PAREN_R
+%token BRACKET_L
+%token BRACKET_R
 %token CONS_KW
 %token TY_START
 %token TY_END
@@ -53,6 +55,7 @@ expression:
 simple_expression:
   | PAREN_L e = expression PAREN_R { e }
   | ed = mkrhs(simple_expression_desc) { ed }
+  | l = list_sugar { l }
 
 simple_expression_desc:
   | x = ID { Onix_ast.Evar x }
@@ -148,3 +151,15 @@ operator:
 operator_arguments:
   | PAREN_L args = separated_nonempty_list (COMMA, expression) PAREN_R
   { args }
+
+list_sugar:
+  | BRACKET_L elts = list(simple_expression) BRACKET_R
+  { List.fold_left
+    (fun acc elt ->
+      {
+        Onix_location.description = Onix_ast.(EopApp (Ocons, [elt; acc]));
+        location = elt.Onix_location.location;
+      })
+    (mk_with_loc $startpos $endpos Onix_ast.(Econstant Cnil))
+    (List.rev elts)
+  }

@@ -30,6 +30,8 @@ rule read =
   | '{' { BRACE_L }
   | '(' { PAREN_L }
   | ')' { PAREN_R }
+  | '[' { BRACKET_L }
+  | ']' { BRACKET_R }
   | "/*:" { TY_START }
   | "*/" { TY_END }
   | "->" { ARROW_R }
