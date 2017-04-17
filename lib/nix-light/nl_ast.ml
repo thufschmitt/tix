@@ -1,5 +1,9 @@
 type 'a with_loc = 'a Onix_location.with_loc [@@deriving show]
 
+type operator =
+  | Ocons
+  [@@deriving show]
+
 type expr = expr_desc with_loc
 
 and expr_desc =
@@ -13,6 +17,7 @@ and expr_desc =
   | Econstant of constant
   | Elambda of lambda
   | EfunApp of expr * expr
+  | EopApp of operator * expr list
   | Elist of expr list
   | Erecord of record
   | Ewith of expr * expr
@@ -30,6 +35,7 @@ and constant =
   | Cint of int
   | Cbool of bool
   | Cstring of string
+  | Cnil
 
 and lambda = pattern * expr
 

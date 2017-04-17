@@ -34,7 +34,8 @@ let testsuite =
       "test_Y_comb", "(x: x x) (x: x x)", "(x: x x) (x: x x)";
       "test_annot", "(x /*: int */)", "(x /*: int */)";
       "test_annot_arrow", "(x /*: int -> int */)", "(x /*: (int) -> int */)";
+      "test_list", "Cons (1, Cons (2, Cons (3, nil)))", "Cons(1, Cons(2, Cons(3, nil)))";
+      "test_list_sugar", "[1 2 3]", "Cons(1, Cons(2, Cons(3, nil)))";
     ] @
   [
-    "test_list" >:: test_parse_pp_str ~isTodo "[1 2 3]" "[1 2 3]";
   ]
