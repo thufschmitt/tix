@@ -1,5 +1,9 @@
 type 'a with_loc = 'a Onix_location.with_loc [@@deriving show]
 
+type operator =
+  | Ocons
+  [@@deriving show]
+
 type expr = expr_desc with_loc
 
 and expr_desc =
@@ -15,6 +19,7 @@ and expr_desc =
   (* Not constant because of interpolation *)
   | Elambda of lambda
   | EfunApp of expr * expr
+  | EopApp of operator * expr list
   | Elist of expr list
   | Erecord of record
   | Ewith of expr * expr
@@ -36,6 +41,7 @@ and ap_field_desc =
 and constant =
   | Cint of int
   | Cbool of bool
+  | Cnil
 
 and str = (str_element with_loc) list
 

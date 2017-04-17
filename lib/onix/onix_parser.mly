@@ -21,6 +21,7 @@
 %token BRACE_R
 %token PAREN_L
 %token PAREN_R
+%token CONS_KW
 %token TY_START
 %token TY_END
 %token ARROW_R
@@ -58,6 +59,8 @@ simple_expression_desc:
   | c = constant { Onix_ast.Econstant c }
   | PAREN_L e = expression TY_START t = typ TY_END PAREN_R
   { Onix_ast.EtyAnnot (e, t) }
+  | op = operator args = operator_arguments
+  { Onix_ast.EopApp (op, args) }
 
 expression_desc:
   | e1 = simple_expression; e2 = simple_expression { Onix_ast.EfunApp (e1, e2) }
@@ -138,3 +141,10 @@ letb_def:
 typ:
   | ty = ID { Tix_types.(BaseType (read_base ty)) }
   | typ ARROW_R typ { Tix_types.Arrow ($1, $3) }
+
+operator:
+  | CONS_KW { Onix_ast.Ocons }
+
+operator_arguments:
+  | PAREN_L args = separated_nonempty_list (COMMA, expression) PAREN_R
+  { args }
