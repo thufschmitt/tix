@@ -144,6 +144,8 @@ letb_def:
 typ:
   | ty = ID { Tix_types.(BaseType (read_base ty)) }
   | typ ARROW_R typ { Tix_types.Arrow ($1, $3) }
+  | CONS_KW PAREN_L t1 = typ COMMA t2 = typ PAREN_R
+      { Tix_types.Cons (t1, t2) }
 
 operator:
   | CONS_KW { Onix_ast.Ocons }
