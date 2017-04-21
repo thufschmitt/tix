@@ -1,7 +1,7 @@
 module P = Nl_ast
 module F = Format
 
-let drop_loc { Onix_location.description = it; _ } = it
+let drop_loc { Onix_location.With_loc.description = it; _ } = it
 let (%>) f g x = g (f x)
 
 let ident = F.pp_print_string

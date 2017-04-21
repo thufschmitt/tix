@@ -3,10 +3,10 @@ module N = Nl_ast
 
 module Loc = Onix_location
 
-let map_loc : ('a -> 'b) -> 'a Loc.with_loc -> 'b Loc.with_loc = fun f l ->
+let map_loc : ('a -> 'b) -> 'a Loc.With_loc.t -> 'b Loc.With_loc.t = fun f l ->
   {
     l with
-    Loc.description = f l.Loc.description;
+    Loc.With_loc.description = f l.Loc.With_loc.description;
   }
 
 let operator : O.operator -> N.operator = function
