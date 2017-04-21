@@ -34,6 +34,9 @@ let testsuite =
       "test_annot", "(x /*: int */)", "(x /*: int */)";
       "test_annot_arrow", "(x /*: int -> int */)", "(x /*: (int) -> int */)";
       "test_list", "Cons (1, Cons (2, Cons (3, nil)))", "Cons(1, Cons(2, Cons(3, nil)))";
+      ("test_list_annot",
+       "(Cons (1, Cons (2, Cons (3, nil))) /*: Cons(int, Cons(int, Cons(int, nil))) */)",
+       "(Cons(1, Cons(2, Cons(3, nil))) /*: Cons(int, Cons(int, Cons(int, nil))) */)");
       "test_list_sugar", "[1 2 3]", "Cons(1, Cons(2, Cons(3, nil)))";
       "test_annot_lambda", "x: /*: int -> int */ x", "(x: /*: (int) -> int */ x)";
     ] @
