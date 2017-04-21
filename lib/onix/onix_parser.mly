@@ -1,7 +1,7 @@
 %{
   module A = Onix_ast
 
-  let mk_with_loc = Onix_location.mk_with_loc
+  let mk_with_loc = Onix_location.With_loc.mk
 %}
 %token EOF
 %token COLON
@@ -157,8 +157,8 @@ list_sugar:
   { List.fold_left
     (fun acc elt ->
       {
-        Onix_location.description = Onix_ast.(EopApp (Ocons, [elt; acc]));
-        location = elt.Onix_location.location;
+        Onix_location.With_loc.description = Onix_ast.(EopApp (Ocons, [elt; acc]));
+        location = elt.Onix_location.With_loc.location;
       })
     (mk_with_loc $startpos $endpos Onix_ast.(Econstant Cnil))
     (List.rev elts)

@@ -1,4 +1,4 @@
-type 'a with_loc = 'a Onix_location.with_loc [@@deriving show]
+type 'a with_loc = 'a Onix_location.With_loc.t [@@deriving show]
 
 type operator =
   | Ocons
