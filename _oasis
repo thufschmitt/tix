@@ -40,6 +40,18 @@ Library "nix-light"
     tix-types,
     onix
 
+Library "nix-typecheck"
+  Path: lib/typecheck
+  Modules:
+    Typed_ast,
+    Typing_env,
+    Typecheck
+  BuildDepends:
+    ppx_deriving.std,
+    tix-types,
+    containers,
+    nix-light
+
 Executable onix_test
   Path: tests
   Install: false
@@ -47,6 +59,7 @@ Executable onix_test
   BuildDepends:
     onix,
     nix-light,
+    nix-typecheck,
     oUnit
 
 Test onix
