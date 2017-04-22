@@ -23,6 +23,7 @@ stdenv.mkDerivation rec {
     menhir
     ocaml_wrapped
     ppx_deriving
+    containers
   ];
 
   src = ./.;

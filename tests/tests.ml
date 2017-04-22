@@ -4,4 +4,5 @@ let () = run_test_tt_main
     ("all_tests">::: [
         Onix.testsuite;
         Nix_light.testsuite;
+        Test_typecheck.testsuite;
       ])
