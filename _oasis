@@ -8,7 +8,7 @@ OasisFormat: 0.4
 BuildTools: ocamlbuild
 Plugins: META (0.4), DevFiles (0.4), StdFiles(0.4)
 AlphaFeatures: stdfiles_markdown, ocamlbuild_more_args
-XOCamlbuildExtraArgs: -tag safe_string -cflags -w,+A-4 -use-menhir
+XOCamlbuildExtraArgs: -tag safe_string -cflags -w,+A-4
 
 Library "tix-types"
   Path: lib/types
@@ -26,6 +26,7 @@ Library "onix"
     Onix_ast
   BuildDepends:
     tix-types,
+    opal,
     ppx_deriving.std
 
 Library "nix-light"
