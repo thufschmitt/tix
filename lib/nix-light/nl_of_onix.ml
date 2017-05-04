@@ -24,7 +24,7 @@ let rec expr_desc : O.expr_desc -> N.expr_desc = function
 and expr e = map_loc expr_desc e
 
 and pattern_desc : O.pattern_desc -> N.pattern_desc = function
-  | O.Pvar s -> N.Pvar s
+  | O.Pvar (s, mt) -> N.Pvar (s, mt)
   | _ -> failwith "Not implemented"
 
 and pattern p = map_loc pattern_desc p

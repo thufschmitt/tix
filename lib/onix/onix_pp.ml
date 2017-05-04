@@ -5,7 +5,7 @@ module F = Format
 let drop_loc { Onix_location.With_loc.description = it; _ } = it
 let (%>) f g x = g (f x)
 
-let ident = F.pp_print_string
+let pp_ident = F.pp_print_string
 let kwd   = F.pp_print_string
 
 let const fmt = function
@@ -18,7 +18,7 @@ let pp_op fmt = function
 
 let rec pp_expr fmt = drop_loc %> function
   | P.Evar v ->
-    ident fmt v
+    pp_ident fmt v
   | P.Econstant c ->
     const fmt c
   | P.Elambda (p, e) ->
@@ -40,7 +40,11 @@ let rec pp_expr fmt = drop_loc %> function
   | _ -> failwith "TODO"
 
 and pp_pattern fmt = drop_loc %> function
-  | P.Pvar v -> ident fmt v
+  | P.Pvar (v, None) -> pp_ident fmt v
+  | P.Pvar (v, Some t) ->
+    F.fprintf fmt "(%a /*: %a */)"
+      pp_ident v
+      pp_typ   t
   | _ -> failwith "TODO"
 
 and pp_typ fmt = T.pp fmt

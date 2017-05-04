@@ -60,8 +60,9 @@ simple_expression:
 simple_expression_desc:
   | x = ID { Onix_ast.Evar x }
   | c = constant { Onix_ast.Econstant c }
-  | PAREN_L e = expression TY_START t = typ TY_END PAREN_R
+  | PAREN_L e = expression t = type_annot PAREN_R
   { Onix_ast.EtyAnnot (e, t) }
+
   | op = operator args = operator_arguments
   { Onix_ast.EopApp (op, args) }
 
@@ -95,19 +96,25 @@ pattern:
   | desc = mkrhs(pattern_desc) { desc }
 
 pattern_desc:
-  | x = ID { Onix_ast.Pvar x }
-  | p = nontrivial_pattern { Onix_ast.Pnontrivial p }
+  | x = ID t = option(type_annot) { Onix_ast.Pvar (x, t) }
+  | p = nontrivial_pattern { Onix_ast.Pnontrivial (p, None) }
   | p = nontrivial_pattern AROBASE x = ID
   | x = ID AROBASE p = nontrivial_pattern
-  { Onix_ast.Paliased (p, x) }
+  { Onix_ast.Pnontrivial (p, Some x) }
 
 nontrivial_pattern:
-  | BRACE_LR { Onix_ast.NPrecord ([], Onix_ast.Closed, None) }
+  | BRACE_LR { Onix_ast.NPrecord ([], Onix_ast.Closed) }
   | BRACE_L fields = separated_nonempty_list(COMMA, field_pattern) BRACE_R
-  { Onix_ast.NPrecord (fields, Onix_ast.Closed, None) }
+  { Onix_ast.NPrecord (fields, Onix_ast.Closed) }
 
 field_pattern:
-  | x = ID default = option(default_value) { (x, default) }
+  | x = ID default = option(default_value) t = option(type_annot)
+  { Onix_ast.{
+      field_name = x;
+      default_value = default;
+      type_annot = t;
+    }
+  }
 
 default_value:
   | QUESTION_MARK e = expression { e }
@@ -146,6 +153,9 @@ typ:
   | typ ARROW_R typ { Tix_types.Arrow ($1, $3) }
   | CONS_KW PAREN_L t1 = typ COMMA t2 = typ PAREN_R
       { Tix_types.Cons (t1, t2) }
+
+type_annot:
+  | TY_START t = typ TY_END { t }
 
 operator:
   | CONS_KW { Onix_ast.Ocons }

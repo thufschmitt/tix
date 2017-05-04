@@ -20,7 +20,6 @@ and expr_desc =
   | Elambda of lambda
   | EfunApp of expr * expr
   | EopApp of operator * expr list
-  | Elist of expr list
   | Erecord of record
   | Ewith of expr * expr
   (* with e; e *)
@@ -54,13 +53,18 @@ and lambda = pattern * expr
 and pattern = pattern_desc with_loc
 
 and pattern_desc =
-  | Pvar of string
-  | Pnontrivial of nontrivial_pattern
-  | Paliased of nontrivial_pattern * string
+  | Pvar of string * Tix_types.t option
+  | Pnontrivial of nontrivial_pattern * string option
 
 and nontrivial_pattern =
-  | NPrecord of (string * expr option) list * closed_flag * string option
-  (* fields * '...' * @a *)
+  | NPrecord of pattern_record_field list * closed_flag
+  (* fields * '...' *)
+
+and pattern_record_field = {
+  field_name: string;
+  default_value: expr option;
+  type_annot: Tix_types.t option;
+}
 
 and closed_flag =
   | Closed
