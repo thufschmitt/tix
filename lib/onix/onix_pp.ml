@@ -26,7 +26,7 @@ let rec pp_expr fmt = drop_loc %> function
         pp_pattern p
         pp_expr e
   | P.EfunApp (e1, e2) ->
-      F.fprintf fmt "@[%a@ %a@]"
+      F.fprintf fmt "(@[%a@ %a@])"
         pp_expr e1
         pp_expr e2
   | P.EtyAnnot (e, ty) ->
@@ -42,7 +42,7 @@ let rec pp_expr fmt = drop_loc %> function
 and pp_pattern fmt = drop_loc %> function
   | P.Pvar (v, None) -> pp_ident fmt v
   | P.Pvar (v, Some t) ->
-    F.fprintf fmt "(%a /*: %a */)"
+    F.fprintf fmt "%a /*: %a */"
       pp_ident v
       pp_typ   t
   | _ -> failwith "TODO"
