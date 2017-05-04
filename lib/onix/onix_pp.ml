@@ -45,6 +45,29 @@ and pp_pattern fmt = drop_loc %> function
     F.fprintf fmt "%a /*: %a */"
       pp_ident v
       pp_typ   t
+  | P.Pnontrivial (sub_pattern, None) ->
+    pp_nontrivial_pattern fmt sub_pattern
+  | _ -> failwith "TODO"
+
+and pp_nontrivial_pattern fmt = function
+  | P.NPrecord (fields, P.Closed) ->
+    F.fprintf fmt "{ %a }"
+      pp_pat_record_fields fields
+  | _ -> failwith "TODO"
+
+and pp_pat_record_fields fmt = function
+  | [] -> ()
+  | [f] -> pp_pat_record_field fmt f
+  | f::tl ->
+    pp_pat_record_field fmt f; F.pp_print_string fmt ", "; pp_pat_record_fields fmt tl
+
+and pp_pat_record_field fmt = function
+  | { P.field_name; default_value = None; type_annot = None } ->
+    pp_ident fmt field_name
+  | { P.field_name; default_value = None; type_annot = Some t } ->
+    F.fprintf fmt "%a /*: %a */"
+      pp_ident field_name
+      pp_typ   t
   | _ -> failwith "TODO"
 
 and pp_typ fmt = T.pp fmt
