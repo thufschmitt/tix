@@ -44,6 +44,8 @@ let add_loc x =
 
 (* ---- *)
 
+let in_parens p = between (exactly PAREN_L) (exactly PAREN_R) p
+
 let ident = any >>= function
   | ID s -> return s
   | _ -> mzero
@@ -61,7 +63,7 @@ let rec typ input =
 and typ_atom input =
   ((ident => fun t -> Tix_types.(BaseType (read_base t)))
   <|>
-  (exactly PAREN_L >> typ << exactly PAREN_R))
+  in_parens typ)
     input
 
 and typ_arrow input =
@@ -100,14 +102,13 @@ and expr_atom input =
   ) input
 
 and expr_parens input =
-  (between (exactly PAREN_L) (exactly PAREN_R) expr) input
+  (in_parens expr) input
 
 and expr_annot input =
-  (exactly PAREN_L>>
-   (expr >>= fun e ->
-    type_annot => fun t ->
-      (add_loc @@ P.EtyAnnot (e, t)))
-   <<exactly PAREN_R)
+  (in_parens (
+   expr >>= fun e ->
+   type_annot => fun t ->
+     (add_loc @@ P.EtyAnnot (e, t))))
     input
 
 and expr_apply input =
