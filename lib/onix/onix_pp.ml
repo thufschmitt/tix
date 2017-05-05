@@ -37,6 +37,7 @@ let rec pp_expr fmt = drop_loc %> function
       F.fprintf fmt "@[%a(%a)@]"
         pp_op op
         pp_op_args args
+  | P.Erecord r -> pp_record fmt r
   | _ -> failwith "TODO"
 
 and pp_pattern fmt = drop_loc %> function
@@ -80,3 +81,15 @@ and pp_op_args fmt = function
       F.fprintf fmt "%a,@ %a"
         pp_expr a
         pp_op_args tl
+
+and pp_record fmt { P.recursive; fields } =
+  if recursive then F.pp_print_string fmt "rec ";
+  F.fprintf fmt "@[{@ %a@]}"
+    (fun fmt -> List.iter (pp_record_field fmt)) fields
+
+and pp_record_field fmt = drop_loc %> function
+  | P.Fdef (name, value) ->
+    F.fprintf fmt "%a = %a;@ "
+      pp_ident name
+      pp_expr value
+  | _ -> failwith "TODO"

@@ -136,8 +136,27 @@ and expr_atom input =
   (expr_ident  <|>
    expr_parens <|>
    expr_annot <|>
+   expr_record <|>
    expr_const
   ) input
+
+and expr_record input =
+  (between (exactly BRACE_L) (exactly BRACE_R)
+    (end_by expr_record_field (exactly SEMICOLON))
+    => fun fields ->
+      add_loc @@ P.(Erecord {
+          recursive = false; (* TODO *)
+          fields;
+      })
+  )
+    input
+
+and expr_record_field input =
+  (ident >>= fun name -> (* TODO: this has to be an access path *)
+   exactly EQUAL >>
+   expr => fun e ->
+     add_loc @@ P.Fdef (name, e))
+    input
 
 and expr_parens input =
   (in_parens expr) input
