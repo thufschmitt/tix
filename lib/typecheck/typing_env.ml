@@ -19,4 +19,7 @@ let merge =
   in
   StrMap.merge merge_fun
 
-let lookup map elt = StrMap.find elt map
+let lookup map elt =
+  try
+    Some (StrMap.find elt map)
+  with Not_found -> None

@@ -26,5 +26,8 @@ let testsuite =
     "test_const_int">:: test_typecheck_expr "1" (T.BaseType T.Int);
     "test_const_bool">:: test_typecheck_expr "true" (T.BaseType T.Bool);
     "test_lambda">:: test_typecheck_expr "x /*: int */: 1"
-      T.(Arrow (BaseType Int, BaseType Int))
+      T.(Arrow (BaseType Int, BaseType Int));
+    "test_lambda_var">:: test_typecheck_expr "x /*: int */: x"
+      T.(Arrow (BaseType Int, BaseType Int));
+    "test_fail_unbound_var">:: test_typecheck_expr_fail "x";
   ]
