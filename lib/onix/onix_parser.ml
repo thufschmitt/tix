@@ -34,7 +34,6 @@ type token =
   | BOOL of bool
   | INTEGER of int
 
-
 (* A lexbuf used internally. Note that this makes the parser non reentrant, but
  * for now I don't care *)
 let local_lexbuf = ref (Lexing.from_string "")
@@ -58,6 +57,10 @@ let ident = any >>= function
   | ID s -> return s
   | _ -> mzero
 
+let operator = choice @@ List.map exactly [ CONS_KW ]
+  >>= function
+      | CONS_KW -> return P.Ocons
+      | _ -> mzero
 
 (** {1 The parser} **)
 
@@ -123,7 +126,7 @@ let pattern = pat_ident <|> pat_nontrivial
 (** {3 Expressions} *)
 let rec expr input =
   choice
-    [expr_fun; expr_apply; ] input
+    [expr_fun; expr_apply; expr_op; ] input
 
 and expr_fun input =
   (pattern >>= fun pat ->
@@ -157,6 +160,14 @@ and expr_record_field input =
    expr => fun e ->
      add_loc @@ P.Fdef (name, e))
     input
+
+and expr_op input =
+  (operator >>= fun op ->
+   in_parens (
+     sep_by1 expr (exactly COMMA)
+     => fun args ->
+       add_loc @@ P.EopApp (op, args)
+   )) input
 
 and expr_parens input =
   (in_parens expr) input

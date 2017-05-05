@@ -41,7 +41,7 @@ let testsuite =
       "test_annot_arrow", "(x /*: int -> int */)", "(x /*: (int) -> int */)";
       "test_record_pattern", "{ x, y, z /*: int */ }: x", "({ x, y, z /*: int */ }: x)";
       "test_record_expr", "{ x = 1; y = f x; }", "{ x = 1; y = (f x); }";
-      (* "test_list", "Cons (1, Cons (2, Cons (3, nil)))", "Cons(1, Cons(2, Cons(3, nil)))"; *)
+      "test_list", "Cons (1, Cons (2, Cons (3, nil)))", "Cons(1, Cons(2, Cons(3, nil)))";
       (* ("test_list_annot", *)
       (*  "(Cons (1, Cons (2, Cons (3, nil))) /*: Cons(int, Cons(int, Cons(int, nil))) */)", *)
       (*  "(Cons(1, Cons(2, Cons(3, nil))) /*: Cons(int, Cons(int, Cons(int, nil))) */)"); *)
