@@ -28,6 +28,10 @@ let rec pp fmt = function
       pp t1
       pp t2
 
+let show t =
+  let () = pp Format.str_formatter t in
+  Format.flush_str_formatter ()
+
 let read_base : string -> base = function
   | "int" -> Int
   | "bool" -> Bool

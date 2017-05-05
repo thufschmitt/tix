@@ -20,6 +20,21 @@ let test_typecheck_expr input expected_type _ =
     expected_type
     (get_type tast)
 
+let test_typecheck_expr_fail input _ =
+  begin
+    match Onix_parser.onix Onix_lexer.read (Lexing.from_string input) with
+    | Some s ->
+      begin try
+          Nl_of_onix.expr s
+          |> Typecheck.expr Typing_env.empty
+          |> ignore;
+          assert_failure "Type error not detected"
+        with
+          Typecheck.TypeError _ -> ()
+      end
+    | None -> raise ParseError
+  end
+
 let testsuite =
   "tix_typecheck">:::
   [
@@ -30,4 +45,7 @@ let testsuite =
     "test_lambda_var">:: test_typecheck_expr "x /*: int */: x"
       T.(Arrow (BaseType Int, BaseType Int));
     "test_fail_unbound_var">:: test_typecheck_expr_fail "x";
+    "test_apply">:: test_typecheck_expr "(x /*: int */: x) 1" T.(BaseType Int);
+    "test_fail_apply2">:: test_typecheck_expr_fail "(x /*: bool */: x) 1";
+    "test_fail_apply3">:: test_typecheck_expr_fail "(x /*: int */: x) true";
   ]
