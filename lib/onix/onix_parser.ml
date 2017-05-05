@@ -73,7 +73,7 @@ and expr_const = any >>= function
 
 (** {2 Types} *)
 let rec typ input =
-  (typ_arrow <|> typ_atom) input
+  (typ_arrow <|> typ_atom <|> typ_cons) input
 
 and typ_atom input =
   ((ident => fun t -> Tix_types.(BaseType (read_base t)))
@@ -87,6 +87,13 @@ and typ_arrow input =
    typ => fun codomain ->
      Tix_types.Arrow (domain, codomain))
     input
+
+and typ_cons input =
+  (exactly CONS_KW >>
+   in_parens (
+     typ >>= fun t1 -> (exactly COMMA) >> typ => fun t2 ->
+       Tix_types.Cons(t1, t2)
+   )) input
 
 let type_annot =
   exactly TY_START >> typ << exactly TY_END
