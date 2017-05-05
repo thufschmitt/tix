@@ -27,4 +27,6 @@ struct
     x with
     description = f x.description;
   }
+
+  let description { description = it; _ } = it
 end

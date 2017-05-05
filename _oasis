@@ -45,6 +45,7 @@ Library "nix-typecheck"
   Modules:
     Typed_ast,
     Typing_env,
+    Typecheck_pat,
     Typecheck
   BuildDepends:
     ppx_deriving.std,

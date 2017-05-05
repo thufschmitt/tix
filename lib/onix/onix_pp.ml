@@ -2,7 +2,7 @@ module P = Onix_ast
 module T = Tix_types
 module F = Format
 
-let drop_loc { Onix_location.With_loc.description = it; _ } = it
+let drop_loc = Onix_location.With_loc.description
 let (%>) f g x = g (f x)
 
 let pp_ident = F.pp_print_string

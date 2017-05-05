@@ -9,6 +9,9 @@ struct
     description: 'a;
     typ: T.t;
   } [@@deriving show, make]
+
+  let typ x = x.typ
+  let description x = x.description
 end
 
 type 'a with_type = 'a With_type.t
@@ -29,9 +32,11 @@ and expr_desc =
 
 and lambda = pattern * expr
 
-and pattern = pattern_desc with_loc
+and pattern = pattern_desc with_type with_loc
 
 and pattern_desc =
   | Pvar of string
   [@@deriving show]
 
+let get_typ x = With_type.typ x.Onix_location.With_loc.description
+let get_descr x = With_type.description x.Onix_location.With_loc.description
