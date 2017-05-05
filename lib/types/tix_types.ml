@@ -2,11 +2,13 @@ type base =
   | Int
   | Bool
   | Nil (* The singleton type for [nil] *)
+  | Gradual
 
 let show_base = function
   | Int -> "int"
   | Bool -> "bool"
   | Nil  -> "nil"
+  | Gradual -> "¿"
 
 let pp_base fmt b = Format.pp_print_string fmt (show_base b)
 
@@ -30,4 +32,5 @@ let read_base : string -> base = function
   | "int" -> Int
   | "bool" -> Bool
   | "nil" -> Nil
+  | "¿" -> Gradual
   | s -> Format.ksprintf failwith "Unknown type %s" s
