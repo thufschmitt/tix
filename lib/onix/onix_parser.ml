@@ -123,7 +123,7 @@ let pattern = pat_ident <|> pat_nontrivial
 (** {3 Expressions} *)
 let rec expr input =
   choice
-    [expr_fun; expr_apply; expr_annot] input
+    [expr_fun; expr_apply; ] input
 
 and expr_fun input =
   (pattern >>= fun pat ->
@@ -135,6 +135,7 @@ and expr_fun input =
 and expr_atom input =
   (expr_ident  <|>
    expr_parens <|>
+   expr_annot <|>
    expr_const
   ) input
 
