@@ -143,12 +143,14 @@ and expr_fun input =
     input
 
 and expr_atom input =
-  (expr_ident  <|>
-   expr_parens <|>
-   expr_annot <|>
-   expr_record <|>
-   expr_const
-  ) input
+  (choice
+     [ expr_ident;
+       expr_parens;
+       expr_annot;
+       expr_record;
+       expr_list_sugar;
+       expr_const
+     ]) input
 
 and expr_record input =
   (between (exactly BRACE_L) (exactly BRACE_R)
@@ -167,6 +169,17 @@ and expr_record_field input =
    expr => fun e ->
      add_loc @@ P.Fdef (name, e))
     input
+
+and expr_list_sugar input =
+  (between (exactly BRACKET_L) (exactly BRACKET_R) (
+      many expr_atom =>
+      List.rev =>
+      List.fold_left (fun acc elt ->
+          add_loc @@ P.EopApp (P.Ocons, [ elt; acc ])
+        )
+        (add_loc @@ P.Econstant P.Cnil)
+    ))
+      input
 
 and expr_op input =
   (operator >>= fun op ->
