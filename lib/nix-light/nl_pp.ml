@@ -1,3 +1,6 @@
+(**
+   Pretty-printer the [Nl_ast.t]
+ *)
 module P = Nl_ast
 module F = Format
 

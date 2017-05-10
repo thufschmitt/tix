@@ -1,3 +1,6 @@
+(**
+   The nix-light AST with type informations
+*)
 module P = Nl_ast
 module T = Tix_types
 

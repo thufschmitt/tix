@@ -1,3 +1,7 @@
+(**
+   Pretty-printer the [Onix_ast.t]
+ *)
+
 module P = Onix_ast
 module T = Tix_types
 module F = Format

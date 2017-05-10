@@ -1,3 +1,7 @@
+(**
+   Parsetree for the nix language
+ *)
+
 type 'a with_loc = 'a Onix_location.With_loc.t [@@deriving show]
 
 type operator =
@@ -9,11 +13,11 @@ type expr = expr_desc with_loc
 and expr_desc =
   | Evar of string
   | EaccessPath of access_path
-  (*
-   * x
-   * x.y
-   * x.y or e
-   * *)
+  (**
+     x
+     x.y
+     x.y or e
+   *)
   | Econstant of constant
   | Estring of str
   (* Not constant because of interpolation *)
@@ -22,13 +26,13 @@ and expr_desc =
   | EopApp of operator * expr list
   | Erecord of record
   | Ewith of expr * expr
-  (* with e; e *)
+  (** with e; e *)
   | Elet of binding list * expr
   | EtyAnnot of expr * Tix_types.t
 
 and access_path =
   | Afield of expr * ap_field * expr option
-  (* e.f or e' *)
+  (** e.f or e' *)
 
 and ap_field = ap_field_desc with_loc
 
@@ -79,8 +83,8 @@ and field =
   | Fdef of string * expr
   | FstaticDef of string * expr
   | Finherit of inherit_
-  (* inherit x y z...;
-   * inherit (e) x y z...;
+  (** inherit x y z...;
+     inherit (e) x y z...;
    *)
 
 and binding =

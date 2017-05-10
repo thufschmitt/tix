@@ -1,3 +1,7 @@
+(**
+ * Definition of the types used by tix
+ *)
+
 type base =
   | Int
   | Bool

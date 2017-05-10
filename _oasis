@@ -67,3 +67,15 @@ Test onix
   Command: $onix_test
   TestTools: onix_test
   Run: true
+
+Document Tix
+  Title: Tix documentation
+  BuildTools+:  ocamldoc
+  XOCamlbuildPath: .
+  XOCamlbuildExtraArgs:
+    "-docflags '-colorize-code -short-functors -charset utf-8'"
+  XOCamlbuildLibraries:
+    onix,
+    nix-light,
+    nix-typecheck
+  Type: ocamlbuild (0.4)

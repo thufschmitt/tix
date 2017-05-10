@@ -1,3 +1,7 @@
+(**
+ AST for nix-light, a simplified version of the nix language
+ @see <https://github.com/regnat/tix-papers> for a description of the language
+ *)
 type 'a with_loc = 'a Onix_location.With_loc.t [@@deriving show]
 
 type operator =
@@ -9,11 +13,11 @@ type expr = expr_desc with_loc
 and expr_desc =
   | Evar of string
   | EaccessPath of access_path
-  (*
-   * x
-   * x.y
-   * x.y or e
-   * *)
+  (**
+     x
+     x.y
+     x.y or e
+   *)
   | Econstant of constant
   | Elambda of lambda
   | EfunApp of expr * expr
@@ -26,7 +30,7 @@ and expr_desc =
 
 and access_path =
   | Afield of expr * ap_field * expr option
-  (* e.f or e' *)
+  (** e.f or e' *)
 
 and ap_field = expr with_loc
 
@@ -46,7 +50,7 @@ and pattern_desc =
 
 and nontrivial_pattern =
   | NPrecord of pattern_record_field list * closed_flag
-  (* fields * '...' *)
+  (** fields * '...' *)
 
 and pattern_record_field = {
   field_name: string;
