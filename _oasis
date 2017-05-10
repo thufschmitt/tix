@@ -35,7 +35,8 @@ Library "nix-light"
   Modules:
     Nl_ast,
     Nl_pp,
-    Nl_of_onix
+    Nl_of_onix,
+    Nl
   BuildDepends:
     ppx_deriving.std,
     tix-types,

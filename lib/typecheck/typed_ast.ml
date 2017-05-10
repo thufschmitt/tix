@@ -1,7 +1,7 @@
 (**
    The nix-light AST with type informations
 *)
-module P = Nl_ast
+module P = Nl.Ast
 module T = Tix_types
 
 type 'a with_loc = 'a Onix.Location.With_loc.t [@@deriving show]

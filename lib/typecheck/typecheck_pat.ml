@@ -1,5 +1,5 @@
 module T = Typed_ast
-module P = Nl_ast
+module P = Nl.Ast
 module Env = Typing_env
 
 module L = Onix.Location.With_loc

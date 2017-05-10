@@ -11,4 +11,4 @@ exception TypeError of string
    [expr env e] Typechecks the expression [e] under the environment [env].
    Raises [TypeError] if the expression is not typeable
  *)
-val expr : Typing_env.t -> Nl_ast.expr -> Typed_ast.expr
+val expr : Typing_env.t -> Nl.Ast.expr -> Typed_ast.expr

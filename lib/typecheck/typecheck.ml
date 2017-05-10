@@ -1,4 +1,4 @@
-module P = Nl_ast
+module P = Nl.Ast
 module T = Typed_ast
 module E = Typing_env
 module L = Onix.Location

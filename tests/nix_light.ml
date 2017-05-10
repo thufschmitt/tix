@@ -9,8 +9,8 @@ let test_parse_pp_str ?(isTodo=false) input expected_output _ =
     begin
       match Onix.Parser.onix Onix.Lexer.read (Lexing.from_string input) with
       | Some x ->
-        Nl_of_onix.expr x
-        |> fun s -> Nl_pp.pp_expr Format.str_formatter s
+        Nl.Of_onix.expr x
+        |> fun s -> Nl.Pp.pp_expr Format.str_formatter s
       | None -> raise ParseError
     end;
     Format.flush_str_formatter ()

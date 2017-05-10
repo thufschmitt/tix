@@ -11,7 +11,7 @@ let test_typecheck_expr input expected_type _ =
     begin
     match Onix.Parser.onix Onix.Lexer.read (Lexing.from_string input) with
     | Some s ->
-      Nl_of_onix.expr s
+      Nl.Of_onix.expr s
       |> Typecheck.expr Typing_env.empty
     | None -> raise ParseError
     end;
@@ -25,7 +25,7 @@ let test_typecheck_expr_fail input _ =
     match Onix.Parser.onix Onix.Lexer.read (Lexing.from_string input) with
     | Some s ->
       begin try
-          Nl_of_onix.expr s
+          Nl.Of_onix.expr s
           |> Typecheck.expr Typing_env.empty
           |> ignore;
           assert_failure "Type error not detected"
