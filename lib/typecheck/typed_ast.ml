@@ -4,7 +4,7 @@
 module P = Nl_ast
 module T = Tix_types
 
-type 'a with_loc = 'a Onix_location.With_loc.t [@@deriving show]
+type 'a with_loc = 'a Onix.Location.With_loc.t [@@deriving show]
 
 module With_type =
 struct
@@ -41,5 +41,5 @@ and pattern_desc =
   | Pvar of string
   [@@deriving show]
 
-let get_typ x = With_type.typ x.Onix_location.With_loc.description
-let get_descr x = With_type.description x.Onix_location.With_loc.description
+let get_typ x = With_type.typ x.Onix.Location.With_loc.description
+let get_descr x = With_type.description x.Onix.Location.With_loc.description

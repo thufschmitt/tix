@@ -4,12 +4,12 @@ module T = Tix_types
 exception ParseError
 
 let get_type node =
-  node.Onix_location.With_loc.description.Typed_ast.With_type.typ
+  node.Onix.Location.With_loc.description.Typed_ast.With_type.typ
 
 let test_typecheck_expr input expected_type _ =
   let tast =
     begin
-    match Onix_parser.onix Onix_lexer.read (Lexing.from_string input) with
+    match Onix.Parser.onix Onix.Lexer.read (Lexing.from_string input) with
     | Some s ->
       Nl_of_onix.expr s
       |> Typecheck.expr Typing_env.empty
@@ -22,7 +22,7 @@ let test_typecheck_expr input expected_type _ =
 
 let test_typecheck_expr_fail input _ =
   begin
-    match Onix_parser.onix Onix_lexer.read (Lexing.from_string input) with
+    match Onix.Parser.onix Onix.Lexer.read (Lexing.from_string input) with
     | Some s ->
       begin try
           Nl_of_onix.expr s

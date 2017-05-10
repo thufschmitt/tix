@@ -1,7 +1,7 @@
 module P = Nl_ast
 module T = Typed_ast
 module E = Typing_env
-module L = Onix_location
+module L = Onix.Location
 
 module Pattern = Typecheck_pat
 

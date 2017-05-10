@@ -2,7 +2,7 @@ module T = Typed_ast
 module P = Nl_ast
 module Env = Typing_env
 
-module L = Onix_location.With_loc
+module L = Onix.Location.With_loc
 
 let infer_pattern_descr = function
   | P.Pvar (v, maybe_t) ->

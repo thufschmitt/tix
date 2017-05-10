@@ -1,10 +1,10 @@
 (**
-   Conversion between [Onix_ast.t] and [Nl_ast.t]
+   Conversion between [Onix.Ast.t] and [Nl_ast.t]
  *)
-module O = Onix_ast
+module O = Onix.Ast
 module N = Nl_ast
 
-module Loc = Onix_location
+module Loc = Onix.Location
 
 let map_loc : ('a -> 'b) -> 'a Loc.With_loc.t -> 'b Loc.With_loc.t = fun f l ->
   {

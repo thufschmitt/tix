@@ -7,7 +7,7 @@ let test_parse_pp_str ?(isTodo=false) input expected_output _ =
   if isTodo then todo "Not implemented yet";
   let output =
     begin
-      match Onix_parser.onix Onix_lexer.read (Lexing.from_string input) with
+      match Onix.Parser.onix Onix.Lexer.read (Lexing.from_string input) with
       | Some s -> Onix_pp.pp_expr Format.str_formatter s;
       | None -> raise ParseError
     end;

@@ -23,7 +23,8 @@ Library "onix"
     Onix_lexer,
     Onix_parser,
     Onix_location,
-    Onix_ast
+    Onix_ast,
+    Onix
   BuildDepends:
     tix-types,
     opal,
