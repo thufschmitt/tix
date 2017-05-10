@@ -24,3 +24,6 @@ setup.data
 setup.log
 
 # End of https://www.gitignore.io/api/ocaml
+
+# Oasis generated doc
+*.docdir
