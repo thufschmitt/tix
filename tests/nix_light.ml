@@ -23,7 +23,7 @@ let test_parse_pp_str ?(isTodo=false) input expected_output _ =
 let isTodo = true (* To use [~isTodo] as a shortcut for [~isTodo=true] *)
 
 let testsuite =
-  "onix_parser">:::
+  "nix_light">:::
   List.map (fun (name, input, output) ->
       name >:: test_parse_pp_str input output)
     [

@@ -36,6 +36,7 @@ stdenv.mkDerivation rec {
     ocaml_wrapped
     ppx_deriving
     opal
+    containers
   ];
 
   src = ./.;
