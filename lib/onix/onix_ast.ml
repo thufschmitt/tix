@@ -48,7 +48,7 @@ and str_element =
   | Sconstant of string
   | Sinterpol of interpol
 
-and lambda = pattern * expr
+and lambda = pattern * expr * Tix_types.t option
 
 and pattern = pattern_desc with_loc
 
