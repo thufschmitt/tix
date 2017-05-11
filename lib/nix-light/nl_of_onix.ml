@@ -15,7 +15,7 @@ let operator : O.operator -> N.operator = function
 let rec expr_desc : O.expr_desc -> N.expr_desc = function
   | O.Evar s -> N.Evar s
   | O.Econstant c -> N.Econstant (constant c)
-  | O.Elambda (pat, e, t) -> N.Elambda (pattern pat, expr e, t)
+  | O.Elambda (pat, e) -> N.Elambda (pattern pat, expr e)
   | O.EfunApp (e1, e2) -> N.EfunApp (expr e1, expr e2)
   | O.EtyAnnot (e, t)  -> N.EtyAnnot (expr e, t)
   | O.EopApp (o, args) -> N.EopApp (operator o, List.map expr args)

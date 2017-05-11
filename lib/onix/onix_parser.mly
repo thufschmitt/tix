@@ -69,9 +69,7 @@ simple_expression_desc:
 expression_desc:
   | e1 = simple_expression; e2 = simple_expression { Onix_ast.EfunApp (e1, e2) }
   | ap = access_path { Onix_ast.EaccessPath ap }
-  | p = pattern COLON e = expression { Onix_ast.Elambda ( p, e, None) }
-  | p = pattern COLON TY_START t = typ TY_END e = expression
-      { Onix_ast.Elambda ( p, e, Some t) }
+  | p = pattern COLON e = expression { Onix_ast.Elambda ( p, e) }
   | record = record_expr { Onix_ast.Erecord record }
   | LET_KW bindings = list(letb_def) IN_KW e = expression
   { Onix_ast.Elet (bindings, e) }

@@ -36,7 +36,7 @@ and constant =
   | Cstring of string
   | Cnil
 
-and lambda = pattern * expr * Tix_types.t option
+and lambda = pattern * expr
 
 and pattern = pattern_desc with_loc
 

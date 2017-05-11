@@ -21,14 +21,9 @@ let rec pp_expr fmt = drop_loc %> function
     pp_ident fmt v
   | P.Econstant c ->
     const fmt c
-  | P.Elambda (p, e, None) ->
+  | P.Elambda (p, e) ->
       F.fprintf fmt "@[<2>(%a:@ %a)@]"
         pp_pattern p
-        pp_expr e
-  | P.Elambda (p, e, Some t) ->
-      F.fprintf fmt "@[<2>(%a: /*:@ %a@ */@ %a)@]"
-        pp_pattern p
-        pp_typ t
         pp_expr e
   | P.EfunApp (e1, e2) ->
       F.fprintf fmt "@[%a@ %a@]"
