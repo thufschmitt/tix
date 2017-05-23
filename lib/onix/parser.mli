@@ -33,4 +33,4 @@ type token =
 
 (** Parse a nix expression. The type of the function is compatible with Menhir
    generated parsers *)
-val onix : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> Onix_ast.expr option
+val onix : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> Ast.expr option

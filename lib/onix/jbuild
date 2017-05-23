@@ -1,0 +1,9 @@
+(jbuild_version 1)
+
+(ocamllex (lexer))
+
+(library
+  ((name "onix")
+   (public_name "onix")
+   (libraries (tix_types opal))))
+

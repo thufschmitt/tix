@@ -1,7 +1,7 @@
 (**
-   Pretty-printer the [Nl_ast.t]
+   Pretty-printer the [Ast.t]
  *)
-module P = Nl_ast
+module P = Ast
 module F = Format
 
 let drop_loc { Onix.Location.With_loc.description = it; _ } = it

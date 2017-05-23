@@ -1,0 +1,4 @@
+(library
+  ((name "tix_types")
+   (public_name "tix_types")
+   (libraries (cduce))))

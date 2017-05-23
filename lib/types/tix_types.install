@@ -1,0 +1,15 @@
+lib: [
+  "_build/install/default/lib/tix_types/META" {"META"}
+  "_build/install/default/lib/tix_types/opam" {"opam"}
+  "_build/install/default/lib/tix_types/tix_types.cmi"
+  "_build/install/default/lib/tix_types/tix_types.cmx"
+  "_build/install/default/lib/tix_types/tix_types.cmt"
+  "_build/install/default/lib/tix_types/tix_types.ml"
+  "_build/install/default/lib/tix_types/tix_types.cma"
+  "_build/install/default/lib/tix_types/tix_types.cmxa"
+  "_build/install/default/lib/tix_types/tix_types.a"
+  "_build/install/default/lib/tix_types/tix_types.cmxs"
+]
+doc: [
+  "_build/install/default/doc/tix_types/README.md"
+]

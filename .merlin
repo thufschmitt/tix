@@ -1,6 +1,0 @@
-B _build/**
-
-PKG ppx_deriving.std
-PKG oUnit
-PKG opal
-PKG containers

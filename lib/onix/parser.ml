@@ -1,8 +1,8 @@
 open Opal
 
-module P = Onix_ast
+module P = Ast
 
-let mk_with_loc = Onix_location.With_loc.mk
+let mk_with_loc = Location.With_loc.mk
 
 type token =
   | EOF
@@ -40,7 +40,7 @@ let local_lexbuf = ref (Lexing.from_string "")
 
 (** Locations **)
 
-(** [add_loc x] wraps [x] into a [Onix_location.With_loc.t] filled with current
+(** [add_loc x] wraps [x] into a [Location.With_loc.t] filled with current
  * location of the parser *)
 let add_loc x =
   let loc_start = !local_lexbuf.Lexing.lex_start_p

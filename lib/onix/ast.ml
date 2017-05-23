@@ -2,7 +2,7 @@
    Parsetree for the nix language
  *)
 
-type 'a with_loc = 'a Onix_location.With_loc.t
+type 'a with_loc = 'a Location.With_loc.t
 
 type operator =
   | Ocons
