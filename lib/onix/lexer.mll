@@ -1,5 +1,5 @@
 {
-  open Onix_parser
+  open Parser
 }
 
 let white = [' ' '\t']+

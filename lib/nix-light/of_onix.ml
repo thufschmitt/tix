@@ -1,8 +1,8 @@
 (**
-   Conversion between [Onix.Ast.t] and [Nl_ast.t]
+   Conversion between [Onix.Ast.t] and [Ast.t]
  *)
 module O = Onix.Ast
-module N = Nl_ast
+module N = Ast
 
 module Loc = Onix.Location
 

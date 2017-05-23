@@ -1,0 +1,5 @@
+(library
+  ((name "tix_types")
+   (public_name "tix_types")
+   (preprocess (pps (ppx_deriving)))
+   (libraries (ppx_deriving.std))))

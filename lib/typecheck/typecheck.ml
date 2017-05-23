@@ -1,4 +1,4 @@
-module P = Nl.Ast
+module P = Nix_light.Ast
 module T = Typed_ast
 module E = Typing_env
 module L = Onix.Location

@@ -1,12 +1,12 @@
 (**
-   Pretty-printer the [Onix_ast.t]
+   Pretty-printer the [Ast.t]
  *)
 
-module P = Onix_ast
+module P = Ast
 module T = Tix_types
 module F = Format
 
-let drop_loc = Onix_location.With_loc.description
+let drop_loc = Location.With_loc.description
 let (%>) f g x = g (f x)
 
 let pp_ident = F.pp_print_string

@@ -1,0 +1,6 @@
+(jbuild_version 1)
+
+(library
+  ((name "typechecker")
+   (public_name "typechecker")
+   (libraries (nix_light tix_types ppx_deriving.std containers))))

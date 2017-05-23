@@ -1,0 +1,4 @@
+(library
+  ((name "nix_light")
+   (public_name "nix_light")
+   (libraries (onix tix_types ppx_deriving.std))))
