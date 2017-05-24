@@ -1,5 +1,5 @@
 open OUnit2
-module T = Tix_types
+module T = Type_annotations
 
 exception ParseError
 

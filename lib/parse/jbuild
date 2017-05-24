@@ -5,5 +5,5 @@
 (library
   ((name "parse")
    (public_name "parse")
-   (libraries (tix_types opal))))
+   (libraries (type_annotations opal))))
 

@@ -10,9 +10,9 @@ exception TypeError of string
 let typeError e = Format.ksprintf (fun s -> raise (TypeError s)) e
 
 let typeof_const = function
-  | P.Cbool _ -> Tix_types.(BaseType Bool)
-  | P.Cint  _ -> Tix_types.(BaseType Int)
-  | P.Cnil    -> Tix_types.(BaseType Nil)
+  | P.Cbool _ -> Type_annotations.(BaseType Bool)
+  | P.Cint  _ -> Type_annotations.(BaseType Int)
+  | P.Cnil    -> Type_annotations.(BaseType Nil)
   | P.Cstring _  -> assert false
 
 let rec expr (env : E.t) : P.expr -> T.expr = L.With_loc.map @@ function
@@ -26,7 +26,7 @@ let rec expr (env : E.t) : P.expr -> T.expr = L.With_loc.map @@ function
     let codomain = T.get_typ typed_e in
     T.With_type.make
       ~description:(T.Elambda (typed_pat, typed_e))
-      ~typ:(Tix_types.Arrow (domain, codomain))
+      ~typ:(Type_annotations.Arrow (domain, codomain))
   | P.Evar v ->
     begin match E.lookup env v with
       | Some t -> T.With_type.make ~description:(T.Evar v) ~typ:t
@@ -40,16 +40,16 @@ let rec expr (env : E.t) : P.expr -> T.expr = L.With_loc.map @@ function
     and t2 = T.get_typ typed_e2
     in
     begin match t1 with
-      | Tix_types.Arrow (domain, codomain) when domain = t2 ->
+      | Type_annotations.Arrow (domain, codomain) when domain = t2 ->
         T.With_type.make
           ~description:(T.EfunApp (typed_e1, typed_e2))
           ~typ:codomain
-      | Tix_types.Arrow (domain, _) ->
+      | Type_annotations.Arrow (domain, _) ->
         typeError "Expected %s, got %s"
-          (Tix_types.show domain)
-          (Tix_types.show t2)
+          (Type_annotations.show domain)
+          (Type_annotations.show t2)
       | _ ->
         typeError "%s is not an arrow type"
-          (Tix_types.show t1)
+          (Type_annotations.show t1)
     end
   | _ -> (ignore (expr, env); assert false)

@@ -3,7 +3,7 @@
  *)
 
 module P = Ast
-module T = Tix_types
+module T = Type_annotations
 module F = Format
 
 let drop_loc = Location.With_loc.description

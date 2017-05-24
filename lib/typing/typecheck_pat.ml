@@ -6,7 +6,7 @@ module L = Parse.Location.With_loc
 
 let infer_pattern_descr = function
   | P.Pvar (v, maybe_t) ->
-    let t = CCOpt.get Tix_types.(BaseType Gradual) maybe_t in
+    let t = CCOpt.get Type_annotations.(BaseType Gradual) maybe_t in
     (Env.singleton v t, { T.With_type.description = T.Pvar v; typ = t; })
   | _ -> failwith "TODO"
 

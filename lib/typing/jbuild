@@ -3,4 +3,4 @@
 (library
   ((name "typing")
    (public_name "typing")
-   (libraries (simple tix_types containers))))
+   (libraries (simple type_annotations containers))))

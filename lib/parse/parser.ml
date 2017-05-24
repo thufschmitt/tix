@@ -71,12 +71,12 @@ and expr_const = any >>= function
   | BOOL b -> return (add_loc @@ P.Econstant (P.Cbool b))
   | _ -> mzero
 
-(** {2 Types} *)
+(** {2 Type_annotations} *)
 let rec typ input =
   (typ_arrow <|> typ_atom <|> typ_cons) input
 
 and typ_atom input =
-  ((ident => fun t -> Tix_types.(BaseType (read_base t)))
+  ((ident => fun t -> Type_annotations.(BaseType (read_base t)))
   <|>
   in_parens typ)
     input
@@ -85,14 +85,14 @@ and typ_arrow input =
   (typ_atom >>= fun domain ->
    exactly ARROW_R >>
    typ => fun codomain ->
-     Tix_types.Arrow (domain, codomain))
+     Type_annotations.Arrow (domain, codomain))
     input
 
 and typ_cons input =
   (exactly CONS_KW >>
    in_parens (
      typ >>= fun t1 -> (exactly COMMA) >> typ => fun t2 ->
-       Tix_types.Cons(t1, t2)
+       Type_annotations.Cons(t1, t2)
    )) input
 
 let type_annot =

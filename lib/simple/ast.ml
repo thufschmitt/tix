@@ -26,7 +26,7 @@ and expr_desc =
   | Ewith of expr * expr
   (* with e; e *)
   | Elet of binding list * expr
-  | EtyAnnot of (expr * Tix_types.t)
+  | EtyAnnot of (expr * Type_annotations.t)
 
 and access_path =
   | Afield of expr * ap_field * expr option
@@ -45,7 +45,7 @@ and lambda = pattern * expr
 and pattern = pattern_desc with_loc
 
 and pattern_desc =
-  | Pvar of string * Tix_types.t option
+  | Pvar of string * Type_annotations.t option
   | Pnontrivial of nontrivial_pattern * string option
 
 and nontrivial_pattern =
@@ -55,7 +55,7 @@ and nontrivial_pattern =
 and pattern_record_field = {
   field_name: string;
   default_value: constant option;
-  type_annot: Tix_types.t option;
+  type_annot: Type_annotations.t option;
 }
 
 and closed_flag =
