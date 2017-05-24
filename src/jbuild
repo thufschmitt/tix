@@ -1,0 +1,7 @@
+(jbuild_version 1)
+
+(library
+  ((name "onix")
+   (public_name "onix")
+   (libraries (type_annotations parse simple typing))))
+
