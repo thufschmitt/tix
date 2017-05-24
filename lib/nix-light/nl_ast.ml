@@ -2,11 +2,11 @@
  AST for nix-light, a simplified version of the nix language
  @see <https://github.com/regnat/tix-papers> for a description of the language
  *)
-type 'a with_loc = 'a Onix.Location.With_loc.t [@@deriving show]
+type 'a with_loc = 'a Onix.Location.With_loc.t
 
 type operator =
   | Ocons
-  [@@deriving show]
+ 
 
 type expr = expr_desc with_loc
 
@@ -69,4 +69,4 @@ and field = expr * expr
 and binding = string * expr
 
 and interpol = expr
-[@@deriving show]
+

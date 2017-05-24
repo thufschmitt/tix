@@ -14,8 +14,6 @@ Library "tix-types"
   Path: lib/types
   Modules:
     Tix_types
-  BuildDepends:
-    ppx_deriving.std
 
 Library "onix"
   Path: lib/onix
@@ -27,8 +25,7 @@ Library "onix"
     Onix
   BuildDepends:
     tix-types,
-    opal,
-    ppx_deriving.std
+    opal
 
 Library "nix-light"
   Path: lib/nix-light
@@ -38,7 +35,6 @@ Library "nix-light"
     Nl_of_onix,
     Nl
   BuildDepends:
-    ppx_deriving.std,
     tix-types,
     onix
 
@@ -50,7 +46,6 @@ Library "nix-typecheck"
     Typecheck_pat,
     Typecheck
   BuildDepends:
-    ppx_deriving.std,
     tix-types,
     containers,
     nix-light

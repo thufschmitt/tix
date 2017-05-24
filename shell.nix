@@ -34,7 +34,6 @@ stdenv.mkDerivation rec {
     ocamlbuild ocaml_oasis
     ounit
     ocaml_wrapped
-    ppx_deriving
     opal
     containers
   ];

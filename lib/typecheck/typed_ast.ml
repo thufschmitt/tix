@@ -4,25 +4,25 @@
 module P = Nl.Ast
 module T = Tix_types
 
-type 'a with_loc = 'a Onix.Location.With_loc.t [@@deriving show]
+type 'a with_loc = 'a Onix.Location.With_loc.t
 
 module With_type =
 struct
   type 'a t = {
     description: 'a;
     typ: T.t;
-  } [@@deriving show, make]
+  }
 
   let typ x = x.typ
   let description x = x.description
+
+  let make ~description ~typ = { description; typ }
 end
 
 type 'a with_type = 'a With_type.t
-  [@@deriving show]
 
 type operator =
   | Ocons
-  [@@deriving show]
 
 type expr = expr_desc with_type with_loc
 
@@ -39,7 +39,6 @@ and pattern = pattern_desc with_type with_loc
 
 and pattern_desc =
   | Pvar of string
-  [@@deriving show]
 
 let get_typ x = With_type.typ x.Onix.Location.With_loc.description
 let get_descr x = With_type.description x.Onix.Location.With_loc.description

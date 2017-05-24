@@ -4,7 +4,7 @@
 type t = {
   pos_start: Lexing.position [@opaque];
   pos_end: Lexing.position [@opaque];
-} [@@deriving show]
+}
 
 let mk pos_start pos_end = {
   pos_start;
@@ -17,9 +17,9 @@ struct
   type 'a _t = {
     description: 'a;
     location: t;
-  } [@@deriving show]
+  }
 
-  type 'a t = 'a _t [@@deriving show]
+  type 'a t = 'a _t
 
   let mk pos_start pos_end elt = {
     description = elt;
