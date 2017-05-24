@@ -2,11 +2,11 @@
    Parsetree for the nix language
  *)
 
-type 'a with_loc = 'a Onix_location.With_loc.t [@@deriving show]
+type 'a with_loc = 'a Onix_location.With_loc.t
 
 type operator =
   | Ocons
-  [@@deriving show]
+ 
 
 type expr = expr_desc with_loc
 
@@ -95,4 +95,4 @@ and binding =
 and inherit_ = expr option * (string with_loc) list
 
 and interpol = expr
-[@@deriving show]
+
