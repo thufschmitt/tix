@@ -44,22 +44,61 @@ let ocaml_wrapped =
       repo = "opal";
       rev = "v0.1.1";
       sha256 = "0qzsasjgbcjk66r9mc3q1ygq1l1g9sm967rhhcxgzlz1jqbaya7b";
-      };
-
-      installTargets = [ "libinstall" ];
     };
+
+    installTargets = [ "libinstall" ];
+  };
+  cduce-lib = stdenv.mkDerivation rec {
+    name = "cduce-unstable-${version}";
+    version = "2016-06-07";
+
+    src = fetchgit {
+      url = "https://gitlab.math.univ-paris-diderot.fr/cduce/cduce.git/";
+      rev = "6d44f428306e588c8f0177a43aa7794810f02d60";
+      sha256 = "1czij3ndqr75ifj0sf51y8w6za6clq5plv2m8x4m15mfk8l6ir84";
+    };
+
+    propagatedBuildInputs = with ocamlPackages_4_02; [
+      ocaml
+      findlib
+      ocaml_pcre ulex
+      rlwrap
+    ];
+
+    createFindlibDestdir = true;
+
+    preConfigure = ''
+      sed -i 's@+camlp4/camlp4lib.cma @@' META.in
+      sed -i 's@+camlp4/camlp4lib.cmxa @@' META.in
+      sed -i 's/requires="/requires="camlp4.lib /' META.in
+    '';
+
+    configureFlags = [
+      "--without-pxp"
+      "--without-expat"
+      "--without-curl"
+      "--without-netclient"
+      "--without-cgi"
+    ];
+
+    installTargets = [ "install_lib" ];
+
+  };
 in
 stdenv.mkDerivation rec {
   name = "onix";
   version = "0.0";
   propagatedBuildInputs = with ocamlPackages; [
     findlib
+    camlp4
     ocamlbuild ocaml_oasis
     ounit
     ocaml_wrapped
     opal
     containers
     jbuilder
+    cduce-lib
+    ppx_deriving
   ];
 
   src = ./.;
