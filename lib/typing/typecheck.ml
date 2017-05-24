@@ -1,7 +1,7 @@
-module P = Nix_light.Ast
+module P = Simple.Ast
 module T = Typed_ast
 module E = Typing_env
-module L = Onix.Location
+module L = Parse.Location
 
 module Pattern = Typecheck_pat
 

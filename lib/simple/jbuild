@@ -1,0 +1,4 @@
+(library
+  ((name "simple")
+   (public_name "simple")
+   (libraries (parse tix_types))))

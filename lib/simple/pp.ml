@@ -4,7 +4,7 @@
 module P = Ast
 module F = Format
 
-let drop_loc { Onix.Location.With_loc.description = it; _ } = it
+let drop_loc { Parse.Location.With_loc.description = it; _ } = it
 let (%>) f g x = g (f x)
 
 let pp_ident = F.pp_print_string

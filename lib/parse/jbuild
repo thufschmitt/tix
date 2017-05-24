@@ -3,7 +3,7 @@
 (ocamllex (lexer))
 
 (library
-  ((name "onix")
-   (public_name "onix")
+  ((name "parse")
+   (public_name "parse")
    (libraries (tix_types opal))))
 

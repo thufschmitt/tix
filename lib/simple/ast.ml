@@ -2,7 +2,7 @@
  AST for nix-light, a simplified version of the nix language
  @see <https://github.com/regnat/tix-papers> for a description of the language
  *)
-type 'a with_loc = 'a Onix.Location.With_loc.t
+type 'a with_loc = 'a Parse.Location.With_loc.t
 
 type operator =
   | Ocons

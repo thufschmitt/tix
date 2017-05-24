@@ -1,8 +1,8 @@
 module T = Typed_ast
-module P = Nix_light.Ast
+module P = Simple.Ast
 module Env = Typing_env
 
-module L = Onix.Location.With_loc
+module L = Parse.Location.With_loc
 
 let infer_pattern_descr = function
   | P.Pvar (v, maybe_t) ->

@@ -2,7 +2,7 @@
 
 (executables
   ((names (nix_tests))
-   (libraries (tix_types onix nix_light typechecker oUnit))))
+   (libraries (tix_types parse simple typing oUnit))))
 
 (install
  ((section bin)

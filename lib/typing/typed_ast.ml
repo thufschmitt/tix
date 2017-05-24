@@ -1,10 +1,10 @@
 (**
    The nix-light AST with type informations
 *)
-module P = Nix_light.Ast
+module P = Simple.Ast
 module T = Tix_types
 
-type 'a with_loc = 'a Onix.Location.With_loc.t
+type 'a with_loc = 'a Parse.Location.With_loc.t
 
 module With_type =
 struct
@@ -40,5 +40,5 @@ and pattern = pattern_desc with_type with_loc
 and pattern_desc =
   | Pvar of string
 
-let get_typ x = With_type.typ x.Onix.Location.With_loc.description
-let get_descr x = With_type.description x.Onix.Location.With_loc.description
+let get_typ x = With_type.typ x.Parse.Location.With_loc.description
+let get_descr x = With_type.description x.Parse.Location.With_loc.description

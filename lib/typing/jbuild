@@ -1,0 +1,6 @@
+(jbuild_version 1)
+
+(library
+  ((name "typing")
+   (public_name "typing")
+   (libraries (simple tix_types containers))))
