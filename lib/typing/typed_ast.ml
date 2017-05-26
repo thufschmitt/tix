@@ -2,7 +2,7 @@
    The nix-light AST with type informations
 *)
 module P = Simple.Ast
-module T = Type_annotations
+module T = Types
 
 type 'a with_loc = 'a Parse.Location.With_loc.t
 
