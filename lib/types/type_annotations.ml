@@ -2,27 +2,13 @@
  * Definition of the types used by tix
  *)
 
-type base =
-  | Int
-  | Bool
-  | Nil (* The singleton type for [nil] *)
-  | Gradual
-
-let show_base = function
-  | Int -> "int"
-  | Bool -> "bool"
-  | Nil  -> "nil"
-  | Gradual -> "¿"
-
-let pp_base fmt b = Format.pp_print_string fmt (show_base b)
-
 type t =
-  | BaseType of base
+  | Var of string
   | Arrow of (t * t)
   | Cons  of (t * t)
 
 let rec pp fmt = function
-  | BaseType b -> pp_base fmt b
+  | Var v -> Format.pp_print_string fmt v
   | Arrow (t1, t2) ->
     Format.fprintf fmt "(%a) -> %a"
       pp t1
@@ -35,10 +21,3 @@ let rec pp fmt = function
 let show t =
   let () = pp Format.str_formatter t in
   Format.flush_str_formatter ()
-
-let read_base : string -> base = function
-  | "int" -> Int
-  | "bool" -> Bool
-  | "nil" -> Nil
-  | "¿" -> Gradual
-  | s -> Format.ksprintf failwith "Unknown type %s" s

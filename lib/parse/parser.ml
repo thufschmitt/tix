@@ -76,7 +76,7 @@ let rec typ input =
   (typ_arrow <|> typ_atom <|> typ_cons) input
 
 and typ_atom input =
-  ((ident => fun t -> Type_annotations.(BaseType (read_base t)))
+  ((ident => fun t -> Type_annotations.Var t)
   <|>
   in_parens typ)
     input
