@@ -1,4 +1,3 @@
 (library
   ((name "type_annotations")
-   (public_name "type_annotations")
-   (libraries (cduce))))
+   (public_name "type_annotations")))
