@@ -51,7 +51,7 @@ module Environment : sig
   (** The default environment containing all the builtin types *)
   val default : t
 
-  val lookup : t -> string -> T.t
+  val lookup : t -> string -> T.t option
 end = struct
   type t = Cduce_lib.Typer.t
 
@@ -78,7 +78,10 @@ end = struct
       builtin_types
 
   let lookup env (name : string) =
-    Cduce_lib.Typer.find_value
-      (C.Ns.empty, C.Encodings.Utf8.mk name)
-      env
+    try
+      CCOpt.pure @@
+      Cduce_lib.Typer.find_value
+        (C.Ns.empty, C.Encodings.Utf8.mk name)
+        env
+    with Not_found -> None
 end

@@ -7,7 +7,7 @@ module Pattern = Typecheck_pat
 
 exception TypeError of string
 
-(* let typeError e = Format.ksprintf (fun s -> raise (TypeError s)) e *)
+let typeError e = Format.ksprintf (fun s -> raise (TypeError s)) e
 
 let typeof_const = function
   | P.Cbool true -> Types.Builtins.true_type
@@ -22,6 +22,11 @@ let rec expr (env : E.t) : P.expr -> T.expr = L.With_loc.map @@ function
   | P.Econstant c ->
     let typ = typeof_const c in
     T.With_type.make ~description:(T.Econstant c) ~typ
+  | P.Evar v ->
+    begin match E.lookup env v with
+      | Some t -> T.With_type.make ~description:(T.Evar v) ~typ:t
+      | None -> typeError "Unbount variable %s" v
+    end
   (* | P.Elambda (pat, e) -> *)
   (*   let (added_env, typed_pat) = Pattern.infer pat in *)
   (*   let domain = T.get_typ typed_pat in *)
@@ -30,11 +35,6 @@ let rec expr (env : E.t) : P.expr -> T.expr = L.With_loc.map @@ function
   (*   T.With_type.make *)
   (*     ~description:(T.Elambda (typed_pat, typed_e)) *)
   (*     ~typ:(Type_annotations.Arrow (domain, codomain)) *)
-  (* | P.Evar v -> *)
-  (*   begin match E.lookup env v with *)
-  (*     | Some t -> T.With_type.make ~description:(T.Evar v) ~typ:t *)
-  (*     | None -> typeError "Unbount variable %s" v *)
-  (*   end *)
   (* | P.EfunApp (e1, e2) -> *)
   (*   let typed_e1 = expr env e1 *)
   (*   and typed_e2 = expr env e2 *)

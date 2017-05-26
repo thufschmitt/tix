@@ -20,6 +20,20 @@ let test_typecheck_expr input expected_type _ =
     expected_type
     (get_type tast)
 
+let test_var _ =
+  let tast =
+    begin
+    match Parse.Parser.onix Parse.Lexer.read (Lexing.from_string "x") with
+    | Some s ->
+      Simple.Of_onix.expr s
+      |> Typing.Typecheck.expr Typing.Typing_env.(add "x" Typing.Types.Builtins.int empty)
+    | None -> raise ParseError
+    end;
+  in
+  assert_equal
+    Typing.Types.Builtins.int
+    (get_type tast)
+
 let test_typecheck_expr_fail input _ =
   begin
     match Parse.Parser.onix Parse.Lexer.read (Lexing.from_string input) with
@@ -48,4 +62,8 @@ let testsuite =
     "test_apply">:: test_typecheck_expr "(x /*: int */: x) 1" T.(BaseType Int);
     "test_fail_apply2">:: test_typecheck_expr_fail "(x /*: bool */: x) 1";
     "test_fail_apply3">:: test_typecheck_expr_fail "(x /*: int */: x) true";
+  ]
+  @
+  [
+    "test_var">::test_var;
   ]

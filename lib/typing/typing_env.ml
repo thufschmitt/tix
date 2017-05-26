@@ -1,6 +1,6 @@
 module StrMap = Map.Make(String)
 
-type t = Type_annotations.t StrMap.t
+type t = Types.t StrMap.t
 
 let empty = StrMap.empty
 
