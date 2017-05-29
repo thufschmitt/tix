@@ -55,18 +55,15 @@ let test_typecheck_expr_fail input _ =
 let testsuite =
   "tix_typecheck">:::
   [
+    "test_const_int">:: test_typecheck_expr "1"
+      (T.(Builtins.interval (Intervals.singleton_of_int 1)));
+    "test_const_bool">:: test_typecheck_expr "true" T.Builtins.true_type;
     "test_lambda">:: test_typecheck_expr "x /*: Int */: 1"
       (T.Builtins.(arrow
          int
          (interval @@ T.Intervals.singleton_of_int 1)));
     "test_lambda_var">:: test_typecheck_expr "x /*: Int */: x"
       (T.Builtins.(arrow int int));
-    "test_const_int">:: test_typecheck_expr "1" (T.BaseType T.Int);
-    "test_const_bool">:: test_typecheck_expr "true" (T.BaseType T.Bool);
-    "test_lambda">:: test_typecheck_expr "x /*: int */: 1"
-      T.(Arrow (BaseType Int, BaseType Int));
-    "test_lambda_var">:: test_typecheck_expr "x /*: int */: x"
-      T.(Arrow (BaseType Int, BaseType Int));
     "test_fail_unbound_var">:: test_typecheck_expr_fail "x";
     "test_apply">:: test_typecheck_expr "(x /*: int */: x) 1" T.(BaseType Int);
     "test_fail_apply2">:: test_typecheck_expr_fail "(x /*: bool */: x) 1";
