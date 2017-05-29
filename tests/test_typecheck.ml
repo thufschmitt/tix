@@ -18,6 +18,8 @@ let test_typecheck_expr input expected_type _ =
     end;
   in
   assert_equal
+    ~cmp:T.T.equiv
+    ~printer:T.T.Print.string_of_type
     expected_type
     (get_type tast)
 
