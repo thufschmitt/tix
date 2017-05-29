@@ -40,8 +40,8 @@ end
 end
 
 module Environment : sig
-  (** The type representing a typing environment.
-      Once again, stolen from Cduce.
+  (** The type representing a type environment.
+     A type environment is a map from type variables to their définition
   *)
   type t
 
@@ -53,9 +53,10 @@ module Environment : sig
 
   val lookup : t -> string -> T.t option
 end = struct
-  type t = Cduce_lib.Typer.t
+  module M = CCMap.Make(String)
+  type t = T.t M.t
 
-  let empty = Cduce_lib.Typer.empty_env
+  let empty = M.empty
 
   let builtin_types =
     let module B = Builtins in
@@ -69,19 +70,7 @@ end = struct
     ]
 
   let default =
-    List.fold_left
-      (fun acc (name, typ) ->
-         let n = (C.Ns.empty, C.Ident.U.mk name) in
-         T.Print.register_global ("", n, []) typ;
-         C.Typer.enter_type (C.Ident.ident n) typ acc)
-      empty
-      builtin_types
+    M.of_list builtin_types
 
-  let lookup env (name : string) =
-    try
-      CCOpt.pure @@
-      Cduce_lib.Typer.find_value
-        (C.Ns.empty, C.Encodings.Utf8.mk name)
-        env
-    with Not_found -> None
+  let lookup env name = M.get name env
 end
