@@ -36,24 +36,19 @@ let rec expr (tenv : TE.t) (env : E.t) : P.expr -> T.expr = L.With_loc.map @@ fu
     T.With_type.make
       ~description:(T.Elambda (typed_pat, typed_e))
       ~typ:(Types.Builtins.arrow domain codomain)
-  (* | P.EfunApp (e1, e2) -> *)
-  (*   let typed_e1 = expr env e1 *)
-  (*   and typed_e2 = expr env e2 *)
-  (*   in *)
-  (*   let t1 = T.get_typ typed_e1 *)
-  (*   and t2 = T.get_typ typed_e2 *)
-  (*   in *)
-  (*   begin match t1 with *)
-  (*     | Type_annotations.Arrow (domain, codomain) when domain = t2 -> *)
-  (*       T.With_type.make *)
-  (*         ~description:(T.EfunApp (typed_e1, typed_e2)) *)
-  (*         ~typ:codomain *)
-  (*     | Type_annotations.Arrow (domain, _) -> *)
-  (*       typeError "Expected %s, got %s" *)
-  (*         (Type_annotations.show domain) *)
-  (*         (Type_annotations.show t2) *)
-  (*     | _ -> *)
-  (*       typeError "%s is not an arrow type" *)
-  (*         (Type_annotations.show t1) *)
-  (*   end *)
+  | P.EfunApp (e1, e2) ->
+    let typed_e1 = expr tenv env e1
+    and typed_e2 = expr tenv env e2
+    in
+    let t1 = T.get_typ typed_e1
+    and t2 = T.get_typ typed_e2
+    in
+    let t1arrow = Cduce_lib.Types.Arrow.get t1 in
+    let dom = Cduce_lib.Types.Arrow.domain t1arrow in
+    if Types.sub t2 dom then
+      T.With_type.make
+        ~description:(T.EfunApp(typed_e1, typed_e2))
+        ~typ:(Cduce_lib.Types.Arrow.apply t1arrow t2)
+    else
+      typeError "Invalid function application"
   | _ -> (ignore (expr, env); assert false)

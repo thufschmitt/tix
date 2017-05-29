@@ -10,6 +10,9 @@ type t = T.t
 let node = T.cons
 let typ  = T.descr
 
+let sub   = T.subtype
+let equiv = T.equiv
+
 module Intervals : sig
   include module type of C.Intervals
 
@@ -34,6 +37,7 @@ module Builtins : sig
   val string : t
   val nil : t
   val any : t
+  val empty : t
 
   val interval : Intervals.t -> t
 
@@ -41,6 +45,8 @@ module Builtins : sig
 end
 = struct
   include C.Builtin_defs
+
+  let empty = T.empty
 
   let interval = C.Types.interval
 
