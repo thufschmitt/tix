@@ -1,5 +1,6 @@
 open OUnit2
-module T = Type_annotations
+module TA = Type_annotations
+module T  = Typing.Types
 
 exception ParseError
 
@@ -12,7 +13,7 @@ let test_typecheck_expr input expected_type _ =
     match Parse.Parser.onix Parse.Lexer.read (Lexing.from_string input) with
     | Some s ->
       Simple.Of_onix.expr s
-      |> Typing.Typecheck.expr Typing.Typing_env.empty
+      |> Typing.Typecheck.expr Typing.Types.Environment.default Typing.Typing_env.empty
     | None -> raise ParseError
     end;
   in
@@ -26,7 +27,7 @@ let test_var _ =
     match Parse.Parser.onix Parse.Lexer.read (Lexing.from_string "x") with
     | Some s ->
       Simple.Of_onix.expr s
-      |> Typing.Typecheck.expr Typing.Typing_env.(add "x" Typing.Types.Builtins.int empty)
+      |> Typing.Typecheck.expr Typing.Types.Environment.default Typing.Typing_env.(add "x" Typing.Types.Builtins.int empty)
     | None -> raise ParseError
     end;
   in
@@ -40,7 +41,7 @@ let test_typecheck_expr_fail input _ =
     | Some s ->
       begin try
           Simple.Of_onix.expr s
-          |> Typing.Typecheck.expr Typing.Typing_env.empty
+          |> Typing.Typecheck.expr Typing.Types.Environment.default Typing.Typing_env.empty
           |> ignore;
           assert_failure "Type error not detected"
         with
@@ -52,6 +53,12 @@ let test_typecheck_expr_fail input _ =
 let testsuite =
   "tix_typecheck">:::
   [
+    "test_lambda">:: test_typecheck_expr "x /*: Int */: 1"
+      (T.Builtins.(arrow
+         int
+         (interval @@ T.Intervals.singleton_of_int 1)));
+    "test_lambda_var">:: test_typecheck_expr "x /*: Int */: x"
+      (T.Builtins.(arrow int int));
     "test_const_int">:: test_typecheck_expr "1" (T.BaseType T.Int);
     "test_const_bool">:: test_typecheck_expr "true" (T.BaseType T.Bool);
     "test_lambda">:: test_typecheck_expr "x /*: int */: 1"
