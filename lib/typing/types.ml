@@ -7,6 +7,9 @@ module T = Cduce_lib.Types
 
 type t = T.t
 
+let node = T.cons
+let typ  = T.descr
+
 module Intervals : sig
   include module type of C.Intervals
 
@@ -30,13 +33,18 @@ module Builtins : sig
   val char : t
   val string : t
   val nil : t
+  val any : t
 
   val interval : Intervals.t -> t
+
+  val arrow : t -> t -> t
 end
 = struct
   include C.Builtin_defs
 
   let interval = C.Types.interval
+
+  let arrow t1 t2 = C.Types.arrow (node t1) (node t2)
 end
 
 module Environment : sig
