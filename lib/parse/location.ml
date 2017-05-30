@@ -11,6 +11,15 @@ let mk pos_start pos_end = {
   pos_end;
 }
 
+let pp_position fmt pos =
+  let open Lexing in
+  Format.fprintf fmt "[%s:%d:%d]"
+    pos.pos_fname
+    pos.pos_lnum
+    (pos.pos_cnum - pos.pos_bol)
+
+let pp fmt t = pp_position fmt t.pos_start
+
 module With_loc =
 struct
   (* Nonrec types seem to mess with ppx_deriving, so let's not use it *)

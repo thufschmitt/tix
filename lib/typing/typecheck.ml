@@ -6,9 +6,17 @@ module TE = Types.Environment
 
 module Pattern = Typecheck_pat
 
-exception TypeError of string
+exception TypeError of L.t * string
 
-let typeError e = Format.ksprintf (fun s -> raise (TypeError s)) e
+let () = Printexc.register_printer @@ function
+  | TypeError (loc, msg) -> CCOpt.pure @@
+    (Format.fprintf Format.str_formatter "TypeError at %a: %s"
+      L.pp loc
+      msg;
+    Format.flush_str_formatter ())
+  | _ -> None
+
+let typeError loc e = Format.ksprintf (fun s -> raise (TypeError (loc, s))) e
 
 let typeof_const = function
   | P.Cbool true -> Types.Builtins.true_type
@@ -19,14 +27,15 @@ let typeof_const = function
   | P.Cnil -> Types.Builtins.nil
   | P.Cstring _  -> assert false
 
-let rec expr (tenv : TE.t) (env : E.t) : P.expr -> T.expr = L.With_loc.map @@ function
+let rec expr (tenv : TE.t) (env : E.t) : P.expr -> T.expr = fun e ->
+  e |> L.With_loc.map @@ function
   | P.Econstant c ->
     let typ = typeof_const c in
     T.With_type.make ~description:(T.Econstant c) ~typ
   | P.Evar v ->
     begin match E.lookup env v with
       | Some t -> T.With_type.make ~description:(T.Evar v) ~typ:t
-      | None -> typeError "Unbount variable %s" v
+      | None -> typeError e.L.With_loc.location "Unbount variable %s" v
     end
   | P.Elambda (pat, e) ->
     let (added_env, typed_pat) = Pattern.infer tenv pat in
@@ -50,5 +59,5 @@ let rec expr (tenv : TE.t) (env : E.t) : P.expr -> T.expr = L.With_loc.map @@ fu
         ~description:(T.EfunApp(typed_e1, typed_e2))
         ~typ:(Cduce_lib.Types.Arrow.apply t1arrow t2)
     else
-      typeError "Invalid function application"
+      typeError e.L.With_loc.location "Invalid function application"
   | _ -> (ignore (expr, env); assert false)

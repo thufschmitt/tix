@@ -5,7 +5,7 @@
 (**
    Exception raised whenever a typing error occurs
  *)
-exception TypeError of string
+exception TypeError of Parse.Location.t * string
 
 (**
    [expr env e] Typechecks the expression [e] under the environment [env].
