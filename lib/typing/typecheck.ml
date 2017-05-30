@@ -18,6 +18,42 @@ let () = Printexc.register_printer @@ function
 
 let typeError loc e = Format.ksprintf (fun s -> raise (TypeError (loc, s))) e
 
+module Bindings = struct
+  let explicit_annotations (tenv : TE.t) (bindings : P.binding list)
+                            : (T.binding_lhs * P.expr) list * E.t =
+    let half_typed_bindings = List.map (fun ((var, maybe_annot), e) ->
+        match maybe_annot with
+        | Some annot ->
+          CCOpt.map
+            (fun t -> (T.Bannotated (var, t), e))
+            (Annotations.to_type tenv annot)
+          |> CCOpt.get_lazy (fun () -> assert false)
+        | None -> (T.BnonAnnotated var, e)
+      )
+        bindings
+    in
+    let new_env =
+      List.fold_left
+        (fun accu (lhs, _) ->
+           match lhs with
+           | T.Bannotated (x, t) -> E.add x t accu
+           | T.BnonAnnotated x -> E.add x Types.Builtins.grad accu)
+        E.empty
+        half_typed_bindings
+    in
+    half_typed_bindings, new_env
+
+  let report_inference_results (typed_binds : T.bindings) : E.t =
+    List.fold_left
+      (fun accu (lhs, rhs) ->
+         match lhs with
+         | T.Bannotated (x, t) -> E.add x t accu
+         | T.BnonAnnotated x ->
+           E.add x (T.get_typ rhs) accu)
+      E.empty
+      typed_binds
+end
+
 let typeof_const = function
   | P.Cbool true -> Types.Builtins.true_type
   | P.Cbool false -> Types.Builtins.false_type
@@ -65,4 +101,21 @@ let rec expr (tenv : TE.t) (env : E.t) : P.expr -> T.expr = fun e ->
         ~typ:(Cduce_lib.Types.Arrow.apply t1arrow t2)
     else
       typeError e.L.With_loc.location "Invalid function application"
+  | P.Elet (binds, e) ->
+    let module B = Bindings in
+    let half_typed_binds, binds_env = B.explicit_annotations tenv binds in
+    let typed_binds =
+      List.map
+        (fun (lhs, rhs) -> (lhs, expr tenv (E.merge env binds_env) rhs))
+        half_typed_binds
+    in
+    let added_env = B.report_inference_results typed_binds in
+    let typed_e = expr
+      tenv
+      (E.merge env added_env)
+      e
+    in
+    T.With_type.make
+      ~description:(T.Elet (typed_binds, typed_e))
+      ~typ:(T.get_typ typed_e)
   | _ -> (ignore (expr, env); assert false)

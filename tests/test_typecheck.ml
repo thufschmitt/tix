@@ -52,23 +52,31 @@ let test_typecheck_expr_fail input _ =
     | None -> raise ParseError
   end
 
+let one_singleton = T.Builtins.interval @@ T.Intervals.singleton_of_int 1
+
 let testsuite =
   "tix_typecheck">:::
   [
     (* ----- Positive tests ----- *)
-    "test_const_int">:: test_typecheck_expr "1"
-      (T.(Builtins.interval (Intervals.singleton_of_int 1)));
+    "test_const_int">:: test_typecheck_expr "1" one_singleton;
     "test_const_bool">:: test_typecheck_expr "true" T.Builtins.true_type;
     "test_lambda">:: test_typecheck_expr "x /*: Int */: 1"
-      (T.Builtins.(arrow
-         int
-         (interval @@ T.Intervals.singleton_of_int 1)));
+      (T.Builtins.(arrow int one_singleton));
     "test_lambda_var">:: test_typecheck_expr "x /*: Int */: x"
       (T.Builtins.(arrow int int));
     "test_apply">:: test_typecheck_expr "(x /*: Int */: x) 1" T.Builtins.int;
     "test_arrow_annot">:: test_typecheck_expr
       "x /*: Int -> Int */: x)"
       T.Builtins.(arrow (arrow int int) (arrow int int));
+    "test_let_1">:: test_typecheck_expr "let x = 1; in x" one_singleton;
+    "test_let_2">:: test_typecheck_expr "let x /*:Int*/ = 1; in x"
+      T.Builtins.int;
+    "test_let_3">:: test_typecheck_expr "let x /*:Int*/ = 1; y = x; in y"
+      T.Builtins.int;
+    "test_let_4">:: test_typecheck_expr "let x = 1; y = x; in y"
+      T.Builtins.grad;
+    "test_let_5">:: test_typecheck_expr "let x = x; in x"
+      T.Builtins.grad;
 
     (* ----- Negative tests ----- *)
     "test_fail_unbound_var">:: test_typecheck_expr_fail "x";

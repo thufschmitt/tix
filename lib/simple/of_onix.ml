@@ -22,7 +22,14 @@ let rec expr_desc : O.expr_desc -> N.expr_desc = function
   | O.EfunApp (e1, e2) -> N.EfunApp (expr e1, expr e2)
   | O.EtyAnnot (e, t)  -> N.EtyAnnot (expr e, t)
   | O.EopApp (o, args) -> N.EopApp (operator o, List.map expr args)
+  | O.Elet (binds, e) -> N.Elet (bindings binds, expr e)
   | _ -> failwith "Not implemented"
+
+and bindings b = List.map binding b
+
+and binding = function
+  | O.BstaticDef (var, value) -> (var, expr value)
+  | _ -> assert false
 
 and expr e = map_loc expr_desc e
 

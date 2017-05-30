@@ -45,12 +45,14 @@ and lambda = pattern * expr
 and pattern = pattern_desc with_loc
 
 and pattern_desc =
-  | Pvar of string * Type_annotations.t option
+  | Pvar of pattern_var
   | Pnontrivial of nontrivial_pattern * string option
 
 and nontrivial_pattern =
   | NPrecord of pattern_record_field list * closed_flag
   (** fields * '...' *)
+
+and pattern_var = string * Type_annotations.t option
 
 and pattern_record_field = {
   field_name: string;
@@ -66,7 +68,7 @@ and record = (field with_loc) list
 
 and field = expr * expr
 
-and binding = string * expr
+and binding = pattern_var * expr
 
 and interpol = expr
 

@@ -133,7 +133,7 @@ let pattern = pat_ident <|> pat_nontrivial
 (** {3 Expressions} *)
 let rec expr input =
   choice
-    [expr_fun; expr_apply; expr_op; ] input
+    [expr_fun; expr_let; expr_apply; expr_op; ] input
 
 and expr_fun input =
   (pattern >>= fun pat ->
@@ -141,6 +141,25 @@ and expr_fun input =
    expr => fun body ->
      (add_loc @@ P.Elambda (pat, body)))
     input
+
+and expr_let input =
+  (exactly LET_KW >>
+   bindings >>= fun bindings ->
+   exactly IN_KW >>
+   expr => fun e ->
+     (add_loc @@ P.Elet (bindings, e)))
+    input
+
+and bindings input =
+  (end_by binding (exactly SEMICOLON)) input
+
+and binding input =
+  (ident >>= fun name ->
+   option None (type_annot => fun a -> Some a) >>= fun annot ->
+   exactly EQUAL >>
+   expr => fun value ->
+     P.BstaticDef ((name, annot), value))
+input
 
 and expr_atom input =
   (choice

@@ -57,7 +57,7 @@ and lambda = pattern * expr
 and pattern = pattern_desc with_loc
 
 and pattern_desc =
-  | Pvar of string * Type_annotations.t option
+  | Pvar of pattern_var
   | Pnontrivial of nontrivial_pattern * string option
 
 and nontrivial_pattern =
@@ -69,6 +69,8 @@ and pattern_record_field = {
   default_value: expr option;
   type_annot: Type_annotations.t option;
 }
+
+and pattern_var = string * Type_annotations.t option
 
 and closed_flag =
   | Closed
@@ -89,7 +91,7 @@ and field =
 
 and binding =
   | Bdef of access_path * expr (* FIXME: the first element can not be an arbitrary expr *)
-  | BstaticDef of string * expr
+  | BstaticDef of pattern_var * expr
   | Binherit of inherit_
 
 and inherit_ = expr option * (string with_loc) list
