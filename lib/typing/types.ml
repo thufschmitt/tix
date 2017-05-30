@@ -6,6 +6,7 @@ module C = Cduce_lib
 module T = Cduce_lib.Types
 
 type t = T.t
+let pp = T.Print.pp_type
 
 let node = T.cons
 let typ  = T.descr

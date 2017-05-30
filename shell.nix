@@ -99,6 +99,7 @@ stdenv.mkDerivation rec {
     jbuilder
     cduce-lib
     ppx_deriving
+    cmdliner
   ];
 
   src = ./.;

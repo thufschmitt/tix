@@ -1,0 +1,9 @@
+(jbuild_version 1)
+
+(executables
+  ((names (tix))
+   (libraries (onix cmdliner))))
+
+(install
+ ((section bin)
+ (files ((tix.exe as tix)))))
