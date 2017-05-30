@@ -40,6 +40,7 @@ module Builtins : sig
   val nil : t
   val any : t
   val empty : t
+  val grad : t
 
   val interval : Intervals.t -> t
 
@@ -49,6 +50,9 @@ end
   include C.Builtin_defs
 
   let empty = T.empty
+
+  (* TODO: find a cleaner way to define this *)
+  let grad = T.atom (C.Atoms.(atom @@ V.mk_ascii "¿"))
 
   let interval = C.Types.interval
 
@@ -83,6 +87,7 @@ end = struct
       "String", B.string;
       "true", B.true_type;
       "false", B.false_type;
+      "¿", B.grad
     ]
 
   let default =
