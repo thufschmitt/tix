@@ -66,6 +66,9 @@ let testsuite =
       (T.Builtins.(arrow int int));
     "test_fail_unbound_var">:: test_typecheck_expr_fail "x";
     "test_apply">:: test_typecheck_expr "(x /*: Int */: x) 1" T.Builtins.int;
+    "test_arrow_annot">:: test_typecheck_expr
+      "x /*: Int -> Int */: x)"
+      T.Builtins.(arrow (arrow int int) (arrow int int));
     "test_fail_apply">:: test_typecheck_expr_fail "1 1";
     "test_fail_apply2">:: test_typecheck_expr_fail "(x /*: Bool */: x) 1";
     "test_fail_apply3">:: test_typecheck_expr_fail "(x /*: Int */: x) true";
