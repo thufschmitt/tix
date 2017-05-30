@@ -52,6 +52,11 @@ let rec expr (tenv : TE.t) (env : E.t) : P.expr -> T.expr = fun e ->
     let t1 = T.get_typ typed_e1
     and t2 = T.get_typ typed_e2
     in
+    if not @@ Types.sub t1 Types.Builtins.(arrow empty any) then
+      typeError e.L.With_loc.location
+        "This expression has type %s which is not an arrow type. \
+        It can't be applied"
+        (Types.show t1);
     let t1arrow = Cduce_lib.Types.Arrow.get t1 in
     let dom = Cduce_lib.Types.Arrow.domain t1arrow in
     if Types.sub t2 dom then
