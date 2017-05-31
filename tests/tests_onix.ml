@@ -21,7 +21,7 @@ let isTodo = true (* To use [~isTodo] as a shortcut for [~isTodo=true] *)
 
 let testsuite =
   "onix_parser">:::
-    List.map (fun (name, input, output) ->
+  List.map (fun (name, input, output) ->
       name >:: test_parse_pp_str input output)
     [
       "test_var", "x", "x";
@@ -38,13 +38,17 @@ let testsuite =
       "test_Y_comb", "(x: x x) (x: x x)", "((x: (x x)) (x: (x x)))";
       "test_annot", "(x /*: int */)", "(x /*: int */)";
       "test_annot_arrow", "(x /*: int -> int */)", "(x /*: (int) -> int */)";
-      "test_record_pattern", "{ x, y, z /*: int */ }: x", "({ x, y, z /*: int */ }: x)";
+      ("test_record_pattern",
+       "{ x, y, z /*: int */ }: x",
+       "({ x, y, z /*: int */ }: x)");
       "test_record_expr", "{ x = 1; y = f x; }", "{ x = 1; y = (f x); }";
-      "test_list", "Cons (1, Cons (2, Cons (3, nil)))", "Cons(1, Cons(2, Cons(3, nil)))";
+      ("test_list",
+       "Cons (1, Cons (2, Cons (3, nil)))",
+       "Cons(1, Cons(2, Cons(3, nil)))");
       ("test_list_annot",
-       "(Cons (1, Cons (2, Cons (3, nil))) /*: Cons(int, Cons(int, Cons(int, nil))) */)",
-       "(Cons(1, Cons(2, Cons(3, nil))) /*: Cons(int, Cons(int, Cons(int, nil))) */)");
+       "(Cons (1, Cons (2, Cons (3, nil))) /*: \
+        Cons(int, Cons(int, Cons(int, nil))) */)",
+       "(Cons(1, Cons(2, Cons(3, nil))) /*: \
+        Cons(int, Cons(int, Cons(int, nil))) */)");
       "test_list_sugar", "[1 2 3]", "Cons(1, Cons(2, Cons(3, nil)))";
-    ] @
-    [
     ]

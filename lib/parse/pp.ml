@@ -1,6 +1,6 @@
 (**
    Pretty-printer the [Ast.t]
- *)
+*)
 
 module P = Ast
 module T = Type_annotations
@@ -21,38 +21,38 @@ let pp_op fmt = function
   | P.Ocons -> F.pp_print_string fmt "Cons"
 
 let rec pp_expr fmt = drop_loc %> function
-  | P.Evar v ->
-    pp_ident fmt v
-  | P.Econstant c ->
-    const fmt c
-  | P.Elambda (p, e) ->
+    | P.Evar v ->
+      pp_ident fmt v
+    | P.Econstant c ->
+      const fmt c
+    | P.Elambda (p, e) ->
       F.fprintf fmt "@[<2>(%a:@ %a)@]"
         pp_pattern p
         pp_expr e
-  | P.EfunApp (e1, e2) ->
+    | P.EfunApp (e1, e2) ->
       F.fprintf fmt "(@[%a@ %a@])"
         pp_expr e1
         pp_expr e2
-  | P.EtyAnnot (e, ty) ->
+    | P.EtyAnnot (e, ty) ->
       F.fprintf fmt "@[(%a /*:@ %a */)@]"
         pp_expr e
         pp_typ ty
-  | P.EopApp (op, args) ->
+    | P.EopApp (op, args) ->
       F.fprintf fmt "@[%a(%a)@]"
         pp_op op
         pp_op_args args
-  | P.Erecord r -> pp_record fmt r
-  | _ -> failwith "TODO"
+    | P.Erecord r -> pp_record fmt r
+    | _ -> failwith "TODO"
 
 and pp_pattern fmt = drop_loc %> function
-  | P.Pvar (v, None) -> pp_ident fmt v
-  | P.Pvar (v, Some t) ->
-    F.fprintf fmt "%a /*: %a */"
-      pp_ident v
-      pp_typ   t
-  | P.Pnontrivial (sub_pattern, None) ->
-    pp_nontrivial_pattern fmt sub_pattern
-  | _ -> failwith "TODO"
+    | P.Pvar (v, None) -> pp_ident fmt v
+    | P.Pvar (v, Some t) ->
+      F.fprintf fmt "%a /*: %a */"
+        pp_ident v
+        pp_typ   t
+    | P.Pnontrivial (sub_pattern, None) ->
+      pp_nontrivial_pattern fmt sub_pattern
+    | _ -> failwith "TODO"
 
 and pp_nontrivial_pattern fmt = function
   | P.NPrecord (fields, P.Closed) ->
@@ -64,7 +64,9 @@ and pp_pat_record_fields fmt = function
   | [] -> ()
   | [f] -> pp_pat_record_field fmt f
   | f::tl ->
-    pp_pat_record_field fmt f; F.pp_print_string fmt ", "; pp_pat_record_fields fmt tl
+    pp_pat_record_field fmt f;
+    F.pp_print_string fmt ", ";
+    pp_pat_record_fields fmt tl
 
 and pp_pat_record_field fmt = function
   | { P.field_name; default_value = None; type_annot = None } ->
@@ -80,11 +82,11 @@ and pp_typ fmt = T.pp fmt
 and pp_op_args fmt = function
   | [] -> ()
   | [a] ->
-      pp_expr fmt a
+    pp_expr fmt a
   | a::tl ->
-      F.fprintf fmt "%a,@ %a"
-        pp_expr a
-        pp_op_args tl
+    F.fprintf fmt "%a,@ %a"
+      pp_expr a
+      pp_op_args tl
 
 and pp_record fmt { P.recursive; fields } =
   if recursive then F.pp_print_string fmt "rec ";
@@ -92,8 +94,8 @@ and pp_record fmt { P.recursive; fields } =
     (fun fmt -> List.iter (pp_record_field fmt)) fields
 
 and pp_record_field fmt = drop_loc %> function
-  | P.Fdef (name, value) ->
-    F.fprintf fmt "%a = %a;@ "
-      pp_ident name
-      pp_expr value
-  | _ -> failwith "TODO"
+    | P.Fdef (name, value) ->
+      F.fprintf fmt "%a = %a;@ "
+        pp_ident name
+        pp_expr value
+    | _ -> failwith "TODO"

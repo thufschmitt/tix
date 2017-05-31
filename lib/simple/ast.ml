@@ -1,12 +1,11 @@
 (**
- AST for nix-light, a simplified version of the nix language
- @see <https://github.com/regnat/tix-papers> for a description of the language
- *)
+   AST for nix-light, a simplified version of the nix language
+   @see <https://github.com/regnat/tix-papers> for a description of the language
+*)
 type 'a with_loc = 'a Parse.Location.With_loc.t
 
 type operator =
   | Ocons
- 
 
 type expr = expr_desc with_loc
 
@@ -17,7 +16,7 @@ and expr_desc =
      x
      x.y
      x.y or e
-   *)
+  *)
   | Econstant of constant
   | Elambda of lambda
   | EfunApp of expr * expr
@@ -26,7 +25,7 @@ and expr_desc =
   | Ewith of expr * expr
   (* with e; e *)
   | Elet of binding list * expr
-  | EtyAnnot of (expr * Type_annotations.t)
+  | EtyAnnot of expr * Type_annotations.t
 
 and access_path =
   | Afield of expr * ap_field * expr option
@@ -71,4 +70,3 @@ and field = expr * expr
 and binding = pattern_var * expr
 
 and interpol = expr
-

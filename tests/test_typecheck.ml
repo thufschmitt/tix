@@ -10,11 +10,11 @@ let get_type node =
 let test_typecheck_expr input expected_type _ =
   let tast =
     begin
-    match Parse.Parser.onix Parse.Lexer.read (Lexing.from_string input) with
-    | Some s ->
-      Simple.Of_onix.expr s
-      |> Typing.Typecheck.expr Typing.Types.Environment.default Typing.Typing_env.empty
-    | None -> raise ParseError
+      match Parse.Parser.onix Parse.Lexer.read (Lexing.from_string input) with
+      | Some s ->
+        Simple.Of_onix.expr s
+        |> Typing.(Typecheck.expr Types.Environment.default Typing_env.empty)
+      | None -> raise ParseError
     end;
   in
   assert_equal
@@ -26,11 +26,13 @@ let test_typecheck_expr input expected_type _ =
 let test_var _ =
   let tast =
     begin
-    match Parse.Parser.onix Parse.Lexer.read (Lexing.from_string "x") with
-    | Some s ->
-      Simple.Of_onix.expr s
-      |> Typing.Typecheck.expr Typing.Types.Environment.default Typing.Typing_env.(add "x" Typing.Types.Builtins.int empty)
-    | None -> raise ParseError
+      match Parse.Parser.onix Parse.Lexer.read (Lexing.from_string "x") with
+      | Some s ->
+        Simple.Of_onix.expr s
+        |> Typing.(Typecheck.expr
+                     Types.Environment.default
+                     Typing_env.(add "x" Types.Builtins.int empty))
+      | None -> raise ParseError
     end;
   in
   assert_equal
@@ -43,7 +45,7 @@ let test_typecheck_expr_fail input _ =
     | Some s ->
       begin try
           Simple.Of_onix.expr s
-          |> Typing.Typecheck.expr Typing.Types.Environment.default Typing.Typing_env.empty
+          |> Typing.(Typecheck.expr Types.Environment.default Typing_env.empty)
           |> ignore;
           assert_failure "Type error not detected"
         with

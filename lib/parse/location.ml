@@ -1,6 +1,6 @@
 (**
    Simple data structure to add location information to AST nodes
- *)
+*)
 type t = {
   pos_start: Lexing.position [@opaque];
   pos_end: Lexing.position [@opaque];

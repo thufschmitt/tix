@@ -52,7 +52,7 @@ end
   let empty = T.empty
 
   (* TODO: find a cleaner way to define this *)
-  let grad = T.atom (C.Atoms.(atom @@ V.mk_ascii "¿"))
+  let grad = T.atom (C.Atoms.(atom @@ V.mk_ascii "?"))
 
   let interval = C.Types.interval
 
@@ -61,7 +61,7 @@ end
 
 module Environment : sig
   (** The type representing a type environment.
-     A type environment is a map from type variables to their définition
+      A type environment is a map from type variables to their definition
   *)
   type t
 
@@ -87,7 +87,7 @@ end = struct
       "String", B.string;
       "true", B.true_type;
       "false", B.false_type;
-      "¿", B.grad
+      "?", B.grad
     ]
 
   let default =

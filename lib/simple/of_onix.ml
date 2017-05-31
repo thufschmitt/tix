@@ -1,6 +1,6 @@
 (**
    Conversion between [Parse.Ast.t] and [Ast.t]
- *)
+*)
 module O = Parse.Ast
 module N = Ast
 

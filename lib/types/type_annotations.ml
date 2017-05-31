@@ -1,11 +1,11 @@
 (**
  * Definition of the types used by tix
- *)
+*)
 
 type t =
   | Var of string
-  | Arrow of (t * t)
-  | Cons  of (t * t)
+  | Arrow of t * t
+  | Cons  of t * t
 
 let rec pp fmt = function
   | Var v -> Format.pp_print_string fmt v

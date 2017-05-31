@@ -44,8 +44,8 @@ and pattern_desc =
 and bindings = binding list
 and binding = binding_lhs * expr
 and binding_lhs =
-    | Bannotated of string * Types.t
-    | BnonAnnotated of string
+  | Bannotated of string * Types.t
+  | BnonAnnotated of string
 
 let get_typ x = With_type.typ x.Parse.Location.With_loc.description
 let get_descr x = With_type.description x.Parse.Location.With_loc.description

@@ -11,16 +11,16 @@ exception TypeError of L.t * string
 let () = Printexc.register_printer @@ function
   | TypeError (loc, msg) -> CCOpt.pure @@
     (Format.fprintf Format.str_formatter "TypeError at %a: %s"
-      L.pp loc
-      msg;
-    Format.flush_str_formatter ())
+       L.pp loc
+       msg;
+     Format.flush_str_formatter ())
   | _ -> None
 
 let typeError loc e = Format.ksprintf (fun s -> raise (TypeError (loc, s))) e
 
 module Bindings = struct
   let explicit_annotations (tenv : TE.t) (bindings : P.binding list)
-                            : (T.binding_lhs * P.expr) list * E.t =
+    : (T.binding_lhs * P.expr) list * E.t =
     let half_typed_bindings = List.map (fun ((var, maybe_annot), e) ->
         match maybe_annot with
         | Some annot ->
@@ -91,7 +91,7 @@ let rec expr (tenv : TE.t) (env : E.t) : P.expr -> T.expr = fun e ->
     if not @@ Types.sub t1 Types.Builtins.(arrow empty any) then
       typeError e.L.With_loc.location
         "This expression has type %s which is not an arrow type. \
-        It can't be applied"
+         It can't be applied"
         (Types.show t1);
     let t1arrow = Cduce_lib.Types.Arrow.get t1 in
     let dom = Cduce_lib.Types.Arrow.domain t1arrow in
@@ -111,9 +111,9 @@ let rec expr (tenv : TE.t) (env : E.t) : P.expr -> T.expr = fun e ->
     in
     let added_env = B.report_inference_results typed_binds in
     let typed_e = expr
-      tenv
-      (E.merge env added_env)
-      e
+        tenv
+        (E.merge env added_env)
+        e
     in
     T.With_type.make
       ~description:(T.Elet (typed_binds, typed_e))

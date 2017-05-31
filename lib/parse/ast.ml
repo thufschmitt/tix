@@ -1,12 +1,11 @@
 (**
    Parsetree for the nix language
- *)
+*)
 
 type 'a with_loc = 'a Location.With_loc.t
 
 type operator =
   | Ocons
- 
 
 type expr = expr_desc with_loc
 
@@ -17,7 +16,7 @@ and expr_desc =
      x
      x.y
      x.y or e
-   *)
+  *)
   | Econstant of constant
   | Estring of str
   (* Not constant because of interpolation *)
@@ -86,15 +85,15 @@ and field =
   | FstaticDef of string * expr
   | Finherit of inherit_
   (** inherit x y z...;
-     inherit (e) x y z...;
-   *)
+      inherit (e) x y z...;
+  *)
 
 and binding =
-  | Bdef of access_path * expr (* FIXME: the first element can not be an arbitrary expr *)
+  | Bdef of access_path * expr
+  (* FIXME: the first element can not be an arbitrary expr *)
   | BstaticDef of pattern_var * expr
   | Binherit of inherit_
 
 and inherit_ = expr option * (string with_loc) list
 
 and interpol = expr
-

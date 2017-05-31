@@ -57,10 +57,10 @@ let ident = any >>= function
   | ID s -> return s
   | _ -> mzero
 
-let operator = choice @@ List.map exactly [ CONS_KW ]
+let operator = exactly CONS_KW
   >>= function
-      | CONS_KW -> return P.Ocons
-      | _ -> mzero
+  | CONS_KW -> return P.Ocons
+  | _ -> mzero
 
 (** {1 The parser} **)
 
@@ -77,8 +77,8 @@ let rec typ input =
 
 and typ_atom input =
   ((ident => fun t -> Type_annotations.Var t)
-  <|>
-  in_parens typ)
+   <|>
+   in_parens typ)
     input
 
 and typ_arrow input =
@@ -92,7 +92,7 @@ and typ_cons input =
   (exactly CONS_KW >>
    in_parens (
      typ >>= fun t1 -> (exactly COMMA) >> typ => fun t2 ->
-       Type_annotations.Cons(t1, t2)
+         Type_annotations.Cons(t1, t2)
    )) input
 
 let type_annot =
@@ -125,7 +125,7 @@ let pat_record input =
 
 let pat_nontrivial input =
   (pat_record => fun p -> add_loc @@ P.Pnontrivial (p, None))
-  (* TODO: add capture variable *)
+    (* TODO: add capture variable *)
     input
 
 let pattern = pat_ident <|> pat_nontrivial
@@ -139,7 +139,7 @@ and expr_fun input =
   (pattern >>= fun pat ->
    exactly COLON >>
    expr => fun body ->
-     (add_loc @@ P.Elambda (pat, body)))
+     add_loc @@ P.Elambda (pat, body))
     input
 
 and expr_let input =
@@ -147,7 +147,7 @@ and expr_let input =
    bindings >>= fun bindings ->
    exactly IN_KW >>
    expr => fun e ->
-     (add_loc @@ P.Elet (bindings, e)))
+     add_loc @@ P.Elet (bindings, e))
     input
 
 and bindings input =
@@ -159,7 +159,7 @@ and binding input =
    exactly EQUAL >>
    expr => fun value ->
      P.BstaticDef ((name, annot), value))
-input
+    input
 
 and expr_atom input =
   (choice
@@ -173,12 +173,12 @@ and expr_atom input =
 
 and expr_record input =
   (between (exactly BRACE_L) (exactly BRACE_R)
-    (end_by expr_record_field (exactly SEMICOLON))
-    => fun fields ->
-      add_loc @@ P.(Erecord {
-          recursive = false; (* TODO *)
-          fields;
-      })
+     (end_by expr_record_field (exactly SEMICOLON))
+   => fun fields ->
+     add_loc @@ P.(Erecord {
+         recursive = false; (* TODO *)
+         fields;
+       })
   )
     input
 
@@ -198,7 +198,7 @@ and expr_list_sugar input =
         )
         (add_loc @@ P.Econstant P.Cnil)
     ))
-      input
+    input
 
 and expr_op input =
   (operator >>= fun op ->
@@ -213,9 +213,9 @@ and expr_parens input =
 
 and expr_annot input =
   (in_parens (
-   expr >>= fun e ->
-   type_annot => fun t ->
-     (add_loc @@ P.EtyAnnot (e, t))))
+      expr >>= fun e ->
+      type_annot => fun t ->
+        add_loc @@ P.EtyAnnot (e, t)))
     input
 
 and expr_apply input =
