@@ -10,10 +10,7 @@ let add = StrMap.add
 
 let merge =
   let merge_fun _ x y = match x,y with
-    | Some a, Some b when a = b -> Some a
-    | Some _, Some _ -> assert false
-    (* TODO: implement a smarter merge as soon as intersection types are available *)
-    | None, Some a
+    | _, Some a
     | Some a, None -> Some a
     | None, None -> None
   in

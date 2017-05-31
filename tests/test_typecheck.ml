@@ -77,6 +77,9 @@ let testsuite =
       T.Builtins.grad;
     "test_let_5">:: test_typecheck_expr "let x = x; in x"
       T.Builtins.grad;
+    "test_shadowing">:: test_typecheck_expr
+      "let x = true; in let x = 1; in x"
+      one_singleton;
 
     (* ----- Negative tests ----- *)
     "test_fail_unbound_var">:: test_typecheck_expr_fail "x";
