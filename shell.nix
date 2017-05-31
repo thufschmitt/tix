@@ -27,20 +27,6 @@ let
     '';
 
   };
-
-  opal = ocamlPackages.buildOcaml {
-    name = "opal";
-    version = "0.1.1";
-
-    src = fetchFromGitHub {
-      owner = "pyrocat101";
-      repo = "opal";
-      rev = "v0.1.1";
-      sha256 = "0qzsasjgbcjk66r9mc3q1ygq1l1g9sm967rhhcxgzlz1jqbaya7b";
-    };
-
-    installTargets = [ "libinstall" ];
-  };
   cduce-lib = stdenv.mkDerivation rec {
     name = "cduce-unstable-${version}";
     version = "2016-06-07";
@@ -89,11 +75,11 @@ stdenv.mkDerivation rec {
     ocaml
     findlib
     ounit
-    opal
     containers
     jbuilder
     cduce-lib
     cmdliner
+    mparser
   ];
 
   src = builtins.filterSource (name: type:

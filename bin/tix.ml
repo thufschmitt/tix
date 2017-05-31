@@ -1,12 +1,10 @@
 let typecheck_chan fname chan =
-  let lexbuf = Lexing.from_channel chan in
-  lexbuf.Lexing.lex_curr_p <- {
-    lexbuf.Lexing.lex_curr_p with
-    pos_fname = fname;
-  };
-  let ast = match Parse.(Parser.onix Lexer.read lexbuf) with
-    | Some s -> Simple.Of_onix.expr s
-    | None -> assert false
+  let ast = match MParser.parse_channel Parse.Parser.expr chan () with
+    | MParser.Success t -> Simple.Of_onix.expr t
+    | MParser.Failed (msg, _) ->
+      Format.print_string msg;
+      Format.print_flush ();
+      exit 1
   in
   let t =
     Typing.(Typecheck.Infer.expr

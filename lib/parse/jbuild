@@ -1,9 +1,7 @@
 (jbuild_version 1)
 
-(ocamllex (lexer))
-
 (library
   ((name "parse")
    (public_name "parse")
-   (libraries (type_annotations opal))))
+   (libraries (type_annotations mparser containers))))
 

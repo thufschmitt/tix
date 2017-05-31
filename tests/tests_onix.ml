@@ -6,9 +6,11 @@ let test_parse_pp_str ?(isTodo=false) input expected_output _ =
   if isTodo then todo "Not implemented yet";
   let output =
     begin
-      match Parse.Parser.onix Parse.Lexer.read (Lexing.from_string input) with
-      | Some s -> Parse.Pp.pp_expr Format.str_formatter s;
-      | None -> raise ParseError
+      match MParser.parse_string Parse.Parser.expr input () with
+      | MParser.Success s -> Parse.Pp.pp_expr Format.str_formatter s;
+      | MParser.Failed (msg, _) ->
+        output_string stderr msg;
+        raise ParseError
     end;
     Format.flush_str_formatter ()
   in
@@ -31,7 +33,7 @@ let testsuite =
       "test_lambda", "x: x", "(x: x)";
       "test_app", "x y", "(x y)";
       "test_multi_app", "x y z w", "(((x y) z) w)";
-      "test_multi_app", "x y (z w)", "((x y) (z w))";
+      "test_multi_app_2", "x y (z w)", "((x y) (z w))";
       "test_lambda_app", "(x: y) z", "((x: y) z)";
       "test_app_lambda", "x: y z", "(x: (y z))";
       "test_annotated_pattern", "x /*: int */: x", "(x /*: int */: x)";

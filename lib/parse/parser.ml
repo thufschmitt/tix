@@ -1,334 +1,332 @@
-open Opal
+module A = Ast
+module P = MParser
+module W = Location.With_loc
 
-module P = Ast
+let (>>=) = P.(>>=)
+let (|>>) = P.(|>>)
+let (<|>) = P.(<|>)
+let (>>)  = P.(>>)
+let (<<)  = P.(<<)
 
-let mk_with_loc = Location.With_loc.mk
+let mk_with_loc = Location.With_loc.mk'
 
-type token =
-  | EOF
-  | COLON
-  | SEMICOLON
-  | COMMA
-  | DOT
-  | MINUS
-  | PLUS
-  | AROBASE
-  | EQUAL
-  | DBL_EQUAL
-  | OR_KW
-  | REC_KW
-  | INHERIT_KW
-  | LET_KW
-  | IN_KW
-  | WHERE_KW
-  | IF_KW
-  | THEN_KW
-  | ELSE_KW
-  | DOLLAR_BRACE
-  | BRACE_LR
-  | BRACE_L
-  | BRACE_R
-  | PAREN_L
-  | PAREN_R
-  | BRACKET_L
-  | BRACKET_R
-  | AMPERSAND
-  | PIPE
-  | CONS_KW
-  | TY_START
-  | TY_END
-  | ARROW_R
-  | QUESTION_MARK
-  | ID of string
-  | BOOL of bool
-  | INTEGER of int
-  | STRING of string
+let get_loc =
+  P.get_pos |>> fun (_, lnum, cnum) ->
+  Location.{ file_name = ""; lnum; cnum; }
 
-(* A lexbuf used internally. Note that this makes the parser non reentrant, but
- * for now I don't care *)
-let local_lexbuf = ref (Lexing.from_string "")
-
-(** Locations **)
-
-(** [add_loc x] wraps [x] into a [Location.With_loc.t] filled with current
- * location of the parser *)
 let add_loc x =
-  let loc_start = !local_lexbuf.Lexing.lex_start_p
-  and loc_end = Lexing.dummy_pos (* TODO *)
-  in
-  mk_with_loc loc_start loc_end x
+  let file_name = "" in
+  P.get_pos >>= fun (_, lnum, cnum) ->
+  x |>> fun x ->
+  mk_with_loc ~file_name ~lnum ~cnum x
 
-(** Some utility functions **)
+(** {2 Some utility functions } *)
+let space = P.spaces
 
-let in_parens p = between (exactly PAREN_L) (exactly PAREN_R) p
+let any x = P.choice @@ List.map P.attempt x
 
-(** Checks wether current token is an ID *)
-let ident = any >>= function
-  | ID s -> return s
-  | _ -> mzero
+(* XXX: This isn't the real definition of an ident *)
+let ident = P.many1_chars P.letter
 
-let operator = exactly CONS_KW
-  >>= function
-  | CONS_KW -> return P.Ocons
-  | _ -> mzero
+let int   = P.many1_chars P.digit |>> int_of_string
 
-(** {1 The parser} **)
+let parens x = (P.char '(' >> space >> x << space << P.char ')')
 
-let expr_ident = (ident => fun s -> add_loc @@ P.Evar s)
+let bool  =
+  (P.string "true" >> P.return true) <|>
+  (P.string "false" >> P.return false)
 
-and expr_const = any >>= function
-  | INTEGER i -> return (add_loc @@ P.Econstant (P.Cint i))
-  | BOOL b -> return (add_loc @@ P.Econstant (P.Cbool b))
-  | STRING s -> return (add_loc @@ P.Econstant (P.Cstring s))
-  | _ -> mzero
+(** {2 Begining of the parser } *)
 
-(** {2 Type_annotations} *)
-let rec typ input =
-  typ_where input
+(** {3 Type annotations} *)
+(* let rec typ input = *)
+(*   (typ_arrow <|> typ_atom <|> typ_cons) input *)
+(*  *)
+(* and typ_atom input = *)
+(*   ((ident => fun t -> Type_annotations.Var t) *)
+(*   <|> *)
+(*   in_parens typ) *)
+(*     input *)
+(*  *)
+(* and typ_arrow input = *)
+(*   (typ_atom >>= fun domain -> *)
+(*    exactly ARROW_R >> *)
+(*    typ => fun codomain -> *)
+(*      Type_annotations.Arrow (domain, codomain)) *)
+(*     input *)
+(*  *)
+(* and typ_cons input = *)
+(*   (exactly CONS_KW >> *)
+(*    in_parens ( *)
+(*      typ >>= fun t1 -> (exactly COMMA) >> typ => fun t2 -> *)
+(*        Type_annotations.Cons(t1, t2) *)
+(*    )) input *)
+(*  *)
+(* let type_annot = *)
+(*   exactly TY_START >> typ << exactly TY_END *)
+(*  *)
+let rec typ i = i |> any [ typ_arrow; typ_atom ]
 
-and typ_where i =
+and typ_atom i = i |> any [ typ_ident; typ_parens ]
+
+and typ_parens i = i |> parens typ
+
+and typ_ident i =
   i |>
-  ((typ_arrow >>= fun t ->
-    exactly WHERE_KW >>
-    typ_bindings => fun binds ->
-      Type_annotations.(TyBind (binds, t)))
-   <|> typ_arrow)
-
-and typ_binding i =
-  i |>
-  (ident >>= fun id ->
-   exactly EQUAL >>
-   typ => fun t ->
-     (id, t))
-
-and typ_bindings i =
-  i |> (sep_by typ_binding (exactly SEMICOLON))
+  (ident |>> fun t -> Type_annotations.Var t)
 
 and typ_arrow i =
-  i |>
-  ((typ_atom >>= fun domain ->
-    exactly ARROW_R >>
-    typ => fun codomain ->
-      Type_annotations.(Infix (Arrow, domain, codomain)))
-   <|> typ_disj)
-
-and typ_disj i =
-  i |>
-  ((typ_conj >>= fun t1 ->
-    exactly PIPE >>
-    typ_disj => fun t2 ->
-      Type_annotations.(Infix (Or, t1, t2)))
-   <|> typ_conj)
-
-and typ_conj i =
-  i |>
-  ((typ_atom >>= fun t1 ->
-    exactly AMPERSAND >>
-    typ_conj => fun t2 ->
-      Type_annotations.(Infix (And, t1, t2)))
-   <|> typ_atom)
-
-and typ_atom input =
-  ((ident => fun t -> Type_annotations.Var t)
-   <|>
-   (exactly QUESTION_MARK >> return @@ Type_annotations.Var "?")
-   <|>
-   typ_const
-   <|>
-   typ_cons
-   <|>
-   in_parens typ)
-    input
-
-and typ_const i =
-  i |>
-  (any >>= function
-    | BOOL b -> return @@ Type_annotations.(Singleton (Singleton.Bool b))
-    | INTEGER i -> return @@ Type_annotations.(Singleton (Singleton.Int i))
-    | STRING s -> return @@ Type_annotations.(Singleton (Singleton.String s))
-    | _ -> mzero
+  i |> (
+    typ_atom >>= fun domain ->
+    space >>
+    P.string "->" >>
+    space >>
+    typ |>> fun codomain ->
+    Type_annotations.(Infix (Infix_constructors.And, domain, codomain))
   )
 
-and typ_cons input =
-  (exactly CONS_KW >>
-   in_parens (
-     typ >>= fun t1 -> (exactly COMMA) >> typ => fun t2 ->
-         Type_annotations.Cons(t1, t2)
-   )) input
+let type_annot = P.string "/*:" >> space >> typ << space << P.string "*/"
 
-let type_annot =
-  exactly TY_START >> typ << exactly TY_END
-
-(** {2 Patterns} *)
-let pat_ident =
-  (ident >>= fun var ->
-   option None (type_annot => fun x -> Some x) =>
-   fun annot ->
-     add_loc @@ P.Pvar (var, annot))
-
-let pat_record_field input =
-  (ident >>= fun var ->
-   option None (type_annot => fun x -> Some x) =>
-   fun annot ->
-     P.{
-       field_name = var;
-       default_value = None; (* TODO: add a default value *)
-       type_annot = annot;
-     })
-    input
-
-let pat_record input =
-  (between (exactly BRACE_L) (exactly BRACE_R) (
-      sep_by pat_record_field (exactly COMMA))
-   => fun fields ->
-     P.NPrecord (fields, P.Closed))
-    input
-
-let pat_nontrivial input =
-  (pat_record => fun p -> add_loc @@ P.Pnontrivial (p, None))
-    (* TODO: add capture variable *)
-    input
-
-let pattern = pat_ident <|> pat_nontrivial
-
-(** {3 Expressions} *)
-let rec expr input =
-  choice
-    [expr_fun; expr_let; expr_infix; expr_apply; expr_op; expr_ite ] input
-
-and expr_fun input =
-  (pattern >>= fun pat ->
-   exactly COLON >>
-   expr => fun body ->
-     add_loc @@ P.Elambda (pat, body))
-    input
-
-and expr_let input =
-  (exactly LET_KW >>
-   bindings >>= fun bindings ->
-   exactly IN_KW >>
-   expr => fun e ->
-     add_loc @@ P.Elet (bindings, e))
-    input
-
-and bindings input =
-  (end_by binding (exactly SEMICOLON)) input
-
-and binding input =
-  (ident >>= fun name ->
-   option None (type_annot => fun a -> Some a) >>= fun annot ->
-   exactly EQUAL >>
-   expr => fun value ->
-     P.BstaticDef ((name, annot), value))
-    input
-
-and expr_infix i =
-  i |>
-  (choice
-     [
-       (exactly MINUS >> expr_infix => fun e ->
-            add_loc @@ P.EopApp (P.Oneg, [e]));
-       (expr_apply >>= fun e1 ->
-        exactly DBL_EQUAL >> expr_infix => fun e2 ->
-            add_loc @@ P.EopApp (P.Oeq, [e1; e2]));
-       (expr_apply >>= fun e1 ->
-        exactly PLUS >> expr_infix => fun e2 ->
-            add_loc @@ P.EopApp (P.Oplus, [e1; e2]));
-       (expr_apply >>= fun e1 ->
-        exactly MINUS >> expr_infix => fun e2 ->
-            add_loc @@ P.EopApp (P.Ominus, [e1; e2]));
-       expr_apply;
-     ])
-
-and expr_atom input =
-  (choice
-     [ expr_ident;
-       expr_parens;
-       expr_annot;
-       expr_record;
-       expr_list_sugar;
-       expr_const
-     ]) input
-
-and expr_record input =
-  (between (exactly BRACE_L) (exactly BRACE_R)
-     (end_by expr_record_field (exactly SEMICOLON))
-   => fun fields ->
-     add_loc @@ P.(Erecord {
-         recursive = false; (* TODO *)
-         fields;
-       })
+let expr_int = add_loc (
+    int |>> fun nb ->
+    A.Econstant (A.Cint nb)
   )
-    input
 
-and expr_record_field input =
-  (ident >>= fun name -> (* TODO: this has to be an access path *)
-   exactly EQUAL >>
-   expr => fun e ->
-     add_loc @@ P.Fdef (name, e))
-    input
-
-and expr_list_sugar input =
-  (between (exactly BRACKET_L) (exactly BRACKET_R) (
-      many expr_atom =>
-      List.rev =>
-      List.fold_left (fun acc elt ->
-          add_loc @@ P.EopApp (P.Ocons, [ elt; acc ])
-        )
-        (add_loc @@ P.Evar "nil")
-    ))
-    input
-
-and expr_op input =
-  (operator >>= fun op ->
-   in_parens (
-     sep_by1 expr (exactly COMMA)
-     => fun args ->
-       add_loc @@ P.EopApp (op, args)
-   )) input
-
-and expr_parens input =
-  (in_parens expr) input
-
-and expr_annot input =
-  (in_parens (
-      expr >>= fun e ->
-      type_annot => fun t ->
-        add_loc @@ P.EtyAnnot (e, t)))
-    input
-
-and expr_apply input =
-  (* Directly parse a list of expressions to avoid left-recursion *)
-  (expr_atom >>= fun e0 ->
-   many expr_atom =>
-   List.fold_left (fun accu e ->
-       add_loc @@ P.EfunApp (accu, e))
-     e0
+let expr_bool = add_loc (
+    bool |>> fun b ->
+    A.Econstant (A.Cbool b)
   )
-    input
 
-and expr_ite i =
+let expr_ident = add_loc (
+    ident |>> fun id ->
+    A.Evar id
+  )
+
+let pattern_ident = add_loc (
+    ident >>= fun id ->
+      P.option (space >> type_annot) |>> fun annot ->
+      A.Pvar (id, annot)
+  )
+
+and expr_const =
+  (expr_int <|> expr_bool)
+
+let rec expr i =
   i |>
-  (exactly IF_KW >>
-   expr >>= fun e0 ->
-   exactly THEN_KW >>
-   expr >>= fun e1 ->
-   exactly ELSE_KW >>
-   expr =>  fun e2 ->
-     add_loc @@ P.Eite (e0, e1, e2))
+  any [expr_lambda; expr_apply]
 
-let toplevel = expr << (exactly EOF)
+and expr_atom i =
+  i |>
+  any [expr_const; expr_ident; expr_paren; expr_annot ]
 
-(** {1 toplevel functions} **)
+and expr_paren i = i |> parens expr
 
-let parse_lexbuf parser read_fun lexbuf =
-  local_lexbuf := lexbuf;
-  let stream = LazyStream.of_function
-      (fun () -> match read_fun lexbuf with
-         | x -> Some x
-      )
-  in
-  parse parser stream
+and expr_annot i =
+  i |> add_loc (
+    parens (
+    expr >>= fun e ->
+    type_annot |>> fun t ->
+    A.EtyAnnot (e, t)
+  ))
 
-let onix = parse_lexbuf toplevel
-let typ  = parse_lexbuf typ
+and expr_lambda i =
+  i |> add_loc (
+    (pattern >>= fun pat ->
+     P.char ':' >>
+     space >>
+     expr |>> fun body ->
+       A.Elambda (pat, body))
+  )
+
+and pattern i = i |> any [pattern_ident]
+
+and expr_apply i =
+  i |>
+  (get_loc >>= fun loc ->
+   expr_atom >>= fun e0 ->
+   space >>
+   P.sep_by expr_atom space |>>
+   List.fold_left (fun accu e -> W.mk loc (A.EfunApp (accu, e))) e0)
+
+let expr =
+  expr << space << P.eof
+
+(* let operator = choice @@ List.map exactly [ CONS_KW ] *)
+(*   >>= function *)
+(*       | CONS_KW -> return P.Ocons *)
+(*       | _ -> mzero *)
+(*  *)
+(* (** {1 The parser} **) *)
+(*  *)
+(* and expr_const = any >>= function *)
+(*   | INTEGER i -> return (add_loc @@ P.Econstant (P.Cint i)) *)
+(*   | BOOL b -> return (add_loc @@ P.Econstant (P.Cbool b)) *)
+(*   | _ -> mzero *)
+(*  *)
+(* (** {2 Type_annotations} *) *)
+(* let rec typ input = *)
+(*   (typ_arrow <|> typ_atom <|> typ_cons) input *)
+(*  *)
+(* and typ_atom input = *)
+(*   ((ident => fun t -> Type_annotations.Var t) *)
+(*   <|> *)
+(*   in_parens typ) *)
+(*     input *)
+(*  *)
+(* and typ_arrow input = *)
+(*   (typ_atom >>= fun domain -> *)
+(*    exactly ARROW_R >> *)
+(*    typ => fun codomain -> *)
+(*      Type_annotations.Arrow (domain, codomain)) *)
+(*     input *)
+(*  *)
+(* and typ_cons input = *)
+(*   (exactly CONS_KW >> *)
+(*    in_parens ( *)
+(*      typ >>= fun t1 -> (exactly COMMA) >> typ => fun t2 -> *)
+(*        Type_annotations.Cons(t1, t2) *)
+(*    )) input *)
+(*  *)
+(* let type_annot = *)
+(*   exactly TY_START >> typ << exactly TY_END *)
+(*  *)
+(* (** {2 Patterns} *) *)
+(* let pat_ident = *)
+(*   (ident >>= fun var -> *)
+(*    option None (type_annot => fun x -> Some x) => *)
+(*    fun annot -> *)
+(*      add_loc @@ P.Pvar (var, annot)) *)
+(*  *)
+(* let pat_record_field input = *)
+(*   (ident >>= fun var -> *)
+(*    option None (type_annot => fun x -> Some x) => *)
+(*    fun annot -> *)
+(*      P.{ *)
+(*        field_name = var; *)
+(*        default_value = None; (* TODO: add a default value *) *)
+(*        type_annot = annot; *)
+(*      }) *)
+(*     input *)
+(*  *)
+(* let pat_record input = *)
+(*   (between (exactly BRACE_L) (exactly BRACE_R) ( *)
+(*       sep_by pat_record_field (exactly COMMA)) *)
+(*    => fun fields -> *)
+(*      P.NPrecord (fields, P.Closed)) *)
+(*     input *)
+(*  *)
+(* let pat_nontrivial input = *)
+(*   (pat_record => fun p -> add_loc @@ P.Pnontrivial (p, None)) *)
+(*   (* TODO: add capture variable *) *)
+(*     input *)
+(*  *)
+(* let pattern = pat_ident <|> pat_nontrivial *)
+(*  *)
+(* (** {3 Expressions} *) *)
+(* let rec expr input = *)
+(*   choice *)
+(*     [expr_fun; expr_let; expr_apply; expr_op; ] input *)
+(*  *)
+(* and expr_fun input = *)
+(*   (pattern >>= fun pat -> *)
+(*    exactly COLON >> *)
+(*    expr => fun body -> *)
+(*      (add_loc @@ P.Elambda (pat, body))) *)
+(*     input *)
+(*  *)
+(* and expr_let input = *)
+(*   (exactly LET_KW >> *)
+(*    bindings >>= fun bindings -> *)
+(*    exactly IN_KW >> *)
+(*    expr => fun e -> *)
+(*      (add_loc @@ P.Elet (bindings, e))) *)
+(*     input *)
+(*  *)
+(* and bindings input = *)
+(*   (end_by binding (exactly SEMICOLON)) input *)
+(*  *)
+(* and binding input = *)
+(*   (ident >>= fun name -> *)
+(*    option None (type_annot => fun a -> Some a) >>= fun annot -> *)
+(*    exactly EQUAL >> *)
+(*    expr => fun value -> *)
+(*      P.BstaticDef ((name, annot), value)) *)
+(* input *)
+(*  *)
+(* and expr_atom input = *)
+(*   (choice *)
+(*      [ expr_ident; *)
+(*        expr_parens; *)
+(*        expr_annot; *)
+(*        expr_record; *)
+(*        expr_list_sugar; *)
+(*        expr_const *)
+(*      ]) input *)
+(*  *)
+(* and expr_record input = *)
+(*   (between (exactly BRACE_L) (exactly BRACE_R) *)
+(*     (end_by expr_record_field (exactly SEMICOLON)) *)
+(*     => fun fields -> *)
+(*       add_loc @@ P.(Erecord { *)
+(*           recursive = false; (* TODO *) *)
+(*           fields; *)
+(*       }) *)
+(*   ) *)
+(*     input *)
+(*  *)
+(* and expr_record_field input = *)
+(*   (ident >>= fun name -> (* TODO: this has to be an access path *) *)
+(*    exactly EQUAL >> *)
+(*    expr => fun e -> *)
+(*      add_loc @@ P.Fdef (name, e)) *)
+(*     input *)
+(*  *)
+(* and expr_list_sugar input = *)
+(*   (between (exactly BRACKET_L) (exactly BRACKET_R) ( *)
+(*       many expr_atom => *)
+(*       List.rev => *)
+(*       List.fold_left (fun acc elt -> *)
+(*           add_loc @@ P.EopApp (P.Ocons, [ elt; acc ]) *)
+(*         ) *)
+(*         (add_loc @@ P.Econstant P.Cnil) *)
+(*     )) *)
+(*       input *)
+(*  *)
+(* and expr_op input = *)
+(*   (operator >>= fun op -> *)
+(*    in_parens ( *)
+(*      sep_by1 expr (exactly COMMA) *)
+(*      => fun args -> *)
+(*        add_loc @@ P.EopApp (op, args) *)
+(*    )) input *)
+(*  *)
+(* and expr_annot input = *)
+(*   (in_parens ( *)
+(*    expr >>= fun e -> *)
+(*    type_annot => fun t -> *)
+(*      (add_loc @@ P.EtyAnnot (e, t)))) *)
+(*     input *)
+(*  *)
+(* and expr_apply input = *)
+(*   (* Directly parse a list of expressions to avoid left-recursion *) *)
+(*   (expr_atom >>= fun e0 -> *)
+(*    many expr_atom => *)
+(*    List.fold_left (fun accu e -> *)
+(*        add_loc @@ P.EfunApp (accu, e)) *)
+(*      e0 *)
+(*   ) *)
+(*     input *)
+(*  *)
+(* (** {1 toplevel functions} **) *)
+(*  *)
+(* let parse_lexbuf parser read_fun lexbuf = *)
+(*   local_lexbuf := lexbuf; *)
+(*   let stream = LazyStream.of_function *)
+(*       (fun () -> match read_fun lexbuf with *)
+(*          | EOF -> None *)
+(*          | x -> Some x *)
+(*       ) *)
+(*   in *)
+(*   parse parser stream *)
+(*  *)
+(* let onix = parse_lexbuf expr *)
