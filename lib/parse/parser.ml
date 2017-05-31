@@ -39,32 +39,6 @@ let bool  =
 (** {2 Begining of the parser } *)
 
 (** {3 Type annotations} *)
-(* let rec typ input = *)
-(*   (typ_arrow <|> typ_atom <|> typ_cons) input *)
-(*  *)
-(* and typ_atom input = *)
-(*   ((ident => fun t -> Type_annotations.Var t) *)
-(*   <|> *)
-(*   in_parens typ) *)
-(*     input *)
-(*  *)
-(* and typ_arrow input = *)
-(*   (typ_atom >>= fun domain -> *)
-(*    exactly ARROW_R >> *)
-(*    typ => fun codomain -> *)
-(*      Type_annotations.Arrow (domain, codomain)) *)
-(*     input *)
-(*  *)
-(* and typ_cons input = *)
-(*   (exactly CONS_KW >> *)
-(*    in_parens ( *)
-(*      typ >>= fun t1 -> (exactly COMMA) >> typ => fun t2 -> *)
-(*        Type_annotations.Cons(t1, t2) *)
-(*    )) input *)
-(*  *)
-(* let type_annot = *)
-(*   exactly TY_START >> typ << exactly TY_END *)
-(*  *)
 let rec typ i = i |> any [ typ_arrow; typ_atom ]
 
 and typ_atom i = i |> any [ typ_ident; typ_parens ]
@@ -102,10 +76,14 @@ let expr_ident = add_loc (
     A.Evar id
   )
 
+let pattern_var =
+  ident >>= fun id -> space >>
+  P.option (type_annot) |>> fun annot ->
+  (id, annot)
+
 let pattern_ident = add_loc (
-    ident >>= fun id ->
-      P.option (space >> type_annot) |>> fun annot ->
-      A.Pvar (id, annot)
+    pattern_var |>> fun (id, annot) ->
+    A.Pvar (id, annot)
   )
 
 and expr_const =
@@ -113,7 +91,7 @@ and expr_const =
 
 let rec expr i =
   i |>
-  any [expr_lambda; expr_apply]
+  any [expr_let; expr_lambda; expr_apply]
 
 and expr_atom i =
   i |>
@@ -137,6 +115,22 @@ and expr_lambda i =
      expr |>> fun body ->
        A.Elambda (pat, body))
   )
+
+and expr_let i =
+  i |> add_loc (
+    P.string "let" >> space >>
+    P.many1 (P.attempt binding) >>= fun b ->
+    P.string "in" >> space >>
+    expr |>> fun e ->
+    A.Elet (b, e)
+  )
+
+and binding i =
+  i |>
+  (pattern_var >>= fun (id, annot) ->
+   space >> P.char '=' >> space  >>
+   expr << space << P.char ';' << space |>> fun e ->
+   A.BstaticDef ((id, annot), e))
 
 and pattern i = i |> any [pattern_ident]
 
