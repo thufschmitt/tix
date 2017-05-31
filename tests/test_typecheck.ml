@@ -68,7 +68,7 @@ let testsuite =
       (T.Builtins.(arrow int int));
     "test_apply">:: test_typecheck_expr "(x /*: Int */: x) 1" T.Builtins.int;
     "test_arrow_annot">:: test_typecheck_expr
-      "x /*: Int -> Int */: x)"
+      "x /*: Int -> Int */: x"
       T.Builtins.(arrow (arrow int int) (arrow int int));
     "test_let_1">:: test_typecheck_expr "let x = 1; in x" one_singleton;
     "test_let_2">:: test_typecheck_expr "let x /*:Int*/ = 1; in x"
@@ -82,6 +82,10 @@ let testsuite =
     "test_shadowing">:: test_typecheck_expr
       "let x = true; in let x = 1; in x"
       one_singleton;
+    "test_union">:: test_typecheck_expr "x /*: Int | Bool */: x"
+      T.Builtins.(arrow (cup int bool) (cup int bool));
+    "test_intersection">:: test_typecheck_expr "x /*: Int & Int */: x"
+      T.Builtins.(arrow int int);
 
     (* ----- Negative tests ----- *)
     "test_fail_unbound_var">:: test_typecheck_expr_fail "x";

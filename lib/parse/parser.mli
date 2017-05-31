@@ -22,6 +22,8 @@ type token =
   | PAREN_R
   | BRACKET_L
   | BRACKET_R
+  | AMPERSAND
+  | PIPE
   | CONS_KW
   | TY_START
   | TY_END

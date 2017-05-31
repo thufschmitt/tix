@@ -38,6 +38,8 @@ rule read =
   | '?' { QUESTION_MARK }
   | '=' { EQUAL }
   | '@' { AROBASE }
+  | '&' { AMPERSAND }
+  | '|' { PIPE }
   | "${" { DOLLAR_BRACE }
   | id { ID (Lexing.lexeme lexbuf ) }
   | eof { EOF }

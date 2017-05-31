@@ -25,6 +25,8 @@ type token =
   | PAREN_R
   | BRACKET_L
   | BRACKET_R
+  | AMPERSAND
+  | PIPE
   | CONS_KW
   | TY_START
   | TY_END
@@ -73,19 +75,36 @@ and expr_const = any >>= function
 
 (** {2 Type_annotations} *)
 let rec typ input =
-  (typ_arrow <|> typ_atom <|> typ_cons) input
+  (typ_arrow <|> typ_cons) input
+
+and typ_arrow i =
+  i |>
+  ((typ_atom >>= fun domain ->
+    exactly ARROW_R >>
+    typ => fun codomain ->
+      Type_annotations.(Infix (Arrow, domain, codomain)))
+   <|> typ_disj)
+
+and typ_disj i =
+  i |>
+  ((typ_conj >>= fun t1 ->
+    exactly PIPE >>
+    typ_disj => fun t2 ->
+      Type_annotations.(Infix (Or, t1, t2)))
+   <|> typ_conj)
+
+and typ_conj i =
+  i |>
+  ((typ_atom >>= fun t1 ->
+    exactly AMPERSAND >>
+    typ_conj => fun t2 ->
+      Type_annotations.(Infix (And, t1, t2)))
+   <|> typ_atom)
 
 and typ_atom input =
   ((ident => fun t -> Type_annotations.Var t)
    <|>
    in_parens typ)
-    input
-
-and typ_arrow input =
-  (typ_atom >>= fun domain ->
-   exactly ARROW_R >>
-   typ => fun codomain ->
-     Type_annotations.Arrow (domain, codomain))
     input
 
 and typ_cons input =
@@ -228,16 +247,17 @@ and expr_apply input =
   )
     input
 
+let toplevel = expr << (exactly EOF)
+
 (** {1 toplevel functions} **)
 
 let parse_lexbuf parser read_fun lexbuf =
   local_lexbuf := lexbuf;
   let stream = LazyStream.of_function
       (fun () -> match read_fun lexbuf with
-         | EOF -> None
          | x -> Some x
       )
   in
   parse parser stream
 
-let onix = parse_lexbuf expr
+let onix = parse_lexbuf toplevel

@@ -45,6 +45,8 @@ module Builtins : sig
   val interval : Intervals.t -> t
 
   val arrow : t -> t -> t
+  val cup   : t -> t -> t
+  val cap   : t -> t -> t
 end
 = struct
   include C.Builtin_defs
@@ -57,6 +59,9 @@ end
   let interval = C.Types.interval
 
   let arrow t1 t2 = C.Types.arrow (node t1) (node t2)
+
+  let cup = C.Types.cup
+  let cap = C.Types.cap
 end
 
 module Environment : sig
