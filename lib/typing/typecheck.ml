@@ -112,7 +112,13 @@ end = struct
       let half_typed_binds, binds_env = B.explicit_annotations tenv binds in
       let typed_binds =
         List.map
-          (fun (lhs, rhs) -> (lhs, expr tenv (E.merge env binds_env) rhs))
+          (fun (lhs, rhs) ->
+             match lhs with
+             | T.BnonAnnotated _ ->
+               (lhs, expr tenv (E.merge env binds_env) rhs)
+             | T.Bannotated (_, ty) ->
+               (lhs, Check.expr tenv (E.merge env binds_env) rhs ty)
+          )
           half_typed_binds
       in
       let added_env = B.report_inference_results typed_binds in

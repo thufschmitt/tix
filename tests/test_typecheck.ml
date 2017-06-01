@@ -95,6 +95,11 @@ let testsuite =
       T.Builtins.grad;
     "infer_let_5">:: test_infer_expr "let x = x; in x"
       T.Builtins.grad;
+    "infer_let_6">:: test_infer_expr "let x /*: Int -> Int */ = y: y; in x"
+      T.Builtins.(arrow int int);
+    "infer_let_7">:: test_infer_expr "let x /*: Int -> Int -> Int */ = \
+                                      y: y: y; in x"
+      T.Builtins.(arrow int (arrow int int));
     "infer_shadowing">:: test_infer_expr
       "let x = true; in let x = 1; in x"
       one_singleton;
