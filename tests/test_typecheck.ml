@@ -7,7 +7,7 @@ exception ParseError
 let get_type node =
   node.Parse.Location.With_loc.description.Typing.Typed_ast.With_type.typ
 
-let test_typecheck_expr input expected_type _ =
+let test_infer_expr input expected_type _ =
   let tast =
     begin
       match Parse.Parser.onix Parse.Lexer.read (Lexing.from_string input) with
@@ -41,7 +41,7 @@ let test_var _ =
     Typing.Types.Builtins.int
     (get_type tast)
 
-let test_typecheck_expr_fail input _ =
+let test_infer_expr_fail input _ =
   begin
     match Parse.Parser.onix Parse.Lexer.read (Lexing.from_string input) with
     | Some s ->
@@ -64,38 +64,38 @@ let testsuite =
   "tix_typecheck">:::
   [
     (* ----- Positive tests ----- *)
-    "test_const_int">:: test_typecheck_expr "1" one_singleton;
-    "test_const_bool">:: test_typecheck_expr "true" T.Builtins.true_type;
-    "test_lambda">:: test_typecheck_expr "x /*: Int */: 1"
+    "test_const_int">:: test_infer_expr "1" one_singleton;
+    "test_const_bool">:: test_infer_expr "true" T.Builtins.true_type;
+    "test_lambda">:: test_infer_expr "x /*: Int */: 1"
       (T.Builtins.(arrow int one_singleton));
-    "test_lambda_var">:: test_typecheck_expr "x /*: Int */: x"
+    "test_lambda_var">:: test_infer_expr "x /*: Int */: x"
       (T.Builtins.(arrow int int));
-    "test_apply">:: test_typecheck_expr "(x /*: Int */: x) 1" T.Builtins.int;
-    "test_arrow_annot">:: test_typecheck_expr
+    "test_apply">:: test_infer_expr "(x /*: Int */: x) 1" T.Builtins.int;
+    "test_arrow_annot">:: test_infer_expr
       "x /*: Int -> Int */: x"
       T.Builtins.(arrow (arrow int int) (arrow int int));
-    "test_let_1">:: test_typecheck_expr "let x = 1; in x" one_singleton;
-    "test_let_2">:: test_typecheck_expr "let x /*:Int*/ = 1; in x"
+    "test_let_1">:: test_infer_expr "let x = 1; in x" one_singleton;
+    "test_let_2">:: test_infer_expr "let x /*:Int*/ = 1; in x"
       T.Builtins.int;
-    "test_let_3">:: test_typecheck_expr "let x /*:Int*/ = 1; y = x; in y"
+    "test_let_3">:: test_infer_expr "let x /*:Int*/ = 1; y = x; in y"
       T.Builtins.int;
-    "test_let_4">:: test_typecheck_expr "let x = 1; y = x; in y"
+    "test_let_4">:: test_infer_expr "let x = 1; y = x; in y"
       T.Builtins.grad;
-    "test_let_5">:: test_typecheck_expr "let x = x; in x"
+    "test_let_5">:: test_infer_expr "let x = x; in x"
       T.Builtins.grad;
-    "test_shadowing">:: test_typecheck_expr
+    "test_shadowing">:: test_infer_expr
       "let x = true; in let x = 1; in x"
       one_singleton;
-    "test_union">:: test_typecheck_expr "x /*: Int | Bool */: x"
+    "test_union">:: test_infer_expr "x /*: Int | Bool */: x"
       T.Builtins.(arrow (cup int bool) (cup int bool));
-    "test_intersection">:: test_typecheck_expr "x /*: Int & Int */: x"
+    "test_intersection">:: test_infer_expr "x /*: Int & Int */: x"
       T.Builtins.(arrow int int);
 
     (* ----- Negative tests ----- *)
-    "test_fail_unbound_var">:: test_typecheck_expr_fail "x";
-    "test_fail_apply">:: test_typecheck_expr_fail "1 1";
-    "test_fail_apply2">:: test_typecheck_expr_fail "(x /*: Bool */: x) 1";
-    "test_fail_apply3">:: test_typecheck_expr_fail "(x /*: Int */: x) true";
+    "test_fail_unbound_var">:: test_infer_expr_fail "x";
+    "test_fail_apply">:: test_infer_expr_fail "1 1";
+    "test_fail_apply2">:: test_infer_expr_fail "(x /*: Bool */: x) 1";
+    "test_fail_apply3">:: test_infer_expr_fail "(x /*: Int */: x) true";
   ]
   @
   [
