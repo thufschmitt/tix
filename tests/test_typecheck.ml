@@ -44,21 +44,30 @@ let test_var _ =
   let tast =
     infer Typing.Types.Environment.default tenv (Lexing.from_string "x")
   in
-  assert_equal
-    Typing.Types.Builtins.int
-    (get_type tast)
+  assert_equal Typing.Types.Builtins.int (get_type tast)
 
-let test_infer_expr_fail input _ =
+let test_fail typefun _ =
   try
-    let _tast =
-      let open Typing in
-      infer
-        Types.Environment.default
-        Typing_env.empty
-        (Lexing.from_string input)
-    in
+    ignore @@ typefun ();
     assert_failure "type error not detected"
   with Typing.Typecheck.TypeError _ -> ()
+
+let test_infer_expr_fail input =
+  test_fail @@ fun () ->
+  let open Typing in
+  infer
+    Types.Environment.default
+    Typing_env.empty
+    (Lexing.from_string input)
+
+let test_check_fail input expected_type =
+  test_fail @@ fun () ->
+  let open Typing in
+  check
+    Types.Environment.default
+    Typing_env.empty
+    (Lexing.from_string input)
+    expected_type
 
 let one_singleton = T.Builtins.interval @@ T.Intervals.singleton_of_int 1
 
@@ -100,8 +109,11 @@ let testsuite =
     "infer_fail_apply2">:: test_infer_expr_fail "(x /*: Bool */: x) 1";
     "infer_fail_apply3">:: test_infer_expr_fail "(x /*: Int */: x) true";
 
-    (* ------ check ----- *)
+    (* ------ positive check ----- *)
     "check_const_one">:: test_check "1" one_singleton;
     "check_const_int">:: test_check "1" T.Builtins.int;
-    "check_const_union">:: test_check "1" T.Builtins.(cup one_singleton bool)
+    "check_const_union">:: test_check "1" T.Builtins.(cup one_singleton bool);
+
+    (* ------ negative check ----- *)
+    "check_fail_const_int">:: test_check_fail "1" T.Builtins.bool;
   ]
