@@ -1,4 +1,4 @@
-module StrMap = Map.Make(String)
+module StrMap = CCMap.Make(String)
 
 type t = Types.t StrMap.t
 
@@ -20,3 +20,12 @@ let lookup map elt =
   try
     Some (StrMap.find elt map)
   with Not_found -> None
+
+let initial_values =
+  let open Types.Builtins in
+  [
+    "__add", arrow int (arrow int int);
+    "__not", cap (arrow true_type false_type) (arrow false_type true_type);
+  ]
+
+let initial = StrMap.of_list initial_values

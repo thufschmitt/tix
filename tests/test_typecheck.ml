@@ -19,7 +19,7 @@ let check tenv env tokens expected_type =
 let test_infer_expr input expected_type _ =
   let typ =
     let open Typing in
-    infer Types.Environment.default Typing_env.empty (Lexing.from_string input)
+    infer Types.Environment.default Typing_env.initial (Lexing.from_string input)
   in
   assert_equal
     ~cmp:T.T.equiv
@@ -32,13 +32,13 @@ let test_check input expected_type _=
     let open Typing in
     check
       Types.Environment.default
-      Typing_env.empty
+      Typing_env.initial
       (Lexing.from_string input)
       expected_type
   in ignore tast
 
 let test_var _ =
-  let tenv = Typing.(Typing_env.(add "x" Types.Builtins.int empty)) in
+  let tenv = Typing.(Typing_env.(add "x" Types.Builtins.int initial)) in
   let typ =
     infer Typing.Types.Environment.default tenv (Lexing.from_string "x")
   in
@@ -55,7 +55,7 @@ let test_infer_expr_fail input =
   let open Typing in
   infer
     Types.Environment.default
-    Typing_env.empty
+    Typing_env.initial
     (Lexing.from_string input)
 
 let test_check_fail input expected_type =
@@ -63,7 +63,7 @@ let test_check_fail input expected_type =
   let open Typing in
   check
     Types.Environment.default
-    Typing_env.empty
+    Typing_env.initial
     (Lexing.from_string input)
     expected_type
 
@@ -76,6 +76,10 @@ let testsuite =
     "infer_var">::test_var;
     "infer_const_int">:: test_infer_expr "1" one_singleton;
     "infer_const_bool">:: test_infer_expr "true" T.Builtins.true_type;
+    "infer_builtins_not">:: test_infer_expr "__not"
+      T.Builtins.(cap
+                    (arrow true_type false_type)
+                    (arrow false_type true_type));
     "infer_lambda">:: test_infer_expr "x /*: Int */: 1"
       (T.Builtins.(arrow int one_singleton));
     "infer_lambda_var">:: test_infer_expr "x /*: Int */: x"
@@ -105,6 +109,7 @@ let testsuite =
       T.Builtins.(arrow (cup int bool) (cup int bool));
     "infer_intersection">:: test_infer_expr "x /*: Int & Int */: x"
       T.Builtins.(arrow int int);
+    "test_not_true">:: test_infer_expr "__not true" T.Builtins.false_type;
 
     (* ----- Negative tests ----- *)
     "infer_fail_unbound_var">:: test_infer_expr_fail "x";

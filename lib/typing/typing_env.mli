@@ -13,6 +13,11 @@ type t
 val empty : t
 
 (**
+   The initial env, containing predefined builtins
+*)
+val initial : t
+
+(**
    [singleton x τ] is the environment containing the only constraint {e x: τ}
  *)
 val singleton : string -> Types.t -> t

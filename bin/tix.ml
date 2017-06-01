@@ -6,7 +6,7 @@ let typecheck_chan chan =
   let t =
     Typing.(Typecheck.Infer.expr
               Types.Environment.default
-              Typing_env.empty)
+              Typing_env.initial)
       ast
   in
   Typing.Types.pp Format.std_formatter t;
