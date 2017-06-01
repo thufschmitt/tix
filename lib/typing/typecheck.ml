@@ -137,14 +137,19 @@ end = struct
         (Types.show inferred)
         (Types.show expected)
 
-  let expr _tenv _env e expected_typ =
+  let expr _tenv env e expected =
     let loc = L.With_loc.loc e in
     e |> L.With_loc.map @@ function
     | P.Econstant c ->
       let c_ty = typeof_const c in
-      check_subtype loc ~inferred:c_ty ~expected:expected_typ;
-      T.With_type.make
-        ~description:(T.Econstant c)
-        ~typ:expected_typ
+      check_subtype loc ~inferred:c_ty ~expected;
+      T.With_type.make ~description:(T.Econstant c) ~typ:expected
+    | P.Evar v ->
+      begin match E.lookup env v with
+        | Some t ->
+          check_subtype loc ~inferred:t ~expected;
+          T.With_type.make ~description:(T.Evar v) ~typ:expected
+        | None -> typeError e.L.With_loc.location "Unbount variable %s" v
+      end
     | _ -> assert false
 end

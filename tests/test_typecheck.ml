@@ -116,4 +116,5 @@ let testsuite =
 
     (* ------ negative check ----- *)
     "check_fail_const_int">:: test_check_fail "1" T.Builtins.bool;
+    "check_fail_unbound_var">:: test_check_fail "x" one_singleton;
   ]
