@@ -4,20 +4,22 @@ module T  = Typing.Types
 
 exception ParseError
 
-let get_type node =
-  node.Parse.Location.With_loc.description.Typing.Typed_ast.With_type.typ
+let get_type = Typing.Typed_ast.get_typ
+
+let parse tokens =
+  match Parse.Parser.onix Parse.Lexer.read tokens with
+  | Some s -> Simple.Of_onix.expr s
+  | None -> raise ParseError
+
+let infer tenv env tokens =
+  parse tokens
+  |> Typing.(Typecheck.Infer.expr tenv env)
+
 
 let test_infer_expr input expected_type _ =
   let tast =
-    begin
-      match Parse.Parser.onix Parse.Lexer.read (Lexing.from_string input) with
-      | Some s ->
-        Simple.Of_onix.expr s
-        |> Typing.(Typecheck.Infer.expr
-                     Types.Environment.default
-                     Typing_env.empty)
-      | None -> raise ParseError
-    end;
+    let open Typing in
+    infer Types.Environment.default Typing_env.empty (Lexing.from_string input)
   in
   assert_equal
     ~cmp:T.T.equiv
@@ -26,37 +28,25 @@ let test_infer_expr input expected_type _ =
     (get_type tast)
 
 let test_var _ =
+  let tenv = Typing.(Typing_env.(add "x" Types.Builtins.int empty)) in
   let tast =
-    begin
-      match Parse.Parser.onix Parse.Lexer.read (Lexing.from_string "x") with
-      | Some s ->
-        Simple.Of_onix.expr s
-        |> Typing.(Typecheck.Infer.expr
-                     Types.Environment.default
-                     Typing_env.(add "x" Types.Builtins.int empty))
-      | None -> raise ParseError
-    end;
+    infer Typing.Types.Environment.default tenv (Lexing.from_string "x")
   in
   assert_equal
     Typing.Types.Builtins.int
     (get_type tast)
 
 let test_infer_expr_fail input _ =
-  begin
-    match Parse.Parser.onix Parse.Lexer.read (Lexing.from_string input) with
-    | Some s ->
-      begin try
-          Simple.Of_onix.expr s
-          |> Typing.(Typecheck.Infer.expr
-                       Types.Environment.default
-                       Typing_env.empty)
-          |> ignore;
-          assert_failure "Type error not detected"
-        with
-          Typing.Typecheck.TypeError _ -> ()
-      end
-    | None -> raise ParseError
-  end
+  try
+    let _tast =
+      let open Typing in
+      infer
+        Types.Environment.default
+        Typing_env.empty
+        (Lexing.from_string input)
+    in
+    assert_failure "type error not detected"
+  with Typing.Typecheck.TypeError _ -> ()
 
 let one_singleton = T.Builtins.interval @@ T.Intervals.singleton_of_int 1
 
