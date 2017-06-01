@@ -13,7 +13,9 @@ let test_typecheck_expr input expected_type _ =
       match Parse.Parser.onix Parse.Lexer.read (Lexing.from_string input) with
       | Some s ->
         Simple.Of_onix.expr s
-        |> Typing.(Typecheck.expr Types.Environment.default Typing_env.empty)
+        |> Typing.(Typecheck.Infer.expr
+                     Types.Environment.default
+                     Typing_env.empty)
       | None -> raise ParseError
     end;
   in
@@ -29,7 +31,7 @@ let test_var _ =
       match Parse.Parser.onix Parse.Lexer.read (Lexing.from_string "x") with
       | Some s ->
         Simple.Of_onix.expr s
-        |> Typing.(Typecheck.expr
+        |> Typing.(Typecheck.Infer.expr
                      Types.Environment.default
                      Typing_env.(add "x" Types.Builtins.int empty))
       | None -> raise ParseError
@@ -45,7 +47,9 @@ let test_typecheck_expr_fail input _ =
     | Some s ->
       begin try
           Simple.Of_onix.expr s
-          |> Typing.(Typecheck.expr Types.Environment.default Typing_env.empty)
+          |> Typing.(Typecheck.Infer.expr
+                       Types.Environment.default
+                       Typing_env.empty)
           |> ignore;
           assert_failure "Type error not detected"
         with

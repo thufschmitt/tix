@@ -4,7 +4,10 @@ let typecheck_chan chan =
     | None -> assert false
   in
   let tast =
-    Typing.(Typecheck.expr Types.Environment.default Typing_env.empty) ast
+    Typing.(Typecheck.Infer.expr
+              Types.Environment.default
+              Typing_env.empty)
+      ast
   in
   Typing.Types.pp Format.std_formatter @@ Typing.Typed_ast.get_typ tast;
   Format.print_newline ()
