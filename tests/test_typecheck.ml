@@ -113,6 +113,8 @@ let testsuite =
     "check_const_one">:: test_check "1" one_singleton;
     "check_const_int">:: test_check "1" T.Builtins.int;
     "check_const_union">:: test_check "1" T.Builtins.(cup one_singleton bool);
+    "check_arrow_1">:: test_check "x: x" T.Builtins.(arrow int int);
+    "check_arrow_2">:: test_check "x: x" T.Builtins.(arrow one_singleton int);
 
     (* ------ negative check ----- *)
     "check_fail_const_int">:: test_check_fail "1" T.Builtins.bool;
