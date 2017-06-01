@@ -133,7 +133,7 @@ end = struct
         j_set
       |> List.flatten
     in
-    CCList.fold_left squared_union [] arrow_bdd
+    CCList.fold_left squared_union Types.Builtins.[(any, empty)] arrow_bdd
 
   let rec expr tenv env e expected =
     let loc = L.With_loc.loc e in
@@ -150,14 +150,10 @@ end = struct
       check_subtype loc ~inferred:expected ~expected:Cduce_lib.Types.Arrow.any;
       (* XXX: destruct [expected] with the A(t) function from the paper *)
       let expected_arrow = Cduce_lib.Types.Arrow.get expected in
-      let dom = Cduce_lib.Types.Arrow.domain expected_arrow in
-      let codom = Cduce_lib.Types.Arrow.apply expected_arrow dom in
-      let (added_env, typed_pat) = Pattern.infer ~t_constr:dom tenv pat in
-      let domain = T.get_typ typed_pat in
-      let typed_e = expr tenv (E.merge env added_env) e codom in
-      let codomain = T.get_typ typed_e in
-      T.With_type.make
-        ~description:(T.Elambda (typed_pat, typed_e))
-        ~typ:(Types.Builtins.arrow domain codomain)
+      List.iter (fun (dom, codom) ->
+          let (added_env, _) = Pattern.infer ~t_constr:dom tenv pat in
+          let _typed_e = expr tenv (E.merge env added_env) e codom in
+          ())
+        (a_op expected_arrow)
     | _ -> assert false
 end
