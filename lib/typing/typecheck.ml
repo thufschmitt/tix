@@ -130,19 +130,21 @@ end
 and Check : sig
   val expr : TE.t -> E.t -> P.expr -> Types.t -> T.expr
 end = struct
-  (* TODO: this isn't at all the right [check] code, just a stub that infers
-      the body and checks wether it has the right type *)
-  let expr tenv env e typ  =
-    let inferred_ast = Infer.expr tenv env e in
-    let inferred_typ = T.get_typ inferred_ast in
-    if Types.sub typ inferred_typ then
-      { inferred_ast with
-        L.With_loc.description =
-          { inferred_ast.L.With_loc.description with
-            T.With_type.typ = typ; }; }
-    else
-      typeError e.L.With_loc.location
+  let check_subtype loc ~inferred ~expected =
+    if not (Types.sub inferred expected) then
+      typeError loc
         "The inferred type for this expression is %s while %s was expected"
-        (Types.show inferred_typ)
-        (Types.show typ)
+        (Types.show inferred)
+        (Types.show expected)
+
+  let expr _tenv _env e expected_typ =
+    let loc = L.With_loc.loc e in
+    e |> L.With_loc.map @@ function
+    | P.Econstant c ->
+      let c_ty = typeof_const c in
+      check_subtype loc ~inferred:c_ty ~expected:expected_typ;
+      T.With_type.make
+        ~description:(T.Econstant c)
+        ~typ:expected_typ
+    | _ -> assert false
 end

@@ -41,4 +41,5 @@ struct
   }
 
   let description { description = it; _ } = it
+  let loc { location = l; _ } = l
 end
