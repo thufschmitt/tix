@@ -1,4 +1,3 @@
-module T = Typed_ast
 module P = Simple.Ast
 module TE = Typing_env
 
@@ -20,15 +19,14 @@ let infer_pattern_descr ?t_constr tenv p = match p with
         in
         Types.Builtins.cap real_constraint annoted
     in
-    (TE.singleton v t, { T.With_type.description = T.Pvar v; typ = t; })
+    (TE.singleton v t, t)
   | _ -> failwith "TODO"
 
-let infer_pattern ?t_constr tenv { L.description; location } =
-  let (env, descr) = infer_pattern_descr ?t_constr tenv description in
-  (env, { L.description = descr; location })
+let infer_pattern ?t_constr tenv { L.description; _ } =
+  infer_pattern_descr ?t_constr tenv description
 
 let infer : ?t_constr:Types.t
   -> Types.Environment.t
   -> P.pattern
-  -> (TE.t * T.pattern) =
+  -> (TE.t * Types.t) =
   infer_pattern

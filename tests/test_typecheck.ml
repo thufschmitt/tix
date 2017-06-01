@@ -4,8 +4,6 @@ module T  = Typing.Types
 
 exception ParseError
 
-let get_type = Typing.Typed_ast.get_typ
-
 let parse tokens =
   match Parse.Parser.onix Parse.Lexer.read tokens with
   | Some s -> Simple.Of_onix.expr s
@@ -19,7 +17,7 @@ let check tenv env tokens expected_type =
   Typing.(Typecheck.Check.expr tenv env (parse tokens) expected_type)
 
 let test_infer_expr input expected_type _ =
-  let tast =
+  let typ =
     let open Typing in
     infer Types.Environment.default Typing_env.empty (Lexing.from_string input)
   in
@@ -27,7 +25,7 @@ let test_infer_expr input expected_type _ =
     ~cmp:T.T.equiv
     ~printer:T.T.Print.string_of_type
     expected_type
-    (get_type tast)
+    typ
 
 let test_check input expected_type _=
   let tast =
@@ -41,10 +39,10 @@ let test_check input expected_type _=
 
 let test_var _ =
   let tenv = Typing.(Typing_env.(add "x" Types.Builtins.int empty)) in
-  let tast =
+  let typ =
     infer Typing.Types.Environment.default tenv (Lexing.from_string "x")
   in
-  assert_equal Typing.Types.Builtins.int (get_type tast)
+  assert_equal Typing.Types.Builtins.int typ
 
 let test_fail typefun _ =
   try

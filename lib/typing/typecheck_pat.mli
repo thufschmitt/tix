@@ -9,4 +9,4 @@
 val infer : ?t_constr:Types.t
   -> Types.Environment.t
   -> Simple.Ast.pattern
-  -> (Typing_env.t * Typed_ast.pattern)
+  -> (Typing_env.t * Types.t)

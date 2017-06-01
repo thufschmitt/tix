@@ -3,13 +3,13 @@ let typecheck_chan chan =
     | Some s -> Simple.Of_onix.expr s
     | None -> assert false
   in
-  let tast =
+  let t =
     Typing.(Typecheck.Infer.expr
               Types.Environment.default
               Typing_env.empty)
       ast
   in
-  Typing.Types.pp Format.std_formatter @@ Typing.Typed_ast.get_typ tast;
+  Typing.Types.pp Format.std_formatter t;
   Format.print_newline ()
 
 let typecheck_file = function
