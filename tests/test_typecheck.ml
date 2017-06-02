@@ -120,10 +120,14 @@ let testsuite =
     "check_arrow_2">:: test_check "x: x" T.Builtins.(arrow one_singleton int);
     "check_intersect_arrow">:: test_check "x: x"
       T.Builtins.(cap (arrow int int) (arrow bool bool));
+    "check_let">:: test_check "let x = 1; in y: y"
+      T.Builtins.(arrow int int);
 
     (* ------ negative check ----- *)
     "check_fail_const_int">:: test_check_fail "1" T.Builtins.bool;
     "check_fail_unbound_var">:: test_check_fail "x" one_singleton;
     "check_fail_bad_intersect_arrow">:: test_check_fail "x: x"
       T.Builtins.(cap (arrow int bool) (arrow bool int));
+    "check_fail_inside_let">:: test_check_fail "let x = y: y; in x"
+      T.Builtins.(arrow int int);
   ]

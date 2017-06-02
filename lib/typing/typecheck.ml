@@ -94,22 +94,7 @@ end = struct
       else
         typeError e.L.With_loc.location "Invalid function application"
     | P.Elet (binds, e) ->
-      let module B = Bindings in
-      let half_typed_binds, binds_env = B.explicit_annotations tenv binds in
-      let typed_binds =
-        List.map
-          (fun (x, constr, rhs) ->
-             match constr with
-             | None ->
-               (x, constr, expr tenv (E.merge env binds_env) rhs)
-             | Some ty ->
-               Check.expr tenv (E.merge env binds_env) rhs ty;
-               (x, constr, ty)
-          )
-          half_typed_binds
-      in
-      let added_env = B.report_inference_results typed_binds in
-      expr tenv (E.merge env added_env) e
+      Common.let_binding expr tenv env binds e
     | _ -> (ignore (expr, env); assert false)
 end
 
@@ -155,5 +140,34 @@ end = struct
           let _typed_e = expr tenv (E.merge env added_env) e codom in
           ())
         (a_op expected_arrow)
+    | P.Elet (binds, e) ->
+      Common.let_binding expr tenv env binds e expected
     | _ -> assert false
+end
+
+and Common : sig
+  val let_binding : (TE.t -> E.t -> P.expr -> 'a)
+    -> TE.t
+    -> E.t
+    -> P.binding list
+    -> P.expr
+    -> 'a
+end = struct
+  let let_binding expr tenv env binds e =
+    let module B = Bindings in
+    let half_typed_binds, binds_env = B.explicit_annotations tenv binds in
+    let typed_binds =
+      List.map
+        (fun (x, constr, rhs) ->
+           match constr with
+           | None ->
+             (x, constr, Infer.expr tenv (E.merge env binds_env) rhs)
+           | Some ty ->
+             Check.expr tenv (E.merge env binds_env) rhs ty;
+             (x, constr, ty)
+        )
+        half_typed_binds
+    in
+    let added_env = B.report_inference_results typed_binds in
+    expr tenv (E.merge env added_env) e
 end
