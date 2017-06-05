@@ -19,7 +19,9 @@ let check tenv env tokens expected_type =
 let test_infer_expr input expected_type _ =
   let typ =
     let open Typing in
-    infer Types.Environment.default Typing_env.initial (Lexing.from_string input)
+    infer Types.Environment.default
+      Typing_env.initial
+      (Lexing.from_string input)
   in
   assert_equal
     ~cmp:T.T.equiv

@@ -215,7 +215,7 @@ and expr_list_sugar input =
       List.fold_left (fun acc elt ->
           add_loc @@ P.EopApp (P.Ocons, [ elt; acc ])
         )
-        (add_loc @@ P.Econstant P.Cnil)
+        (add_loc @@ P.Evar "nil")
     ))
     input
 

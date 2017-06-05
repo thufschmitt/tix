@@ -58,7 +58,6 @@ let typeof_const = function
   | P.Cint  i ->
     Types.Builtins.interval
       (Types.Intervals.singleton_of_int i)
-  | P.Cnil -> Types.Builtins.nil
   | P.Cstring _  -> assert false
 
 let () = ()

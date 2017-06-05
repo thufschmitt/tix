@@ -37,7 +37,6 @@ and constant =
   | Cint of int
   | Cbool of bool
   | Cstring of string
-  | Cnil
 
 and lambda = pattern * expr
 

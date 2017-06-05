@@ -42,4 +42,3 @@ and pattern p = map_loc pattern_desc p
 and constant = function
   | O.Cint i -> N.Cint i
   | O.Cbool b -> N.Cbool b
-  | O.Cnil -> N.Cnil

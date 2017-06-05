@@ -15,7 +15,6 @@ let kwd   = F.pp_print_string
 let const fmt = function
   | P.Cbool b -> F.pp_print_bool fmt b
   | P.Cint i-> F.pp_print_int  fmt i
-  | P.Cnil -> F.pp_print_string fmt "nil"
 
 let pp_op fmt = function
   | P.Ocons -> F.pp_print_string fmt "Cons"

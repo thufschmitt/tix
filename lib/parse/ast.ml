@@ -43,7 +43,6 @@ and ap_field_desc =
 and constant =
   | Cint of int
   | Cbool of bool
-  | Cnil
 
 and str = (str_element with_loc) list
 
