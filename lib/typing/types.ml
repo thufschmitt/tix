@@ -44,6 +44,7 @@ module Builtins : sig
 
   val interval : Intervals.t -> t
 
+  val cons  : t -> t -> t
   val arrow : t -> t -> t
   val cup   : t -> t -> t
   val cap   : t -> t -> t
@@ -59,6 +60,8 @@ end
   let interval = C.Types.interval
 
   let arrow t1 t2 = C.Types.arrow (node t1) (node t2)
+
+  let cons  t1 t2 = C.Types.times (node t1) (node t2)
 
   let cup = C.Types.cup
   let cap = C.Types.cap

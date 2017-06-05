@@ -17,6 +17,13 @@ let () = Printexc.register_printer @@ function
 
 let typeError loc e = Format.ksprintf (fun s -> raise (TypeError (loc, s))) e
 
+let check_subtype loc ~inferred ~expected =
+  if not (Types.sub inferred expected) then
+    typeError loc
+      "The inferred type for this expression is %s while %s was expected"
+      (Types.show inferred)
+      (Types.show expected)
+
 module Bindings = struct
   let explicit_annotations (tenv : TE.t) (bindings : P.binding list)
     : (string * Types.t option * P.expr) list * E.t =
@@ -94,19 +101,21 @@ end = struct
         typeError e.L.With_loc.location "Invalid function application"
     | P.Elet (binds, e) ->
       Common.let_binding expr tenv env binds e
+    | P.EopApp (P.Ocons, [e1; e2]) ->
+      let t1 = expr tenv env e1
+      and t2 = expr tenv env e2
+      in
+      check_subtype
+        e.L.With_loc.location
+        ~inferred:t2
+        ~expected:Types.Builtins.(cup (cons any any) nil);
+      Types.Builtins.(cons t1 t2)
     | _ -> (ignore (expr, env); assert false)
 end
 
 and Check : sig
   val expr : TE.t -> E.t -> P.expr -> Types.t -> unit
 end = struct
-  let check_subtype loc ~inferred ~expected =
-    if not (Types.sub inferred expected) then
-      typeError loc
-        "The inferred type for this expression is %s while %s was expected"
-        (Types.show inferred)
-        (Types.show expected)
-
   (** The \mathscr{A} operator from the paper *)
   let a_op (_, arrow_bdd) =
     let squared_union i_set j_set =

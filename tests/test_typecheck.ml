@@ -112,12 +112,15 @@ let testsuite =
     "infer_intersection">:: test_infer_expr "x /*: Int & Int */: x"
       T.Builtins.(arrow int int);
     "test_not_true">:: test_infer_expr "__not true" T.Builtins.false_type;
+    "test_list">:: test_infer_expr "[1 true false]"
+      T.Builtins.(cons one_singleton (cons true_type (cons false_type nil)));
 
     (* ----- Negative tests ----- *)
     "infer_fail_unbound_var">:: test_infer_expr_fail "x";
     "infer_fail_apply">:: test_infer_expr_fail "1 1";
     "infer_fail_apply2">:: test_infer_expr_fail "(x /*: Bool */: x) 1";
     "infer_fail_apply3">:: test_infer_expr_fail "(x /*: Int */: x) true";
+    "infer_fail_notalist">:: test_infer_expr_fail "Cons (1, 2)";
 
     (* ------ positive check ----- *)
     "check_const_one">:: test_check "1" one_singleton;

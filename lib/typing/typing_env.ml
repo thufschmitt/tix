@@ -24,8 +24,10 @@ let lookup map elt =
 let initial_values =
   let open Types.Builtins in
   [
+    "nil", nil;
     "__add", arrow int (arrow int int);
     "__not", cap (arrow true_type false_type) (arrow false_type true_type);
+    "head_int", arrow (cons int any) int;
   ]
 
 let initial = StrMap.of_list initial_values
