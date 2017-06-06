@@ -81,7 +81,11 @@ let rec to_node (nodes_env : Nodes_env.t) env = function
         to_node new_nodes_env env t
       with TypeError -> None
     end
-  | A.Cons _ -> assert false
+  | A.Cons (t1, t2) ->
+    CCOpt.map2 T.Builtins.cons
+      (to_node nodes_env env t1)
+      (to_node nodes_env env t2)
+    >|= T.node
 
 and to_type nodes_env env p = to_node nodes_env env p >|= T.typ
 

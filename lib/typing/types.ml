@@ -120,7 +120,8 @@ end = struct
       "String", B.string;
       "true", B.true_type;
       "false", B.false_type;
-      "?", B.grad
+      "?", B.grad;
+      "nil", B.nil;
     ]
 
   let default =
