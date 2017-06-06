@@ -11,8 +11,8 @@ struct
 
   let show = function
     | Arrow -> "->"
-    | And   -> "|"
-    | Or    -> "&"
+    | And   -> "&"
+    | Or    -> "|"
 end
 
 module Singleton =
