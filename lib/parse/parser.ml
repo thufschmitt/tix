@@ -17,6 +17,7 @@ type token =
   | INHERIT_KW
   | LET_KW
   | IN_KW
+  | WHERE_KW
   | DOLLAR_BRACE
   | BRACE_LR
   | BRACE_L
@@ -75,7 +76,25 @@ and expr_const = any >>= function
 
 (** {2 Type_annotations} *)
 let rec typ input =
-  (typ_arrow <|> typ_cons) input
+  (typ_where <|> typ_cons) input
+
+and typ_where i =
+  i |>
+  ((typ_arrow >>= fun t ->
+    exactly WHERE_KW >>
+    typ_bindings => fun binds ->
+      Type_annotations.(TyBind (binds, t)))
+   <|> typ_arrow)
+
+and typ_binding i =
+  i |>
+  (ident >>= fun id ->
+   exactly EQUAL >>
+   typ => fun t ->
+     (id, t))
+
+and typ_bindings i =
+  i |> (sep_by typ_binding (exactly WHERE_KW))
 
 and typ_arrow i =
   i |>
@@ -112,7 +131,8 @@ and typ_atom input =
 and typ_const i =
   i |>
   (any >>= function
-    | BOOL b -> return @@ Type_annotations.Var (string_of_bool b)
+    | BOOL b -> return @@ Type_annotations.(Singleton (Singleton.Bool b))
+    | INTEGER i -> return @@ Type_annotations.(Singleton (Singleton.Int i))
     | _ -> mzero
   )
 
@@ -270,3 +290,4 @@ let parse_lexbuf parser read_fun lexbuf =
   parse parser stream
 
 let onix = parse_lexbuf toplevel
+let typ  = parse_lexbuf typ

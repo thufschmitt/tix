@@ -51,4 +51,8 @@ let testsuite =
        "(Cons(1, Cons(2, Cons(3, nil))) /*: \
         Cons(int, Cons(int, Cons(int, nil))) */)");
       "test_list_sugar", "[1 2 3]", "Cons(1, Cons(2, Cons(3, nil)))";
+
+      "test_annot_singleton_int", "x /*: 1 */: x", "(x /*: 1 */: x)";
+      "test_annot_singleton_true", "x /*: true */: x", "(x /*: true */: x)";
+      "test_annot_singleton_false", "x /*: false */: x", "(x /*: false */: x)";
     ]

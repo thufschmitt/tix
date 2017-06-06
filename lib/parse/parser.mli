@@ -14,6 +14,7 @@ type token =
   | INHERIT_KW
   | LET_KW
   | IN_KW
+  | WHERE_KW
   | DOLLAR_BRACE
   | BRACE_LR
   | BRACE_L
@@ -36,3 +37,5 @@ type token =
 (** Parse a nix expression. The type of the function is compatible with Menhir
    generated parsers *)
 val onix : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> Ast.expr option
+
+val typ : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> Type_annotations.t option

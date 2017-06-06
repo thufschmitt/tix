@@ -15,8 +15,24 @@ struct
     | Or    -> "&"
 end
 
+module Singleton =
+struct
+  type t =
+    | Int of int
+    | Bool of bool
+
+  let pp fmt = function
+    | Int i -> Format.pp_print_int fmt i
+    | Bool b -> Format.pp_print_bool fmt b
+
+  let show = function
+    | Int i -> string_of_int i
+    | Bool b -> string_of_bool b
+end
+
 type t =
   | Var of string
+  | Singleton of Singleton.t
   | Infix of Infix_constructors.t * t * t
   | Cons  of t * t
 
@@ -31,6 +47,7 @@ let rec pp fmt = function
     Format.fprintf fmt "Cons(%a, %a)"
       pp t1
       pp t2
+  | Singleton s -> Singleton.pp fmt s
 
 let show t =
   let () = pp Format.str_formatter t in

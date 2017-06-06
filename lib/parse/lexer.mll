@@ -17,6 +17,7 @@ rule read =
   | "rec" { REC_KW }
   | "inherit" { INHERIT_KW }
   | "let" { LET_KW }
+  | "where" { WHERE_KW }
   | "in" { IN_KW }
   | "Cons" { CONS_KW }
   | number { INTEGER (int_of_string @@ Lexing.lexeme lexbuf)}

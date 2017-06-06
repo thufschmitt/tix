@@ -67,6 +67,16 @@ end
   let cap = C.Types.cap
 end
 
+module Singleton = struct
+  let int i = C.(Types.interval Intervals.(bounded
+                                             (V.from_int i)
+                                             (V.from_int i)))
+
+  let bool = function
+    | true -> C.Builtin_defs.true_type
+    | false -> C.Builtin_defs.false_type
+end
+
 module Environment : sig
   (** The type representing a type environment.
       A type environment is a map from type variables to their definition
