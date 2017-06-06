@@ -15,6 +15,12 @@ let typ  = T.descr
 let sub   = T.subtype
 let equiv = T.equiv
 
+(** Creates a fresh new node *)
+let fresh = T.make
+
+(** [unify t1 t2] adds the equation [t1 = t2] to the environment *)
+let define = T.define
+
 module Intervals : sig
   include module type of C.Intervals
 
@@ -26,6 +32,10 @@ end = struct
   let singleton_of_int i =
     let i = C.Intervals.V.from_int i in
     singleton i
+end
+
+module Node = struct
+  type t = T.Node.t
 end
 
 (** Builtin types *)
@@ -44,8 +54,8 @@ module Builtins : sig
 
   val interval : Intervals.t -> t
 
-  val cons  : t -> t -> t
-  val arrow : t -> t -> t
+  val cons  : Node.t -> Node.t -> t
+  val arrow : Node.t -> Node.t -> t
   val cup   : t -> t -> t
   val cap   : t -> t -> t
 end
@@ -59,9 +69,9 @@ end
 
   let interval = C.Types.interval
 
-  let arrow t1 t2 = C.Types.arrow (node t1) (node t2)
+  let arrow = C.Types.arrow
 
-  let cons  t1 t2 = C.Types.times (node t1) (node t2)
+  let cons  = C.Types.times
 
   let cup = C.Types.cup
   let cap = C.Types.cap
@@ -90,6 +100,11 @@ module Environment : sig
   val default : t
 
   val lookup : t -> string -> T.t option
+
+  (** [add nam typ env] adds a new type named [nam] and defined by [typ] to the
+      environment [env], relpacing any previously defined typ with that name
+   * *)
+  val add : string -> T.t -> t -> t
 end = struct
   module M = CCMap.Make(String)
   type t = T.t M.t
@@ -112,4 +127,6 @@ end = struct
     M.of_list builtin_types
 
   let lookup env name = M.get name env
+
+  let add = M.add
 end

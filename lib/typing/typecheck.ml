@@ -83,12 +83,13 @@ end = struct
     | P.Elambda (pat, e) ->
       let (added_env, domain) = Pattern.infer tenv pat in
       let codomain = expr tenv (E.merge env added_env) e in
-      Types.Builtins.arrow domain codomain
+      Types.(Builtins.arrow (node domain) (node codomain))
     | P.EfunApp (e1, e2) ->
       let t1 = expr tenv env e1
       and t2 = expr tenv env e2
       in
-      if not @@ Types.sub t1 Types.Builtins.(arrow empty any) then
+      if not @@ Types.sub t1 Types.(Builtins.(arrow (node empty) (node any)))
+      then
         typeError e.L.With_loc.location
           "This expression has type %s which is not an arrow type. \
            It can't be applied"
@@ -108,8 +109,8 @@ end = struct
       check_subtype
         e.L.With_loc.location
         ~inferred:t2
-        ~expected:Types.Builtins.(cup (cons any any) nil);
-      Types.Builtins.(cons t1 t2)
+        ~expected:Types.(Builtins.(cup (cons (node any) (node any)) nil));
+      Types.Builtins.(cons (Types.node t1) (Types.node t2))
     | _ -> (ignore (expr, env); assert false)
 end
 

@@ -94,7 +94,7 @@ and typ_binding i =
      (id, t))
 
 and typ_bindings i =
-  i |> (sep_by typ_binding (exactly WHERE_KW))
+  i |> (sep_by typ_binding (exactly SEMICOLON))
 
 and typ_arrow i =
   i |>

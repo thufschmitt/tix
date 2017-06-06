@@ -115,6 +115,10 @@ let testsuite =
     "test_not_true">:: test_infer_expr "__not true" "false";
     (* "test_list">:: test_infer_expr "[1 true false]" *)
     (*   "Cons (1, Cons(true, Cons(false, nil)))"); *)
+    "infer_type_where_1">:: test_infer_expr "x /*: X where X = Int */: x"
+      "Int -> Int";
+    "infer_type_where_2">:: test_infer_expr "x /*: Int where X = Int */: x"
+      "Int -> Int";
 
     (* ----- Negative tests ----- *)
     "infer_fail_unbound_var">:: test_infer_expr_fail "x";
@@ -122,6 +126,8 @@ let testsuite =
     "infer_fail_apply2">:: test_infer_expr_fail "(x /*: Bool */: x) 1";
     "infer_fail_apply3">:: test_infer_expr_fail "(x /*: Int */: x) true";
     "infer_fail_notalist">:: test_infer_expr_fail "Cons (1, 2)";
+    "infer_fail_where">:: test_infer_expr_fail
+      "(x /*: X where X = Bool */: x) 1";
 
     (* ------ positive check ----- *)
     "check_const_one">:: test_check "1" "1";

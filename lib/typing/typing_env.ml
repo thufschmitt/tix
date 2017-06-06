@@ -23,11 +23,15 @@ let lookup map elt =
 
 let initial_values =
   let open Types.Builtins in
+  let int = Types.node int
+  and true_type = Types.node true_type
+  and any = Types.node any
+  and false_type = Types.node false_type in
   [
     "nil", nil;
-    "__add", arrow int (arrow int int);
+    "__add", arrow int (Types.node @@ arrow int int);
     "__not", cap (arrow true_type false_type) (arrow false_type true_type);
-    "head_int", arrow (cons int any) int;
+    "head_int", arrow (Types.node @@ cons int any) int;
   ]
 
 let initial = StrMap.of_list initial_values

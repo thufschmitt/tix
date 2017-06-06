@@ -35,6 +35,9 @@ type t =
   | Singleton of Singleton.t
   | Infix of Infix_constructors.t * t * t
   | Cons  of t * t
+  | TyBind of bindings * t
+
+and bindings = (string * t ) list
 
 let rec pp fmt = function
   | Var v -> Format.pp_print_string fmt v
@@ -47,7 +50,22 @@ let rec pp fmt = function
     Format.fprintf fmt "Cons(%a, %a)"
       pp t1
       pp t2
+  | TyBind (binds, t) ->
+    Format.fprintf fmt "%a where %a"
+      pp t
+      pp_bindings binds
   | Singleton s -> Singleton.pp fmt s
+
+and pp_bindings fmt =
+  Format.pp_print_list
+    ~pp_sep:(fun fmt () -> Format.pp_print_string fmt " and\n")
+    pp_binding
+    fmt
+
+and pp_binding fmt (name, typ) =
+  Format.fprintf fmt "%s = %a"
+    name
+    pp typ
 
 let show t =
   let () = pp Format.str_formatter t in
