@@ -104,8 +104,17 @@ and typ_conj i =
 and typ_atom input =
   ((ident => fun t -> Type_annotations.Var t)
    <|>
+   typ_const
+   <|>
    in_parens typ)
     input
+
+and typ_const i =
+  i |>
+  (any >>= function
+    | BOOL b -> return @@ Type_annotations.Var (string_of_bool b)
+    | _ -> mzero
+  )
 
 and typ_cons input =
   (exactly CONS_KW >>
