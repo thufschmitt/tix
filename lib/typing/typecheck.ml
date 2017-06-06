@@ -2,6 +2,7 @@ module P = Simple.Ast
 module E = Typing_env
 module L = Parse.Location
 module TE = Types.Environment
+module W = L.With_loc
 
 module Pattern = Typecheck_pat
 
@@ -111,7 +112,36 @@ end = struct
         ~inferred:t2
         ~expected:Types.(Builtins.(cup (cons (node any) (node any)) nil));
       Types.Builtins.(cons (Types.node t1) (Types.node t2))
+    | P.Eite (e0, e1, e2) ->
+      if_then_else tenv env e0 e1 e2
+
     | _ -> (ignore (expr, env); assert false)
+
+  and if_then_else tenv env e0 e1 e2 =
+    let type_with_exfalso var typ e =
+      if Types.sub typ Types.Builtins.empty then
+        Types.Builtins.empty
+      else
+        expr tenv (E.add var typ env) e
+    and type_default () =
+      let t0 = expr tenv env e0
+      and t1 = expr tenv env e1
+      and t2 = expr tenv env e2
+      in
+      check_subtype
+        e0.L.With_loc.location
+        ~inferred:t0
+        ~expected:Types.Builtins.bool;
+      Types.Builtins.cup t1 t2
+    in
+    match W.description e0 with
+    | P.EfunApp ({ W.description = P.Evar "isInt"; _ },
+                 ({ W.description = P.Evar x; _ } as e_x)) ->
+      let t_x = expr tenv env e_x in
+      let t1 = type_with_exfalso x Types.Builtins.(cap t_x int) e1
+      and t2 = type_with_exfalso x Types.Builtins.(cap t_x (neg int)) e2
+      in Types.Builtins.cup t1 t2
+    | _ -> type_default ()
 end
 
 and Check : sig

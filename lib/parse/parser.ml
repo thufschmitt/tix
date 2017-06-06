@@ -18,6 +18,9 @@ type token =
   | LET_KW
   | IN_KW
   | WHERE_KW
+  | IF_KW
+  | THEN_KW
+  | ELSE_KW
   | DOLLAR_BRACE
   | BRACE_LR
   | BRACE_L
@@ -185,7 +188,7 @@ let pattern = pat_ident <|> pat_nontrivial
 (** {3 Expressions} *)
 let rec expr input =
   choice
-    [expr_fun; expr_let; expr_apply; expr_op; ] input
+    [expr_fun; expr_let; expr_apply; expr_op; expr_ite ] input
 
 and expr_fun input =
   (pattern >>= fun pat ->
@@ -279,6 +282,16 @@ and expr_apply input =
      e0
   )
     input
+
+and expr_ite i =
+  i |>
+  (exactly IF_KW >>
+   expr >>= fun e0 ->
+   exactly THEN_KW >>
+   expr >>= fun e1 ->
+   exactly ELSE_KW >>
+   expr =>  fun e2 ->
+     add_loc @@ P.Eite (e0, e1, e2))
 
 let toplevel = expr << (exactly EOF)
 

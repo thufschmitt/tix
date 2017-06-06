@@ -21,6 +21,7 @@ and expr_desc =
   | Elambda of lambda
   | EfunApp of expr * expr
   | EopApp of operator * expr list
+  | Eite of expr * expr * expr
   | Erecord of record
   | Ewith of expr * expr
   (* with e; e *)

@@ -23,6 +23,8 @@ let rec expr_desc : O.expr_desc -> N.expr_desc = function
   | O.EtyAnnot (e, t)  -> N.EtyAnnot (expr e, t)
   | O.EopApp (o, args) -> N.EopApp (operator o, List.map expr args)
   | O.Elet (binds, e) -> N.Elet (bindings binds, expr e)
+  | O.Eite (e0, e1, e2) -> N.Eite (expr e0, expr e1, expr e2)
+  (* TODO: smarter compilation of some form of if-then-else *)
   | _ -> failwith "Not implemented"
 
 and bindings b = List.map binding b
