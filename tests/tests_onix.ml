@@ -55,4 +55,8 @@ let testsuite =
       "test_annot_singleton_int", "x /*: 1 */: x", "(x /*: 1 */: x)";
       "test_annot_singleton_true", "x /*: true */: x", "(x /*: true */: x)";
       "test_annot_singleton_false", "x /*: false */: x", "(x /*: false */: x)";
+      ("test_annot_cons", "x /*: Cons(1, nil) */: x",
+       "(x /*: Cons(1, nil) */: x)");
+      ("test_annot_list", "x /*: X where X = Cons(Int, X) | nil */: x",
+       "(x /*: X where X = (Cons(Int, X)) | nil */: x)")
     ]
