@@ -76,7 +76,7 @@ and expr_const = any >>= function
 
 (** {2 Type_annotations} *)
 let rec typ input =
-  (typ_where <|> typ_cons) input
+  typ_where input
 
 and typ_where i =
   i |>
@@ -126,6 +126,8 @@ and typ_atom input =
    (exactly QUESTION_MARK >> return @@ Type_annotations.Var "?")
    <|>
    typ_const
+   <|>
+   typ_cons
    <|>
    in_parens typ)
     input
