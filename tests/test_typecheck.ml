@@ -9,6 +9,14 @@ let parse tokens =
   | Some s -> Simple.Of_onix.expr s
   | None -> raise ParseError
 
+let typ s =
+  let maybe_t =
+    CCOpt.flat_map
+      (fun t -> Typing.(Annotations.to_type Types.Environment.default t))
+      (Parse.Parser.typ Parse.Lexer.read (Lexing.from_string s))
+  in
+  CCOpt.get_exn maybe_t
+
 let infer tenv env tokens =
   parse tokens
   |> Typing.(Typecheck.Infer.expr tenv env)
@@ -17,6 +25,7 @@ let check tenv env tokens expected_type =
   Typing.(Typecheck.Check.expr tenv env (parse tokens) expected_type)
 
 let test_infer_expr input expected_type _ =
+  let expected_type = typ expected_type in
   let typ =
     let open Typing in
     infer Types.Environment.default
@@ -30,6 +39,7 @@ let test_infer_expr input expected_type _ =
     typ
 
 let test_check input expected_type _=
+  let expected_type = typ expected_type in
   let tast =
     let open Typing in
     check
@@ -61,6 +71,7 @@ let test_infer_expr_fail input =
     (Lexing.from_string input)
 
 let test_check_fail input expected_type =
+  let expected_type = typ expected_type in
   test_fail @@ fun () ->
   let open Typing in
   check
@@ -76,44 +87,34 @@ let testsuite =
   [
     (* ----- Positive tests ----- *)
     "infer_var">::test_var;
-    "infer_const_int">:: test_infer_expr "1" one_singleton;
-    "infer_const_bool">:: test_infer_expr "true" T.Builtins.true_type;
+    "infer_const_int">:: test_infer_expr "1" "1";
+    "infer_const_bool">:: test_infer_expr "true" "true";
     "infer_builtins_not">:: test_infer_expr "__not"
-      T.Builtins.(cap
-                    (arrow true_type false_type)
-                    (arrow false_type true_type));
-    "infer_lambda">:: test_infer_expr "x /*: Int */: 1"
-      (T.Builtins.(arrow int one_singleton));
-    "infer_lambda_var">:: test_infer_expr "x /*: Int */: x"
-      (T.Builtins.(arrow int int));
-    "infer_apply">:: test_infer_expr "(x /*: Int */: x) 1" T.Builtins.int;
+      "((true -> false) & (false -> true))";
+    "infer_lambda">:: test_infer_expr "x /*: Int */: 1" "Int -> 1";
+    "infer_lambda_var">:: test_infer_expr "x /*: Int */: x" "Int -> Int";
+    "infer_apply">:: test_infer_expr "(x /*: Int */: x) 1" "Int";
     "infer_arrow_annot">:: test_infer_expr
       "x /*: Int -> Int */: x"
-      T.Builtins.(arrow (arrow int int) (arrow int int));
-    "infer_let_1">:: test_infer_expr "let x = 1; in x" one_singleton;
-    "infer_let_2">:: test_infer_expr "let x /*:Int*/ = 1; in x"
-      T.Builtins.int;
-    "infer_let_3">:: test_infer_expr "let x /*:Int*/ = 1; y = x; in y"
-      T.Builtins.int;
-    "infer_let_4">:: test_infer_expr "let x = 1; y = x; in y"
-      T.Builtins.grad;
-    "infer_let_5">:: test_infer_expr "let x = x; in x"
-      T.Builtins.grad;
+      "(Int -> Int) -> Int -> Int";
+    "infer_let_1">:: test_infer_expr "let x = 1; in x" "1";
+    "infer_let_2">:: test_infer_expr "let x /*:Int*/ = 1; in x" "Int";
+    "infer_let_3">:: test_infer_expr "let x /*:Int*/ = 1; y = x; in y" "Int";
+    "infer_let_4">:: test_infer_expr "let x = 1; y = x; in y" "?";
+    "infer_let_5">:: test_infer_expr "let x = x; in x" "?";
     "infer_let_6">:: test_infer_expr "let x /*: Int -> Int */ = y: y; in x"
-      T.Builtins.(arrow int int);
+      "Int -> Int";
     "infer_let_7">:: test_infer_expr "let x /*: Int -> Int -> Int */ = \
                                       y: y: y; in x"
-      T.Builtins.(arrow int (arrow int int));
-    "infer_shadowing">:: test_infer_expr
-      "let x = true; in let x = 1; in x"
-      one_singleton;
+      "Int -> Int -> Int";
+    "infer_shadowing">:: test_infer_expr "let x = true; in let x = 1; in x" "1";
     "infer_union">:: test_infer_expr "x /*: Int | Bool */: x"
-      T.Builtins.(arrow (cup int bool) (cup int bool));
+      "(Int | Bool) -> (Int | Bool)";
     "infer_intersection">:: test_infer_expr "x /*: Int & Int */: x"
-      T.Builtins.(arrow int int);
-    "test_not_true">:: test_infer_expr "__not true" T.Builtins.false_type;
-    "test_list">:: test_infer_expr "[1 true false]"
-      T.Builtins.(cons one_singleton (cons true_type (cons false_type nil)));
+      "Int -> Int";
+    "test_not_true">:: test_infer_expr "__not true" "false";
+    (* "test_list">:: test_infer_expr "[1 true false]" *)
+    (*   "Cons (1, Cons(true, Cons(false, nil)))"); *)
 
     (* ----- Negative tests ----- *)
     "infer_fail_unbound_var">:: test_infer_expr_fail "x";
@@ -123,21 +124,20 @@ let testsuite =
     "infer_fail_notalist">:: test_infer_expr_fail "Cons (1, 2)";
 
     (* ------ positive check ----- *)
-    "check_const_one">:: test_check "1" one_singleton;
-    "check_const_int">:: test_check "1" T.Builtins.int;
-    "check_const_union">:: test_check "1" T.Builtins.(cup one_singleton bool);
-    "check_arrow_1">:: test_check "x: x" T.Builtins.(arrow int int);
-    "check_arrow_2">:: test_check "x: x" T.Builtins.(arrow one_singleton int);
+    "check_const_one">:: test_check "1" "1";
+    "check_const_int">:: test_check "1" "Int";
+    "check_const_union">:: test_check "1" "1 | Bool";
+    "check_arrow_1">:: test_check "x: x" "Int -> Int";
+    "check_arrow_2">:: test_check "x: x" "1 -> Int";
     "check_intersect_arrow">:: test_check "x: x"
-      T.Builtins.(cap (arrow int int) (arrow bool bool));
-    "check_let">:: test_check "let x = 1; in y: y"
-      T.Builtins.(arrow int int);
+      "(Int -> Int) & (Bool -> Bool)";
+    "check_let">:: test_check "let x = 1; in y: y" "Int -> Int";
 
     (* ------ negative check ----- *)
-    "check_fail_const_int">:: test_check_fail "1" T.Builtins.bool;
-    "check_fail_unbound_var">:: test_check_fail "x" one_singleton;
+    "check_fail_const_int">:: test_check_fail "1" "Bool";
+    "check_fail_unbound_var">:: test_check_fail "x" "1";
     "check_fail_bad_intersect_arrow">:: test_check_fail "x: x"
-      T.Builtins.(cap (arrow int bool) (arrow bool int));
+      "(Int -> Bool) & (Bool -> Int)";
     "check_fail_inside_let">:: test_check_fail "let x = y: y; in x"
-      T.Builtins.(arrow int int);
+      "Int -> Int";
   ]

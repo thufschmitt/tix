@@ -123,6 +123,8 @@ and typ_conj i =
 and typ_atom input =
   ((ident => fun t -> Type_annotations.Var t)
    <|>
+   (exactly QUESTION_MARK >> return @@ Type_annotations.Var "?")
+   <|>
    typ_const
    <|>
    in_parens typ)
