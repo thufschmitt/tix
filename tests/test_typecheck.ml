@@ -113,8 +113,8 @@ let testsuite =
     "infer_intersection">:: test_infer_expr "x /*: Int & Int */: x"
       "Int -> Int";
     "test_not_true">:: test_infer_expr "__not true" "false";
-    (* "test_list">:: test_infer_expr "[1 true false]" *)
-    (*   "Cons (1, Cons(true, Cons(false, nil)))"); *)
+    "test_list">:: test_infer_expr "[1 true false]"
+      "Cons (1, Cons(true, Cons(false, nil)))";
     "infer_type_where_1">:: test_infer_expr "x /*: X where X = Int */: x"
       "Int -> Int";
     "infer_type_where_2">:: test_infer_expr "x /*: Int where X = Int */: x"
