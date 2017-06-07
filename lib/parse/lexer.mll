@@ -18,6 +18,9 @@ rule read =
   | "inherit" { INHERIT_KW }
   | "let" { LET_KW }
   | "where" { WHERE_KW }
+  | "if" { IF_KW}
+  | "then" { THEN_KW }
+  | "else" { ELSE_KW }
   | "in" { IN_KW }
   | "Cons" { CONS_KW }
   | number { INTEGER (int_of_string @@ Lexing.lexeme lexbuf)}

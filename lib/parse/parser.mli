@@ -15,6 +15,9 @@ type token =
   | LET_KW
   | IN_KW
   | WHERE_KW
+  | IF_KW
+  | THEN_KW
+  | ELSE_KW
   | DOLLAR_BRACE
   | BRACE_LR
   | BRACE_L

@@ -32,6 +32,9 @@ let initial_values =
     "__add", arrow int (Types.node @@ arrow int int);
     "__not", cap (arrow true_type false_type) (arrow false_type true_type);
     "head_int", arrow (Types.node @@ cons int any) int;
+    "isInt", cap
+      (arrow int true_type)
+      (arrow (Types.node Types.Builtins.(neg int)) false_type);
   ]
 
 let initial = StrMap.of_list initial_values

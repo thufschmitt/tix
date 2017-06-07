@@ -58,6 +58,7 @@ module Builtins : sig
   val arrow : Node.t -> Node.t -> t
   val cup   : t -> t -> t
   val cap   : t -> t -> t
+  val neg   : t -> t
 end
 = struct
   include C.Builtin_defs
@@ -75,6 +76,7 @@ end
 
   let cup = C.Types.cup
   let cap = C.Types.cap
+  let neg = C.Types.neg
 end
 
 module Singleton = struct
