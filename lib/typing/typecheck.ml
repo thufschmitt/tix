@@ -1,7 +1,8 @@
 module P = Simple.Ast
 module E = Typing_env
 module L = Parse.Location
-module TE = Types.Environment
+module T = Types
+module TE = T.Environment
 module W = L.With_loc
 
 module Pattern = Typecheck_pat
@@ -118,29 +119,56 @@ end = struct
     | _ -> (ignore (expr, env); assert false)
 
   and if_then_else tenv env e0 e1 e2 =
+    (* [type_with_exfalso var typ e] types [e] using current env + the
+     * hypothesis [var:typ], and an exfalso rule stating that if [typ] is
+     * [empty], then [e] can be given any type -- and in particular [empty] *)
     let type_with_exfalso var typ e =
-      if Types.sub typ Types.Builtins.empty then
+      if Types.equiv typ Types.Builtins.empty then
         Types.Builtins.empty
       else
         expr tenv (E.add var typ env) e
-    and type_default () =
-      let t0 = expr tenv env e0
-      and t1 = expr tenv env e1
-      and t2 = expr tenv env e2
+    in
+    let type_default () =
+      let t0 = expr tenv env e0 in
+      let t1 = type_with_exfalso "_" Types.Builtins.(cap t0 true_type) e1
+      and t2 = type_with_exfalso "_" Types.Builtins.(cap t0 false_type) e2
       in
       check_subtype
         e0.L.With_loc.location
         ~inferred:t0
         ~expected:Types.Builtins.bool;
       Types.Builtins.cup t1 t2
+    (* [get_discriminer t] returns [Some t1] if [t] is of the form
+       `(t1 -> true) & (not t1 -> false)`, and [None] otherwise. *)
+    and get_discriminer typ =
+      if T.sub typ T.Builtins.(arrow (T.node empty) (T.node any)) then
+        let (_, arrows) = Cduce_lib.Types.Arrow.get typ in
+        match arrows with
+        | [[ (t1, b1); (t2, b2) ]]
+          when T.equiv b1 T.Builtins.true_type &&
+               T.equiv b2 T.Builtins.false_type
+               && T.equiv t2 (T.Builtins.neg t1)
+          -> Some t1
+        | [[ (t2, b2); (t1, b1) ]]
+          when T.equiv b1 T.Builtins.true_type &&
+               T.equiv b2 T.Builtins.false_type
+               && T.equiv t2 (T.Builtins.neg t1)
+          -> Some t1
+        | _ -> None
+      else None
     in
     match W.description e0 with
-    | P.EfunApp ({ W.description = P.Evar "isInt"; _ },
-                 ({ W.description = P.Evar x; _ } as e_x)) ->
-      let t_x = expr tenv env e_x in
-      let t1 = type_with_exfalso x Types.Builtins.(cap t_x int) e1
-      and t2 = type_with_exfalso x Types.Builtins.(cap t_x (neg int)) e2
-      in Types.Builtins.cup t1 t2
+    | P.EfunApp (f, ({ W.description = P.Evar x; _ } as e_x)) ->
+      let t_f = expr tenv env f in
+      begin
+        match get_discriminer t_f with
+        | Some t ->
+          let t_x = expr tenv env e_x in
+          let t1 = type_with_exfalso x Types.Builtins.(cap t_x t) e1
+          and t2 = type_with_exfalso x Types.Builtins.(cap t_x (neg t)) e2
+          in Types.Builtins.cup t1 t2
+        | None -> type_default ()
+      end
     | _ -> type_default ()
 end
 

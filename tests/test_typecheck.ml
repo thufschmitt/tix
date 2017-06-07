@@ -119,6 +119,15 @@ let testsuite =
       "Int -> Int";
     "infer_type_where_2">:: test_infer_expr "x /*: Int where X = Int */: x"
       "Int -> Int";
+    "infer_ite_classic">:: test_infer_expr
+      "let x /*: Bool */ = true; in if x then 1 else 2"
+      "1 | 2";
+    "infer_ite_dead_branch">:: test_infer_expr
+      "if true then 1 else __add 1 true"
+      "1";
+    "infer_ite_typecase_1">:: test_infer_expr
+      "let x /*: Int | Bool */ = 1; in if isInt x then x else __not x"
+      "Int | Bool";
 
     (* ----- Negative tests ----- *)
     "infer_fail_unbound_var">:: test_infer_expr_fail "x";
@@ -128,6 +137,13 @@ let testsuite =
     "infer_fail_notalist">:: test_infer_expr_fail "Cons (1, 2)";
     "infer_fail_where">:: test_infer_expr_fail
       "(x /*: X where X = Bool */: x) 1";
+    "infer_fail_ite_not_bool_cond">:: test_infer_expr_fail
+      "let x /*: Int | Bool */ = 1; in if x then 1 else 1";
+    "infer_fail_ite_no_refine_1">:: test_infer_expr_fail
+      "let x /*: Bool */ = true; in if x then __add x 1 else x";
+    "infer_fail_ite_no_refine_2">:: test_infer_expr_fail
+      "let f /*: Int -> Bool */ = x: true; x = 1; in \
+       if f x then __add x 1 else __not x";
 
     (* ------ positive check ----- *)
     "check_const_one">:: test_check "1" "1";
