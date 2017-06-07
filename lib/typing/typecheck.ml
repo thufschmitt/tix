@@ -72,6 +72,25 @@ let typeof_const = function
 let () = ()
 (* For some reason, ocp-indent don't work correctly if we don't put this here *)
 
+(* [get_discriminer t] returns [Some t1] if [t] is of the form
+   `(t1 -> true) & (not t1 -> false)`, and [None] otherwise. *)
+and get_discriminer typ =
+  if T.sub typ T.Builtins.(arrow (T.node empty) (T.node any)) then
+    let (_, arrows) = Cduce_lib.Types.Arrow.get typ in
+    match arrows with
+    | [[ (t1, b1); (t2, b2) ]]
+      when T.equiv b1 T.Builtins.true_type &&
+           T.equiv b2 T.Builtins.false_type
+           && T.equiv t2 (T.Builtins.neg t1)
+      -> Some t1
+    | [[ (t2, b2); (t1, b1) ]]
+      when T.equiv b1 T.Builtins.true_type &&
+           T.equiv b2 T.Builtins.false_type
+           && T.equiv t2 (T.Builtins.neg t1)
+      -> Some t1
+    | _ -> None
+  else None
+
 module rec Infer : sig
   val expr : TE.t -> E.t -> P.expr -> Types.t
 end = struct
@@ -116,7 +135,11 @@ end = struct
     | P.Eite (e0, e1, e2) ->
       if_then_else tenv env e0 e1 e2
 
-    | _ -> (ignore (expr, env); assert false)
+    | P.EaccessPath _
+    | P.EopApp (_,_)
+    | P.Erecord _
+    | P.Ewith (_,_)
+    | P.EtyAnnot (_,_) -> assert false
 
   and if_then_else tenv env e0 e1 e2 =
     (* [type_with_exfalso var typ e] types [e] using current env + the
@@ -138,24 +161,6 @@ end = struct
         ~inferred:t0
         ~expected:Types.Builtins.bool;
       Types.Builtins.cup t1 t2
-    (* [get_discriminer t] returns [Some t1] if [t] is of the form
-       `(t1 -> true) & (not t1 -> false)`, and [None] otherwise. *)
-    and get_discriminer typ =
-      if T.sub typ T.Builtins.(arrow (T.node empty) (T.node any)) then
-        let (_, arrows) = Cduce_lib.Types.Arrow.get typ in
-        match arrows with
-        | [[ (t1, b1); (t2, b2) ]]
-          when T.equiv b1 T.Builtins.true_type &&
-               T.equiv b2 T.Builtins.false_type
-               && T.equiv t2 (T.Builtins.neg t1)
-          -> Some t1
-        | [[ (t2, b2); (t1, b1) ]]
-          when T.equiv b1 T.Builtins.true_type &&
-               T.equiv b2 T.Builtins.false_type
-               && T.equiv t2 (T.Builtins.neg t1)
-          -> Some t1
-        | _ -> None
-      else None
     in
     match W.description e0 with
     | P.EfunApp (f, ({ W.description = P.Evar x; _ } as e_x)) ->
@@ -209,7 +214,47 @@ end = struct
         (a_op expected_arrow)
     | P.Elet (binds, e) ->
       Common.let_binding expr tenv env binds e expected
-    | _ -> assert false
+    | P.Eite (e0, e1, e2) ->
+      if_then_else tenv env e0 e1 e2 expected
+    | P.EfunApp (e1, e2) ->
+      let t1 = Infer.expr tenv env e2 in
+      expr tenv env e1 Types.(Builtins.arrow (node t1) (node expected))
+    | P.EaccessPath _
+    | P.EopApp (_,_)
+    | P.Erecord _
+    | P.Ewith (_,_)
+    | P.EtyAnnot (_,_) -> assert false
+
+  and if_then_else tenv env e0 e1 e2 expected =
+    (* [check_with_exfalso var typ e expected] checks [e] against the type
+     * [expected] using current env + the hypothesis [var:typ], and an exfalso
+     * rule stating that if [typ] is [empty], then [e] can be given any type --
+     * and in particular [empty] *)
+    let check_with_exfalso var typ e expected =
+      if not @@ Types.equiv typ Types.Builtins.empty then
+        expr tenv (E.add var typ env) e expected;
+    in
+    let default () =
+      let t0 = Infer.expr tenv env e0 in
+      check_subtype
+        (L.With_loc.loc e0)
+        ~inferred:t0
+        ~expected:T.Builtins.bool;
+      check_with_exfalso "_" T.Builtins.(cap t0 true_type) e1 expected;
+      check_with_exfalso "_" T.Builtins.(cap t0 false_type) e2 expected
+    in
+    match L.With_loc.description e0 with
+    | P.EfunApp (f, ({ W.description = P.Evar x; _ } as e_x)) ->
+      let t_f = Infer.expr tenv env f in
+      begin
+        match get_discriminer t_f with
+        | Some t ->
+          let t_x = Infer.expr tenv env e_x in
+          check_with_exfalso x Types.Builtins.(cap t_x t) e1 expected;
+          check_with_exfalso x Types.Builtins.(cap t_x (neg t)) e2 expected
+        | None -> default ()
+      end
+    | _ -> default ()
 end
 
 and Common : sig

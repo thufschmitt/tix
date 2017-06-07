@@ -154,6 +154,15 @@ let testsuite =
     "check_intersect_arrow">:: test_check "x: x"
       "(Int -> Int) & (Bool -> Bool)";
     "check_let">:: test_check "let x = 1; in y: y" "Int -> Int";
+    "check_ite">:: test_check
+      "let x /*: Bool */ = true; in if x then 1 else 2"
+      "Int";
+    "check_ite_refine">:: test_check
+      "let x /*: Int | Bool */ = 1; in if isInt x then __add x 1 else true"
+      "Int | true";
+    "check_ite_dead_branch">:: test_check
+      "let x = true; in if x then true else false"
+      "true";
 
     (* ------ negative check ----- *)
     "check_fail_const_int">:: test_check_fail "1" "Bool";
@@ -162,4 +171,7 @@ let testsuite =
       "(Int -> Bool) & (Bool -> Int)";
     "check_fail_inside_let">:: test_check_fail "let x = y: y; in x"
       "Int -> Int";
+    "check_fail_ite_not_bool">:: test_check_fail
+      "if 1 then 1 else 1"
+      "Int";
   ]
