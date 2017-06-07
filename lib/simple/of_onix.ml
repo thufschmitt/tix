@@ -14,6 +14,10 @@ let map_loc : ('a -> 'b) -> 'a Loc.With_loc.t -> 'b Loc.With_loc.t = fun f l ->
 
 let operator : O.operator -> N.operator = function
   | O.Ocons -> N.Ocons
+  | O.Oeq   -> N.Oeq
+  | O.Oneg  -> N.Oneg
+  | O.Oplus -> N.Oplus
+  | O.Ominus-> N.Ominus
 
 let rec expr_desc : O.expr_desc -> N.expr_desc = function
   | O.Evar s -> N.Evar s

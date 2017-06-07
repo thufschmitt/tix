@@ -26,6 +26,8 @@ rule read =
   | number { INTEGER (int_of_string @@ Lexing.lexeme lexbuf)}
   | boolean { BOOL (bool_of_string @@ Lexing.lexeme lexbuf) }
   | '.' { DOT }
+  | '-' { MINUS }
+  | '+' { PLUS }
   | ',' { COMMA }
   | ':' { COLON }
   | ';' { SEMICOLON }
@@ -41,6 +43,7 @@ rule read =
   | "->" { ARROW_R }
   | '?' { QUESTION_MARK }
   | '=' { EQUAL }
+  | "==" { DBL_EQUAL }
   | '@' { AROBASE }
   | '&' { AMPERSAND }
   | '|' { PIPE }

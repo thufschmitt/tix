@@ -12,6 +12,10 @@ let kwd   = F.pp_print_string
 
 let pp_op fmt = function
   | P.Ocons -> F.pp_print_string fmt "Cons"
+  | P.Oeq   -> F.pp_print_string fmt "=="
+  | P.Oneg  -> F.pp_print_string fmt "-"
+  | P.Oplus  -> F.pp_print_string fmt "+"
+  | P.Ominus -> F.pp_print_string fmt "-"
 
 let const fmt = function
   | P.Cbool b -> F.pp_print_bool fmt b

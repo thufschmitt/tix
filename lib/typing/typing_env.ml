@@ -30,6 +30,7 @@ let initial_values =
   [
     "nil", nil;
     "__add", arrow int (Types.node @@ arrow int int);
+    "__sub", arrow int (Types.node @@ arrow int int);
     "__not", cap (arrow true_type false_type) (arrow false_type true_type);
     "head_int", arrow (Types.node @@ cons int any) int;
     "isInt", cap

@@ -6,6 +6,10 @@ type 'a with_loc = 'a Location.With_loc.t
 
 type operator =
   | Ocons
+  | Oeq
+  | Oneg
+  | Oplus
+  | Ominus
 
 type expr = expr_desc with_loc
 
