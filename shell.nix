@@ -90,7 +90,13 @@ stdenv.mkDerivation rec {
     cmdliner
   ];
 
-  src = ./.;
+  src = builtins.filterSource (name: type:
+    let baseName = baseNameOf (toString name); in !(
+    (type == "directory" && (baseName == ".git" ||
+                             baseName == "_build" ||
+                             baseName == "_obuild" ||
+                             baseName == ".merlin" ||
+                             lib.hasSuffix ".install" baseName))
+    ))
+  ./.;
 }
-
-
