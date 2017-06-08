@@ -7,8 +7,11 @@ type token =
   | SEMICOLON
   | COMMA
   | DOT
+  | MINUS
+  | PLUS
   | AROBASE
   | EQUAL
+  | DBL_EQUAL
   | OR_KW
   | REC_KW
   | INHERIT_KW

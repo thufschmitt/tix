@@ -18,6 +18,10 @@ let const fmt = function
 
 let pp_op fmt = function
   | P.Ocons -> F.pp_print_string fmt "Cons"
+  | P.Oeq   -> F.pp_print_string fmt "+"
+  | P.Oneg  -> F.pp_print_string fmt "-"
+  | P.Oplus  -> F.pp_print_string fmt "+"
+  | P.Ominus -> F.pp_print_string fmt "-"
 
 let rec pp_expr fmt = drop_loc %> function
     | P.Evar v ->

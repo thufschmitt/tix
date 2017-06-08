@@ -123,23 +123,66 @@ end = struct
         typeError e.L.With_loc.location "Invalid function application"
     | P.Elet (binds, e) ->
       Common.let_binding expr tenv env binds e
-    | P.EopApp (P.Ocons, [e1; e2]) ->
-      let t1 = expr tenv env e1
-      and t2 = expr tenv env e2
-      in
-      check_subtype
-        e.L.With_loc.location
-        ~inferred:t2
-        ~expected:Types.(Builtins.(cup (cons (node any) (node any)) nil));
-      Types.Builtins.(cons (Types.node t1) (Types.node t2))
+    | P.EopApp (op, args) ->
+      operator tenv env e.L.With_loc.location op args
     | P.Eite (e0, e1, e2) ->
       if_then_else tenv env e0 e1 e2
 
     | P.EaccessPath _
-    | P.EopApp (_,_)
     | P.Erecord _
     | P.Ewith (_,_)
     | P.EtyAnnot (_,_) -> assert false
+
+  and operator tenv env loc op args = match op, args with
+    | P.Ocons, [e1; e2] ->
+      let t1 = expr tenv env e1
+      and t2 = expr tenv env e2
+      in
+      check_subtype
+        loc
+        ~inferred:t2
+        ~expected:Types.(Builtins.(cup (cons (node any) (node any)) nil));
+      Types.Builtins.(cons (Types.node t1) (Types.node t2))
+    | P.Oeq, [e1; e2] ->
+      let t1 = expr tenv env e1
+      and t2 = expr tenv env e2
+      in
+      ignore t1; ignore t2;
+      Types.Builtins.bool
+    | P.Oneg, [e] ->
+      let t = expr tenv env e in
+      check_subtype
+        loc
+        ~inferred:t
+        ~expected:Types.Builtins.int;
+      let ivl = Cduce_lib.Types.Int.get t in
+      let negated_ivl =
+        Cduce_lib.Types.VarIntervals.compute
+          ~empty:Cduce_lib.Intervals.empty
+          ~full:Cduce_lib.Intervals.full
+          ~cup:Cduce_lib.Intervals.cup
+          ~cap:Cduce_lib.Intervals.cap
+          ~diff:Cduce_lib.Intervals.diff
+          ~atom:(function
+              | `Atm i -> Cduce_lib.Intervals.negat i
+              | `Var _ -> assert false (* XXX: What are those vars ? *))
+          ivl
+      in Cduce_lib.Types.interval negated_ivl
+    | P.Oplus, [e1; e2]
+    | P.Ominus, [e1; e2]
+      ->
+      let t1 = expr tenv env e1
+      and t2 = expr tenv env e2
+      in
+      check_subtype loc ~inferred:t1 ~expected:T.Builtins.int;
+      check_subtype loc ~inferred:t2 ~expected:T.Builtins.int;
+      T.Builtins.int
+    | P.Oplus, _
+    | P.Ominus, _
+    | P.Ocons, _
+    | P.Oeq, _
+    | P.Oneg, _
+      -> assert false
 
   and if_then_else tenv env e0 e1 e2 =
     (* [type_with_exfalso var typ e] types [e] using current env + the
@@ -219,11 +262,75 @@ end = struct
     | P.EfunApp (e1, e2) ->
       let t1 = Infer.expr tenv env e2 in
       expr tenv env e1 Types.(Builtins.arrow (node t1) (node expected))
+    | P.EopApp (op, args) ->
+      operator tenv env (L.With_loc.loc e) op args expected
     | P.EaccessPath _
-    | P.EopApp (_,_)
     | P.Erecord _
     | P.Ewith (_,_)
     | P.EtyAnnot (_,_) -> assert false
+
+  and operator tenv env loc op args expected =
+    match op, args with
+    | P.Ocons, [e1; e2] ->
+      let products = Cduce_lib.Types.Product.get expected in
+      if
+        CCList.for_all
+          (fun (t1, t2) ->
+             try
+               expr tenv env e1 t1;
+               expr tenv env e2 t2;
+               false
+             with
+               TypeError _ -> true
+          )
+          products
+      then
+        typeError loc "Can't type this list with type %s" @@ T.show expected
+    | P.Oeq, [e1; e2] ->
+      check_subtype
+        loc
+        ~inferred:expected
+        ~expected:Types.Builtins.bool;
+      if T.equiv expected Types.Builtins.true_type then
+        typeError loc "Can't check thas this equality always holds"
+      else if T.equiv expected Types.Builtins.false_type then
+        typeError loc "Can't check thas this equality never holds";
+      let t1 = Infer.expr tenv env e1
+      and t2 = Infer.expr tenv env e2
+      in
+      ignore (t1, t2)
+    | P.Oneg, [e] ->
+      check_subtype
+        loc
+        ~inferred:expected
+        ~expected:Types.Builtins.int;
+      (* We just check that [e] has type [-expected] *)
+      let ivl = Cduce_lib.Types.Int.get expected in
+      let negated_ivl =
+        Cduce_lib.Types.VarIntervals.compute
+          ~empty:Cduce_lib.Intervals.empty
+          ~full:Cduce_lib.Intervals.full
+          ~cup:Cduce_lib.Intervals.cup
+          ~cap:Cduce_lib.Intervals.cap
+          ~diff:Cduce_lib.Intervals.diff
+          ~atom:(function
+              | `Atm i -> Cduce_lib.Intervals.negat i
+              | `Var _ -> assert false (* XXX: What are those vars ? *))
+          ivl
+      in
+      expr tenv env e (Cduce_lib.Types.interval negated_ivl)
+    | P.Oplus, [e1; e2]
+    | P.Ominus, [e1; e2] ->
+      check_subtype
+        loc
+        ~inferred:expected
+        ~expected:T.Builtins.int;
+      ignore @@ List.map (fun e -> expr tenv env e T.Builtins.int) [e1; e2]
+    | P.Oplus, _
+    | P.Ominus, _
+    | P.Oneg, _
+    | P.Oeq, _ -> assert false
+    | P.Ocons, _ -> assert false
 
   and if_then_else tenv env e0 e1 e2 expected =
     (* [check_with_exfalso var typ e expected] checks [e] against the type

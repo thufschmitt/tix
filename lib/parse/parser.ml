@@ -10,8 +10,11 @@ type token =
   | SEMICOLON
   | COMMA
   | DOT
+  | MINUS
+  | PLUS
   | AROBASE
   | EQUAL
+  | DBL_EQUAL
   | OR_KW
   | REC_KW
   | INHERIT_KW
@@ -188,7 +191,7 @@ let pattern = pat_ident <|> pat_nontrivial
 (** {3 Expressions} *)
 let rec expr input =
   choice
-    [expr_fun; expr_let; expr_apply; expr_op; expr_ite ] input
+    [expr_fun; expr_let; expr_infix; expr_apply; expr_op; expr_ite ] input
 
 and expr_fun input =
   (pattern >>= fun pat ->
@@ -215,6 +218,24 @@ and binding input =
    expr => fun value ->
      P.BstaticDef ((name, annot), value))
     input
+
+and expr_infix i =
+  i |>
+  (choice
+     [
+       (exactly MINUS >> expr_infix => fun e ->
+            add_loc @@ P.EopApp (P.Oneg, [e]));
+       (expr_apply >>= fun e1 ->
+        exactly DBL_EQUAL >> expr_infix => fun e2 ->
+            add_loc @@ P.EopApp (P.Oeq, [e1; e2]));
+       (expr_apply >>= fun e1 ->
+        exactly PLUS >> expr_infix => fun e2 ->
+            add_loc @@ P.EopApp (P.Oplus, [e1; e2]));
+       (expr_apply >>= fun e1 ->
+        exactly MINUS >> expr_infix => fun e2 ->
+            add_loc @@ P.EopApp (P.Ominus, [e1; e2]));
+       expr_apply;
+     ])
 
 and expr_atom input =
   (choice
