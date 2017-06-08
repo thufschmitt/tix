@@ -67,7 +67,15 @@ let typeof_const = function
   | P.Cint  i ->
     Types.Builtins.interval
       (Types.Intervals.singleton_of_int i)
-  | P.Cstring _  -> assert false
+  | P.Cstring s ->
+    (* Cduce strings are lists of chars, we can keep it the same *)
+    CCString.fold
+      (fun accu char -> T.Builtins.cons
+          (T.node @@ Cduce_lib.Types.char
+             (Cduce_lib.Chars.(atom @@ V.mk_char char)))
+          (T.node accu))
+      T.Builtins.nil
+      (CCString.rev s)
 
 let () = ()
 (* For some reason, ocp-indent don't work correctly if we don't put this here *)

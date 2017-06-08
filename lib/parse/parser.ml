@@ -145,6 +145,7 @@ and typ_const i =
   (any >>= function
     | BOOL b -> return @@ Type_annotations.(Singleton (Singleton.Bool b))
     | INTEGER i -> return @@ Type_annotations.(Singleton (Singleton.Int i))
+    | STRING s -> return @@ Type_annotations.(Singleton (Singleton.String s))
     | _ -> mzero
   )
 
