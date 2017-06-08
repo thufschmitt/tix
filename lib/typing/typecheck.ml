@@ -262,11 +262,75 @@ end = struct
     | P.EfunApp (e1, e2) ->
       let t1 = Infer.expr tenv env e2 in
       expr tenv env e1 Types.(Builtins.arrow (node t1) (node expected))
+    | P.EopApp (op, args) ->
+      operator tenv env (L.With_loc.loc e) op args expected
     | P.EaccessPath _
-    | P.EopApp (_,_)
     | P.Erecord _
     | P.Ewith (_,_)
     | P.EtyAnnot (_,_) -> assert false
+
+  and operator tenv env loc op args expected =
+    match op, args with
+    | P.Ocons, [e1; e2] ->
+      let products = Cduce_lib.Types.Product.get expected in
+      if
+        CCList.for_all
+          (fun (t1, t2) ->
+             try
+               expr tenv env e1 t1;
+               expr tenv env e2 t2;
+               false
+             with
+               TypeError _ -> true
+          )
+          products
+      then
+        typeError loc "Can't type this list with type %s" @@ T.show expected
+    | P.Oeq, [e1; e2] ->
+      check_subtype
+        loc
+        ~inferred:expected
+        ~expected:Types.Builtins.bool;
+      if T.equiv expected Types.Builtins.true_type then
+        typeError loc "Can't check thas this equality always holds"
+      else if T.equiv expected Types.Builtins.false_type then
+        typeError loc "Can't check thas this equality never holds";
+      let t1 = Infer.expr tenv env e1
+      and t2 = Infer.expr tenv env e2
+      in
+      ignore (t1, t2)
+    | P.Oneg, [e] ->
+      check_subtype
+        loc
+        ~inferred:expected
+        ~expected:Types.Builtins.int;
+      (* We just check that [e] has type [-expected] *)
+      let ivl = Cduce_lib.Types.Int.get expected in
+      let negated_ivl =
+        Cduce_lib.Types.VarIntervals.compute
+          ~empty:Cduce_lib.Intervals.empty
+          ~full:Cduce_lib.Intervals.full
+          ~cup:Cduce_lib.Intervals.cup
+          ~cap:Cduce_lib.Intervals.cap
+          ~diff:Cduce_lib.Intervals.diff
+          ~atom:(function
+              | `Atm i -> Cduce_lib.Intervals.negat i
+              | `Var _ -> assert false (* XXX: What are those vars ? *))
+          ivl
+      in
+      expr tenv env e (Cduce_lib.Types.interval negated_ivl)
+    | P.Oplus, [e1; e2]
+    | P.Ominus, [e1; e2] ->
+      check_subtype
+        loc
+        ~inferred:expected
+        ~expected:T.Builtins.int;
+      ignore @@ List.map (fun e -> expr tenv env e T.Builtins.int) [e1; e2]
+    | P.Oplus, _
+    | P.Ominus, _
+    | P.Oneg, _
+    | P.Oeq, _ -> assert false
+    | P.Ocons, _ -> assert false
 
   and if_then_else tenv env e0 e1 e2 expected =
     (* [check_with_exfalso var typ e expected] checks [e] against the type

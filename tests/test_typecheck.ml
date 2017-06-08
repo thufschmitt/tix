@@ -163,6 +163,11 @@ let testsuite =
     "check_ite_dead_branch">:: test_check
       "let x = true; in if x then true else false"
       "true";
+    "check_cons">:: test_check "[1]" "Cons(1, nil)";
+    "check_cons_union">:: test_check "[1]" "Cons(1, nil) | Cons(Bool, nil)";
+    "check_add">::test_check "1 + 1" "Int";
+    "check_minus">::test_check "1 - 1" "Int";
+    "check_unary_minus">::test_check "- (-1)" "1";
 
     (* ------ negative check ----- *)
     "check_fail_const_int">:: test_check_fail "1" "Bool";
@@ -174,4 +179,7 @@ let testsuite =
     "check_fail_ite_not_bool">:: test_check_fail
       "if 1 then 1 else 1"
       "Int";
+    "check_fail_cons">:: test_check_fail "[1]" "Cons(Bool, nil)";
+    "check_fail_cons_length">:: test_check_fail "[1]" "Cons(1, Cons(1, nil))";
+    "check_fail_unary_minus">:: test_check_fail "-1" "1";
   ]
