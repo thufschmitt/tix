@@ -46,6 +46,8 @@ rule read =
   | ']' { BRACKET_R }
   | "/*:" { TY_START }
   | "*/" { TY_END }
+  | "/*" { comment lexbuf; read lexbuf }
+  | '#' { line_comment lexbuf; read lexbuf }
   | "->" { ARROW_R }
   | '?' { QUESTION_MARK }
   | '=' { EQUAL }
@@ -70,3 +72,14 @@ and string =
   | eof { failwith "Unterminated string"; }
   | '\"' { () }
   | _ { add_char (Lexing.lexeme_char lexbuf 0); string lexbuf }
+
+and comment =
+  parse
+  | eof { failwith "Unterminated comment"; }
+  | "*/" { () }
+  | _ { comment lexbuf }
+
+and line_comment =
+  parse
+  | newline { Lexing.new_line lexbuf }
+  | _ { line_comment lexbuf }
