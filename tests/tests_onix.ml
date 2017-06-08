@@ -58,5 +58,6 @@ let testsuite =
       ("test_annot_cons", "x /*: Cons(1, nil) */: x",
        "(x /*: Cons(1, nil) */: x)");
       ("test_annot_list", "x /*: X where X = Cons(Int, X) | nil */: x",
-       "(x /*: X where X = (Cons(Int, X)) | nil */: x)")
+       "(x /*: X where X = (Cons(Int, X)) | nil */: x)");
+      "test_string", "\"x\"", "\"x\"";
     ]

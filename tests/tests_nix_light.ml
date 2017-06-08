@@ -42,4 +42,5 @@ let testsuite =
        "Cons (1, Cons (2, Cons (3, nil)))",
        "Cons(1, Cons(2, Cons(3, nil)))");
       "test_list_sugar", "[1 2 3]", "Cons(1, Cons(2, Cons(3, nil)))";
+      "test_string", "\"x\"", "\"x\"";
     ]

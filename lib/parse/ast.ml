@@ -22,8 +22,6 @@ and expr_desc =
      x.y or e
   *)
   | Econstant of constant
-  | Estring of str
-  (* Not constant because of interpolation *)
   | Elambda of lambda
   | EfunApp of expr * expr
   | EopApp of operator * expr list
@@ -43,18 +41,12 @@ and ap_field = ap_field_desc with_loc
 
 and ap_field_desc =
   | AFidentifier of string
-  | AFstring of str
-  | AFinterpol of interpol
+  | AFexpr of expr
 
 and constant =
   | Cint of int
   | Cbool of bool
-
-and str = (str_element with_loc) list
-
-and str_element =
-  | Sconstant of string
-  | Sinterpol of interpol
+  | Cstring of string
 
 and lambda = pattern * expr
 

@@ -42,6 +42,7 @@ type token =
   | ID of string
   | BOOL of bool
   | INTEGER of int
+  | STRING of string
 
 (* A lexbuf used internally. Note that this makes the parser non reentrant, but
  * for now I don't care *)
@@ -78,6 +79,7 @@ let expr_ident = (ident => fun s -> add_loc @@ P.Evar s)
 and expr_const = any >>= function
   | INTEGER i -> return (add_loc @@ P.Econstant (P.Cint i))
   | BOOL b -> return (add_loc @@ P.Econstant (P.Cbool b))
+  | STRING s -> return (add_loc @@ P.Econstant (P.Cstring s))
   | _ -> mzero
 
 (** {2 Type_annotations} *)

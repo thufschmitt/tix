@@ -39,6 +39,7 @@ type token =
   | ID of string
   | BOOL of bool
   | INTEGER of int
+  | STRING of string
 
 (** Parse a nix expression. The type of the function is compatible with Menhir
    generated parsers *)

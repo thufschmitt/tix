@@ -1,5 +1,11 @@
 {
   open Parser
+
+let string_buffer = Buffer.create 128
+
+let reset_string_buffer () = Buffer.clear string_buffer
+let add_char = Buffer.add_char string_buffer
+let get_string () = Buffer.contents string_buffer
 }
 
 let white = [' ' '\t']+
@@ -48,6 +54,19 @@ rule read =
   | '&' { AMPERSAND }
   | '|' { PIPE }
   | "${" { DOLLAR_BRACE }
+  | '\"' {
+      let string_start = lexbuf.Lexing.lex_start_p in
+      reset_string_buffer ();
+      string lexbuf;
+      lexbuf.Lexing.lex_start_p <- string_start;
+      STRING (get_string ())
+    }
   | id { ID (Lexing.lexeme lexbuf ) }
   | eof { EOF }
   | _ { failwith "unknown token" }
+
+and string =
+  parse
+  | eof { failwith "Unterminated string"; }
+  | '\"' { () }
+  | _ { add_char (Lexing.lexeme_char lexbuf 0); string lexbuf }
