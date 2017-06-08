@@ -1,5 +1,10 @@
-let typecheck_chan chan =
-  let ast = match Parse.(Parser.onix Lexer.read (Lexing.from_channel chan)) with
+let typecheck_chan fname chan =
+  let lexbuf = Lexing.from_channel chan in
+  lexbuf.Lexing.lex_curr_p <- {
+    lexbuf.Lexing.lex_curr_p with
+    pos_fname = fname;
+  };
+  let ast = match Parse.(Parser.onix Lexer.read lexbuf) with
     | Some s -> Simple.Of_onix.expr s
     | None -> assert false
   in
@@ -12,9 +17,20 @@ let typecheck_chan chan =
   Typing.Types.pp Format.std_formatter t;
   Format.print_newline ()
 
-let typecheck_file = function
-  | "-" -> typecheck_chan stdin
-  | fname -> CCIO.with_in fname typecheck_chan
+let typecheck_file name =
+  try
+    begin
+      match name with
+      | "-" -> typecheck_chan "-" stdin
+      | fname -> CCIO.with_in fname (typecheck_chan fname)
+    end
+  with
+    Typing.Typecheck.TypeError (loc, msg) ->
+    Format.eprintf "error: %s, at %a\n"
+      msg
+      Parse.Location.pp loc;
+    Format.pp_print_flush Format.err_formatter ();
+    exit 1
 
 open Cmdliner
 

@@ -13,7 +13,7 @@ let mk pos_start pos_end = {
 
 let pp_position fmt pos =
   let open Lexing in
-  Format.fprintf fmt "[%s:%d:%d]"
+  Format.fprintf fmt "%s:%d:%d"
     pos.pos_fname
     pos.pos_lnum
     (pos.pos_cnum - pos.pos_bol)
