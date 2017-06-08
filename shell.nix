@@ -2,16 +2,7 @@
   nixpkgs ? <nixpkgs>, system ? builtins.currentSystem
 }:
 with import nixpkgs { inherit system; };
-let ocaml_wrapped =
-  pkgs.symlinkJoin {
-    name = "ocaml-wrapped";
-    paths = [ pkgs.ocamlPackages.ocaml ];
-    buildInputs = [ makeWrapper ];
-    postBuild = ''
-      wrapProgram $out/bin/ocaml \
-      --add-flags "-I ${ocamlPackages.findlib}/lib/ocaml/${lib.getVersion ocamlPackages.ocaml}/site-lib"
-    '';
-  };
+let
   jbuilder = ocamlPackages.buildOcaml rec {
     name = "jbuilder-${version}";
     version = "1.0+beta9";
@@ -89,16 +80,13 @@ stdenv.mkDerivation rec {
   name = "onix";
   version = "0.0";
   propagatedBuildInputs = with ocamlPackages; [
+    ocaml
     findlib
-    camlp4
-    ocamlbuild ocaml_oasis
     ounit
-    ocaml_wrapped
     opal
     containers
     jbuilder
     cduce-lib
-    ppx_deriving
     cmdliner
   ];
 
