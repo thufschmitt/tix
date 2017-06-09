@@ -37,6 +37,8 @@ let space = P.spaces
 
 let any x = P.choice @@ List.map P.attempt x
 
+let keyword k = P.string k << P.not_followed_by P.alphanum ""
+
 (* XXX: This isn't the real definition of an ident *)
 let ident = space >> P.many1_chars P.letter >>= fun name ->
   if StrHash.mem keywords name then
@@ -49,8 +51,8 @@ let int = space >> P.many1_chars P.digit |>> int_of_string
 let parens x = space >> P.char '(' >> x << space << P.char ')'
 
 let bool = space >> any
-    [P.string "true" >> P.return true;
-     P.string "false" >> P.return false]
+    [keyword "true" >> P.return true;
+     keyword "false" >> P.return false]
 
 (** {2 Begining of the parser } *)
 
@@ -109,11 +111,11 @@ let rec expr i =
 
 and expr_if i =
   i |> add_loc
-    (space >> P.string "if" >>
+    (space >> keyword "if" >>
      expr >>= fun e_if ->
-     space >> P.string "then" >>
+     space >> keyword "then" >>
      expr >>= fun e_then ->
-     space >> P.string "else" >>
+     space >> keyword "else" >>
      expr |>> fun e_else ->
      A.Eite (e_if, e_then, e_else)
     )
@@ -142,9 +144,9 @@ and expr_lambda i =
 
 and expr_let i =
   i |> add_loc (
-    space >> P.string "let" >>
+    space >> keyword "let" >>
     P.many1 (P.attempt binding) >>= fun b ->
-    space >> P.string "in" >>
+    space >> keyword "in" >>
     expr |>> fun e ->
     A.Elet (b, e)
   )
