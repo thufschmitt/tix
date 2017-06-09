@@ -40,6 +40,10 @@ let testsuite =
       "test_Y_comb", "(x: x x) (x: x x)", "((x: (x x)) (x: (x x)))";
       "test_annot", "(x /*: int */)", "(x /*: int */)";
       "test_annot_arrow", "(x /*: int -> int */)", "(x /*: (int) -> int */)";
+    ] @
+  List.map (fun (name, input, output) ->
+      name >:: test_parse_pp_str ~isTodo input output)
+    [
       ("test_record_pattern",
        "{ x, y, z /*: int */ }: x",
        "({ x, y, z /*: int */ }: x)");
