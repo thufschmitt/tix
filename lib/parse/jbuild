@@ -3,5 +3,5 @@
 (library
   ((name "parse")
    (public_name "parse")
-   (libraries (type_annotations mparser containers))))
+   (libraries (type_annotations mparser containers containers.data))))
 

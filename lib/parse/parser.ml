@@ -2,6 +2,8 @@ module A = Ast
 module P = MParser
 module W = Location.With_loc
 
+module StrHash = CCHashSet.Make(CCString)
+
 let (>>=) = P.(>>=)
 let (|>>) = P.(|>>)
 let (<|>) = P.(<|>)
@@ -13,6 +15,8 @@ type 'a t = ('a, unit) MParser.t
 type 'a return = ('a, string * MParser.error) result
 
 let mk_with_loc = Location.With_loc.mk'
+
+let keywords = StrHash.of_list [ "if"; "then"; "else"; "let"; "in" ]
 
 let get_loc =
   P.get_pos |>> fun (_, lnum, cnum) ->
@@ -30,7 +34,11 @@ let space = P.spaces
 let any x = P.choice @@ List.map P.attempt x
 
 (* XXX: This isn't the real definition of an ident *)
-let ident = P.many1_chars P.letter
+let ident = P.many1_chars P.letter >>= fun name ->
+  if StrHash.mem keywords name then
+    P.zero
+  else
+    P.return name
 
 let int   = P.many1_chars P.digit |>> int_of_string
 
@@ -100,12 +108,18 @@ let rec expr i =
 and expr_if i =
   i |> add_loc
     (P.string "if" >>
+     space >>
      expr >>= fun e_if ->
+     space >>
      P.string "then" >>
+     space >>
      expr >>= fun e_then ->
+     space >>
      P.string "else" >>
+     space >>
      expr |>> fun e_else ->
-     A.Eite (e_if, e_then, e_else))
+     A.Eite (e_if, e_then, e_else)
+    )
 
 and expr_atom i =
   i |>
