@@ -6,7 +6,7 @@ module StrHash = CCHashSet.Make(CCString)
 
 let (>>=) = P.(>>=)
 let (|>>) = P.(|>>)
-let (<|>) = P.(<|>)
+(* let (<|>) = P.(<|>) *)
 let (>>)  = P.(>>)
 let (<<)  = P.(<<)
 
@@ -16,7 +16,11 @@ type 'a return = ('a, string * MParser.error) result
 
 let mk_with_loc = Location.With_loc.mk'
 
-let keywords = StrHash.of_list [ "if"; "then"; "else"; "let"; "in" ]
+let keywords = StrHash.of_list [
+    "if"; "then"; "else";
+    "let"; "in";
+    "true"; "false";
+  ]
 
 let get_loc =
   P.get_pos |>> fun (_, lnum, cnum) ->
@@ -34,19 +38,19 @@ let space = P.spaces
 let any x = P.choice @@ List.map P.attempt x
 
 (* XXX: This isn't the real definition of an ident *)
-let ident = P.many1_chars P.letter >>= fun name ->
+let ident = space >> P.many1_chars P.letter >>= fun name ->
   if StrHash.mem keywords name then
     P.zero
   else
     P.return name
 
-let int   = P.many1_chars P.digit |>> int_of_string
+let int = space >> P.many1_chars P.digit |>> int_of_string
 
-let parens x = P.char '(' >> space >> x << space << P.char ')'
+let parens x = space >> P.char '(' >> x << space << P.char ')'
 
-let bool  =
-  (P.string "true" >> P.return true) <|>
-  (P.string "false" >> P.return false)
+let bool = space >> any
+    [P.string "true" >> P.return true;
+     P.string "false" >> P.return false]
 
 (** {2 Begining of the parser } *)
 
@@ -55,7 +59,7 @@ let rec typ i = i |> any [ typ_arrow; typ_atom ]
 
 and typ_atom i = i |> any [ typ_ident; typ_parens ]
 
-and typ_parens i = i |> parens typ
+and typ_parens i = i |> (space >> parens typ)
 
 and typ_ident i =
   i |>
@@ -64,14 +68,12 @@ and typ_ident i =
 and typ_arrow i =
   i |> (
     typ_atom >>= fun domain ->
-    space >>
-    P.string "->" >>
-    space >>
+    space >> P.string "->" >>
     typ |>> fun codomain ->
     Type_annotations.(Infix (Infix_constructors.Arrow, domain, codomain))
   )
 
-let type_annot = P.string "/*:" >> space >> typ << space << P.string "*/"
+let type_annot = space >> P.string "/*:" >> typ << space << P.string "*/"
 
 let expr_int = add_loc (
     int |>> fun nb ->
@@ -89,9 +91,9 @@ let expr_ident = add_loc (
   )
 
 let pattern_var =
-  ident >>= fun id -> space >>
-  P.option type_annot |>> fun annot ->
-                      (id, annot)
+  ident >>= fun id ->
+  P.option (P.attempt type_annot) |>> fun annot ->
+  (id, annot)
 
 let pattern_ident = add_loc (
     pattern_var |>> fun (id, annot) ->
@@ -99,7 +101,7 @@ let pattern_ident = add_loc (
   )
 
 and expr_const =
-  (expr_int <|> expr_bool)
+  any [expr_int; expr_bool]
 
 let rec expr i =
   i |>
@@ -107,16 +109,11 @@ let rec expr i =
 
 and expr_if i =
   i |> add_loc
-    (P.string "if" >>
-     space >>
+    (space >> P.string "if" >>
      expr >>= fun e_if ->
-     space >>
-     P.string "then" >>
-     space >>
+     space >> P.string "then" >>
      expr >>= fun e_then ->
-     space >>
-     P.string "else" >>
-     space >>
+     space >> P.string "else" >>
      expr |>> fun e_else ->
      A.Eite (e_if, e_then, e_else)
     )
@@ -136,19 +133,18 @@ and expr_annot i =
     ))
 
 and expr_lambda i =
-  i |> add_loc
-    (pattern >>= fun pat ->
-     P.char ':' >>
-     space >>
-     expr |>> fun body ->
-     A.Elambda (pat, body)
-    )
+  i |> add_loc (
+    pattern >>= fun pat ->
+    space >> P.char ':' >>
+    expr |>> fun body ->
+    A.Elambda (pat, body)
+  )
 
 and expr_let i =
   i |> add_loc (
-    P.string "let" >> space >>
+    space >> P.string "let" >>
     P.many1 (P.attempt binding) >>= fun b ->
-    P.string "in" >> space >>
+    space >> P.string "in" >>
     expr |>> fun e ->
     A.Elet (b, e)
   )
@@ -156,8 +152,8 @@ and expr_let i =
 and binding i =
   i |>
   (pattern_var >>= fun (id, annot) ->
-   space >> P.char '=' >> space  >>
-   expr << space << P.char ';' << space |>> fun e ->
+   space >> P.char '=' >>
+   expr << space << P.char ';' |>> fun e ->
    A.BstaticDef ((id, annot), e))
 
 and pattern i = i |> any [pattern_ident]
@@ -166,8 +162,7 @@ and expr_apply i =
   i |>
   (get_loc >>= fun loc ->
    expr_atom >>= fun e0 ->
-   space >>
-   P.sep_by expr_atom space |>>
+   P.many expr_atom |>>
    List.fold_left (fun accu e -> W.mk loc (A.EfunApp (accu, e))) e0)
 
 let expr =
