@@ -1,5 +1,6 @@
 module A = Ast
 module P = MParser
+module T = Type_annotations
 module W = Location.With_loc
 
 module StrHash = CCHashSet.Make(CCString)
@@ -79,6 +80,19 @@ let infix_ops =
 
 (** {3 Type annotations} *)
 
+let typ_op =
+  let module I = T.Infix_constructors in
+  let infix sym op assoc = P.Infix (
+      P.attempt (space >> P.skip_string sym)
+      >> P.return (fun t1 t2 -> T.Infix (op, t1, t2))
+    , assoc)
+  in
+  [
+    [ infix "&" I.And P.Assoc_left ];
+    [ infix "|" I.Or P.Assoc_left ];
+    [ infix "->" I.Arrow P.Assoc_right ];
+  ]
+
 let typ_int =
   int |>> fun nb ->
   Type_annotations.(Singleton (Singleton.Int nb))
@@ -87,25 +101,13 @@ let typ_bool =
   bool |>> fun b ->
   Type_annotations.(Singleton (Singleton.Bool b))
 
-let rec typ i = i |> any [ typ_arrow; typ_atom ]
+let typ_ident = ident |>> fun t -> Type_annotations.Var t
+and typ_singleton = any [typ_int; typ_bool ]
 
-and typ_atom i = i |> any [ typ_singleton; typ_ident; typ_parens ]
+let typ_atom = any [ typ_singleton; typ_ident; ]
 
-and typ_parens i = i |> (space >> parens typ)
-
-and typ_ident i =
-  i |>
-  (ident |>> fun t -> Type_annotations.Var t)
-
-and typ_singleton i = i |> any [typ_int; typ_bool ]
-
-and typ_arrow i =
-  i |> (
-    typ_atom >>= fun domain ->
-    space >> P.string "->" >>
-    typ |>> fun codomain ->
-    Type_annotations.(Infix (Infix_constructors.Arrow, domain, codomain))
-  )
+let rec typ i = i |> P.expression typ_op
+                  (any [typ_atom; parens typ])
 
 let type_annot = space >> P.string "/*:" >> typ << space << P.string "*/"
 

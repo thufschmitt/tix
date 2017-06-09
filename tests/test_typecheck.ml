@@ -91,8 +91,7 @@ let testsuite =
     [
       "infer_const_int", "1", "1";
       "infer_const_bool", "true", "true";
-      (* "infer_builtins_not", "__not", "((true -> false) & (false -> true))";
-       * *)
+      "infer_builtins_not", "__not", "((true -> false) & (false -> true))";
       "infer_lambda", "x /*: Int */: 1", "Int -> 1";
       "infer_lambda_var", "x /*: Int */: x", "Int -> Int";
       "infer_apply", "(x /*: Int */: x) 1", "Int";
@@ -107,9 +106,8 @@ let testsuite =
       ("infer_let_7", "let x /*: Int -> Int -> Int */ = y: y: y; in x",
        "Int -> Int -> Int");
       "infer_shadowing", "let x = true; in let x = 1; in x", "1";
-      (*     "infer_union", "x /*: Int | Bool */: x", "(Int | Bool) -> (Int |
-       *     Bool)"; *)
-      (*     "infer_intersection", "x /*: Int & Int */: x", "Int -> Int"; *)
+      "infer_union", "x /*: Int | Bool */: x", "(Int | Bool) -> (Int | Bool)";
+      "infer_intersection", "x /*: Int & Int */: x", "Int -> Int";
       "test_not_true", "__not true", "false";
       (*     "test_list", "[1 true false]", "Cons (1, Cons(true, Cons(false,
        *     nil)))"; *)
