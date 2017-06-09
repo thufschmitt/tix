@@ -78,15 +78,26 @@ let infix_ops =
 (** {2 Begining of the parser } *)
 
 (** {3 Type annotations} *)
+
+let typ_int =
+  int |>> fun nb ->
+  Type_annotations.(Singleton (Singleton.Int nb))
+
+let typ_bool =
+  bool |>> fun b ->
+  Type_annotations.(Singleton (Singleton.Bool b))
+
 let rec typ i = i |> any [ typ_arrow; typ_atom ]
 
-and typ_atom i = i |> any [ typ_ident; typ_parens ]
+and typ_atom i = i |> any [ typ_singleton; typ_ident; typ_parens ]
 
 and typ_parens i = i |> (space >> parens typ)
 
 and typ_ident i =
   i |>
   (ident |>> fun t -> Type_annotations.Var t)
+
+and typ_singleton i = i |> any [typ_int; typ_bool ]
 
 and typ_arrow i =
   i |> (
@@ -97,6 +108,8 @@ and typ_arrow i =
   )
 
 let type_annot = space >> P.string "/*:" >> typ << space << P.string "*/"
+
+(** {3 Expressions} *)
 
 let expr_int = add_loc (
     int |>> fun nb ->
