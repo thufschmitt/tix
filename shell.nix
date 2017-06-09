@@ -3,6 +3,8 @@
 }:
 with import nixpkgs { inherit system; };
 let
+  ocamlPackages = ocamlPackages_4_03;
+  ocaml = ocamlPackages.ocaml;
   jbuilder = ocamlPackages.buildOcaml rec {
     name = "jbuilder-${version}";
     version = "1.0+beta9";
@@ -49,7 +51,7 @@ let
       sha256 = "1czij3ndqr75ifj0sf51y8w6za6clq5plv2m8x4m15mfk8l6ir84";
     };
 
-    propagatedBuildInputs = with ocamlPackages_4_02; [
+    propagatedBuildInputs = with ocamlPackages; [
       ocaml
       findlib
       ocaml_pcre ulex
@@ -62,6 +64,10 @@ let
       sed -i 's@+camlp4/camlp4lib.cma @@' META.in
       sed -i 's@+camlp4/camlp4lib.cmxa @@' META.in
       sed -i 's/requires="/requires="camlp4.lib /' META.in
+
+      # Also install .cmx file to prevent a compiler warning
+      sed -i 's#lib/cduce_lib.a#lib/cduce_lib.a lib/cduce_lib.cmx#' \
+        Makefile.distrib
     '';
 
     configureFlags = [
