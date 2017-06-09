@@ -6,7 +6,7 @@ module StrHash = CCHashSet.Make(CCString)
 
 let (>>=) = P.(>>=)
 let (|>>) = P.(|>>)
-(* let (<|>) = P.(<|>) *)
+let (<|>) = P.(<|>)
 let (>>)  = P.(>>)
 let (<<)  = P.(<<)
 
@@ -39,8 +39,13 @@ let any x = P.choice @@ List.map P.attempt x
 
 let keyword k = P.string k << P.not_followed_by P.alphanum ""
 
-(* XXX: This isn't the real definition of an ident *)
-let ident = space >> P.many1_chars P.letter >>= fun name ->
+let alphanum_ = P.alphanum <|> P.char '_'
+let letter_ = P.letter <|> P.char '_'
+
+let ident = space >>
+  letter_ >>= fun c0 ->
+  P.many_chars alphanum_ >>= fun end_name ->
+  let name = (CCString.of_char c0) ^ end_name in
   if StrHash.mem keywords name then
     P.zero
   else
