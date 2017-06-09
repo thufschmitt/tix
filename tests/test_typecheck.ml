@@ -90,16 +90,17 @@ let testsuite =
   List.map (fun (name, expr, result) -> name >:: test_infer_expr expr result)
     [
       (* "infer_const_int", "1", "1"; *)
-      "infer_const_bool", "true", "true";
+      (* "infer_const_bool", "true", "true"; *)
       (* "infer_builtins_not", "__not", "((true -> false) & (false -> true))";
        * *)
       (* "infer_lambda", "x /*: Int */: 1", "Int -> 1"; *)
-      "infer_lambda_var", "x /*: Int */: x", "Int -> Int"; "infer_apply", "(x
-      /*: Int */: x) 1", "Int"; ("infer_arrow_annot", "x /*: Int -> Int */: x",
-                                 "(Int -> Int) -> Int -> Int");
+      "infer_lambda_var", "x /*: Int */: x", "Int -> Int";
+      "infer_apply", "(x /*: Int */: x) 1", "Int";
+      ("infer_arrow_annot", "x /*: Int -> Int */: x",
+       "(Int -> Int) -> Int -> Int");
       (* "infer_let_1", "let x = 1; in x", "1"; *)
-      "infer_let_2", "let x /*:Int*/ = 1; in x", "Int"; "infer_let_3", "let x
-      /*:Int*/ = 1; y = x; in y", "Int";
+      "infer_let_2", "let x /*:Int*/ = 1; in x", "Int";
+      "infer_let_3", "let x /*:Int*/ = 1; y = x; in y", "Int";
       (* "infer_let_4", "let x = 1; y = x; in y", "?"; *)
       (* "infer_let_5", "let x = x; in x", "?"; *)
       "infer_let_6", "let x /*: Int -> Int */ = y: y; in x", "Int -> Int";
@@ -129,46 +130,44 @@ let testsuite =
       (*     "infer_string", "\"aze\"", "\"aze\""; *)
       (*     "infer_string_annot", "x /*: \"foo\" */: x", "\"foo\" -> \"foo\"";
        *     *)
-      (*   ] @ *)
-      (* (* ----- Negative tests ----- *) *)
-      (* List.map (fun (name, expr) -> name >:: test_infer_expr_fail expr) *)
-      (*   [ *)
-      (*     "infer_fail_unbound_var", "x"; *)
-      (*     "infer_fail_apply", "1 1"; *)
-      (*     "infer_fail_apply2", "(x /*: Bool */: x) 1"; *)
-      (*     "infer_fail_apply3", "(x /*: Int */: x) true"; *)
+    ] @
+  (* ----- Negative tests ----- *)
+  List.map (fun (name, expr) -> name >:: test_infer_expr_fail expr)
+    [
+      "infer_fail_unbound_var", "x";
+      "infer_fail_apply", "1 1";
+      "infer_fail_apply2", "(x /*: Bool */: x) 1";
+      "infer_fail_apply3", "(x /*: Int */: x) true";
       (*     "infer_fail_notalist", "Cons (1, 2)"; *)
       (*     "infer_fail_where", "(x /*: X where X = Bool */: x) 1"; *)
       (*     ("infer_fail_ite_not_bool_cond", *)
       (*      "let x /*: Int | Bool */ = 1; in if x then 1 else 1"); *)
-      (*     ("infer_fail_ite_no_refine_1", *)
-      (*      "let x /*: Bool */ = true; in if x then __add x 1 else x"); *)
-      (*     ("infer_fail_ite_no_refine_2", *)
-      (*      "let f /*: Int -> Bool */ = x: true; x = 1; \ *)
-              (*       in if f x then __add x 1 else __not x"); *)
+      (* ("infer_fail_ite_no_refine_1", *)
+      (*  "let x /*: Bool */ = true; in if x then __add x 1 else x"); *)
+      (* ("infer_fail_ite_no_refine_2", *)
+      (*  "let f /*: Int -> Bool */ = x: true; x = 1; \ *)
+          (*           in if f x then __add x 1 else __not x"); *)
       (*     "infer_fail_plus_not_int", "1 + true"; *)
-      (*   ] @ *)
-      (* (* ------ positive check ----- *) *)
-      (* List.map (fun (name, expr, result) -> name >:: test_check expr result)
-       * *)
-      (*   [ *)
+    ] @
+  (* ------ positive check ----- *)
+  List.map (fun (name, expr, result) -> name >:: test_check expr result)
+    [
       (*     "check_const_one", "1", "1"; *)
-      (*     "check_const_int", "1", "Int"; *)
+      "check_const_int", "1", "Int";
       (*     "check_const_union", "1", "1 | Bool"; *)
-      (*     "check_arrow_1", "x: x", "Int -> Int"; *)
+      "check_arrow_1", "x: x", "Int -> Int";
       (*     "check_arrow_2", "x: x", "1 -> Int"; *)
       (*     "check_intersect_arrow", "x: x", "(Int -> Int) & (Bool -> Bool)";
        *     *)
-      (*     "check_let", "let x = 1; in y: y", "Int -> Int"; *)
-      (*     "check_ite", "let x /*: Bool */ = true; in if x then 1 else 2",
-       *     "Int"; *)
+      "check_let", "let x = 1; in y: y", "Int -> Int";
+      "check_ite", "let x /*: Bool */ = true; in if x then 1 else 2", "Int";
       (*     ("check_ite_refine", *)
       (*      "let x /*: Int | Bool */ = 1; in if isInt x then __add x 1 else
        *      true", *)
       (*      "Int | true"); *)
-      (*     ("check_ite_dead_branch", *)
-      (*      "let x = true; in if x then true else false", *)
-      (*      "true"); *)
+      (* ("check_ite_dead_branch", *)
+      (*  "let x = true; in if x then true else false", *)
+      (*  "true"); *)
       (*     "check_cons", "[1]", "Cons(1, nil)"; *)
       (*     "check_cons_union", "[1]", "Cons(1, nil) | Cons(Bool, nil)"; *)
       (*     "check_add", "1 + 1", "Int"; *)
