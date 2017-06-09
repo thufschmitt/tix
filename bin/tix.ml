@@ -1,4 +1,4 @@
-let typecheck_chan fname chan =
+let typecheck_chan _fname chan =
   let ast = match MParser.parse_channel Parse.Parser.expr chan () with
     | MParser.Success t -> Simple.Of_onix.expr t
     | MParser.Failed (msg, _) ->

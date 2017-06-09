@@ -8,6 +8,10 @@ let (<|>) = P.(<|>)
 let (>>)  = P.(>>)
 let (<<)  = P.(<<)
 
+type 'a t = ('a, unit) MParser.t
+
+type 'a return = ('a, string * MParser.error) result
+
 let mk_with_loc = Location.With_loc.mk'
 
 let get_loc =
@@ -30,7 +34,7 @@ let ident = P.many1_chars P.letter
 
 let int   = P.many1_chars P.digit |>> int_of_string
 
-let parens x = (P.char '(' >> space >> x << space << P.char ')')
+let parens x = P.char '(' >> space >> x << space << P.char ')'
 
 let bool  =
   (P.string "true" >> P.return true) <|>
@@ -56,7 +60,7 @@ and typ_arrow i =
     P.string "->" >>
     space >>
     typ |>> fun codomain ->
-    Type_annotations.(Infix (Infix_constructors.And, domain, codomain))
+    Type_annotations.(Infix (Infix_constructors.Arrow, domain, codomain))
   )
 
 let type_annot = P.string "/*:" >> space >> typ << space << P.string "*/"
@@ -78,8 +82,8 @@ let expr_ident = add_loc (
 
 let pattern_var =
   ident >>= fun id -> space >>
-  P.option (type_annot) |>> fun annot ->
-  (id, annot)
+  P.option type_annot |>> fun annot ->
+                      (id, annot)
 
 let pattern_ident = add_loc (
     pattern_var |>> fun (id, annot) ->
@@ -102,19 +106,19 @@ and expr_paren i = i |> parens expr
 and expr_annot i =
   i |> add_loc (
     parens (
-    expr >>= fun e ->
-    type_annot |>> fun t ->
-    A.EtyAnnot (e, t)
-  ))
+      expr >>= fun e ->
+      type_annot |>> fun t ->
+      A.EtyAnnot (e, t)
+    ))
 
 and expr_lambda i =
-  i |> add_loc (
+  i |> add_loc
     (pattern >>= fun pat ->
      P.char ':' >>
      space >>
      expr |>> fun body ->
-       A.Elambda (pat, body))
-  )
+     A.Elambda (pat, body)
+    )
 
 and expr_let i =
   i |> add_loc (
@@ -144,6 +148,14 @@ and expr_apply i =
 
 let expr =
   expr << space << P.eof
+
+let mpresult_to_result = function
+  | MParser.Success x -> Ok x
+  | MParser.Failed (msg, e) -> Error (msg, e)
+
+let parse_string parser str =
+  MParser.parse_string parser str ()
+  |> mpresult_to_result
 
 (* let operator = choice @@ List.map exactly [ CONS_KW ] *)
 (*   >>= function *)
