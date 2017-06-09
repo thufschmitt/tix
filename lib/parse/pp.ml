@@ -41,6 +41,7 @@ let rec pp_expr fmt = drop_loc %> function
       F.fprintf fmt "@[(%a /*:@ %a */)@]"
         pp_expr e
         pp_typ ty
+    (* XXX: This is printed in an ugly way and not parsable way *)
     | P.EopApp (op, args) ->
       F.fprintf fmt "@[%a(%a)@]"
         pp_op op

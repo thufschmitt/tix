@@ -59,6 +59,22 @@ let bool = space >> any
     [keyword "true" >> P.return true;
      keyword "false" >> P.return false]
 
+let infix_ops =
+  let infix sym f assoc = P.Infix (
+      (P.get_pos >>= fun (_, lnum, cnum) -> P.skip_string sym >>
+       P.return (fun e1 e2 ->
+           mk_with_loc ~file_name:"" ~lnum ~cnum (f e1 e2))),
+      assoc)
+  and prefix sym f = P.Prefix (
+      P.get_pos >>= fun (_, lnum, cnum) -> P.skip_string sym >>
+      P.return (fun e -> mk_with_loc ~file_name:"" ~lnum ~cnum (f e)))
+  in
+  [
+    [ infix "+" (fun e1 e2 -> A.EopApp (A.Oplus, [e1; e2])) P.Assoc_left;
+      infix "-" (fun e1 e2 -> A.EopApp (A.Ominus, [e1; e2])) P.Assoc_left; ];
+    [ prefix "-" (fun e -> A.EopApp (A.Oneg, [e])); ];
+  ]
+
 (** {2 Begining of the parser } *)
 
 (** {3 Type annotations} *)
@@ -112,7 +128,10 @@ and expr_const =
 
 let rec expr i =
   i |>
-  any [expr_lambda; expr_let; expr_if; expr_apply]
+  any [expr_lambda; expr_let; expr_if; expr_infix; expr_apply]
+
+and expr_infix i =
+  i |> (P.expression infix_ops (expr_apply << space))
 
 and expr_if i =
   i |> add_loc
