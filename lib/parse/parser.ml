@@ -95,7 +95,17 @@ and expr_const =
 
 let rec expr i =
   i |>
-  any [expr_let; expr_lambda; expr_apply]
+  any [expr_lambda; expr_let; expr_if; expr_apply]
+
+and expr_if i =
+  i |> add_loc
+    (P.string "if" >>
+     expr >>= fun e_if ->
+     P.string "then" >>
+     expr >>= fun e_then ->
+     P.string "else" >>
+     expr |>> fun e_else ->
+     A.Eite (e_if, e_then, e_else))
 
 and expr_atom i =
   i |>
