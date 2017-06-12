@@ -41,6 +41,7 @@ let testsuite =
       "test_annot", "(x /*: int */)", "(x /*: int */)";
       "test_annot_arrow", "(x /*: int -> int */)", "(x /*: (int) -> int */)";
       "test_arith", "x + y - z + (- a)", "+(-(+(x, y), z), -(a))";
+      "test_string", "\"x\"", "\"x\"";
     ] @
   List.map (fun (name, input, output) ->
       name >:: test_parse_pp_str ~isTodo input output)
@@ -66,7 +67,6 @@ let testsuite =
        "(x /*: Cons(1, nil) */: x)");
       ("test_annot_list", "x /*: X where X = Cons(Int, X) | nil */: x",
        "(x /*: X where X = (Cons(Int, X)) | nil */: x)");
-      "test_string", "\"x\"", "\"x\"";
       "test_comment", "1 /* 123 */ /* /* 1 */", "1";
       "test_line_comment", "x: #fooooo \n x", "(x: x)";
     ]

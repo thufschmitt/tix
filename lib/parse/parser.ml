@@ -60,6 +60,11 @@ let bool = space >> any
     [keyword "true" >> P.return true;
      keyword "false" >> P.return false]
 
+let string = space >> P.char '"' >>
+  P.many_chars_until
+    P.any_char
+    (P.satisfy (fun c -> c = '"') << P.prev_char_satisfies (fun c -> c <> '\\'))
+
 let infix_ops =
   let infix sym f assoc = P.Infix (
       (P.get_pos >>= fun (_, lnum, cnum) -> P.skip_string sym >>
@@ -101,8 +106,12 @@ let typ_bool =
   bool |>> fun b ->
   Type_annotations.(Singleton (Singleton.Bool b))
 
+let typ_string =
+  string |>> fun s ->
+  Type_annotations.(Singleton (Singleton.String s))
+
 let typ_ident = ident |>> fun t -> Type_annotations.Var t
-and typ_singleton = any [typ_int; typ_bool ]
+and typ_singleton = any [typ_int; typ_bool; typ_string ]
 
 let typ_atom = any [ typ_singleton; typ_ident; ]
 
@@ -123,6 +132,11 @@ let expr_bool = add_loc (
     A.Econstant (A.Cbool b)
   )
 
+let expr_string = add_loc (
+    string |>> fun s ->
+    A.Econstant (A.Cstring s)
+  )
+
 let expr_ident = add_loc (
     ident |>> fun id ->
     A.Evar id
@@ -139,7 +153,7 @@ let pattern_ident = add_loc (
   )
 
 and expr_const =
-  any [expr_int; expr_bool]
+  any [expr_int; expr_bool; expr_string]
 
 let rec expr i =
   i |>
