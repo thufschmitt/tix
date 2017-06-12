@@ -34,7 +34,13 @@ let add_loc x =
   mk_with_loc ~file_name ~lnum ~cnum x
 
 (** {2 Some utility functions } *)
-let space = P.spaces
+let comment =
+  (P.attempt (P.string "/*" << P.satisfy @@ (<>) ':'))
+  >> P.skip_many_chars_until
+    P.any_char
+    (P.char '*' << P.char '/')
+
+let space = P.skip_many (P.skip P.space <|> comment)
 
 let any x = P.choice @@ List.map P.attempt x
 
