@@ -44,41 +44,43 @@ let space = P.skip_many (P.skip P.space <|> comment)
 
 let any x = P.choice @@ List.map P.attempt x
 
-let keyword k = P.string k << P.not_followed_by P.alphanum ""
+let keyword k = P.string k << P.not_followed_by P.alphanum "" >> space
 
 let alphanum_ = P.alphanum <|> P.char '_'
 let letter_ = P.letter <|> P.char '_'
 
-let ident = space >>
+let ident =
   letter_ >>= fun c0 ->
-  P.many_chars alphanum_ >>= fun end_name ->
+  P.many_chars alphanum_ << space >>= fun end_name ->
   let name = (CCString.of_char c0) ^ end_name in
   if StrHash.mem keywords name then
     P.zero
   else
     P.return name
 
-let int = space >> P.many1_chars P.digit |>> int_of_string
+let int = P.many1_chars P.digit << space |>> int_of_string
 
-let parens x = space >> P.char '(' >> x << space << P.char ')'
+let parens x = P.char '(' >> x << space << P.char ')' << space
 
-let bool = space >> any
+let bool = any
     [keyword "true" >> P.return true;
      keyword "false" >> P.return false]
+           << space
 
-let string = space >> P.char '"' >>
+let string = P.char '"' >>
   P.many_chars_until
     P.any_char
     (P.satisfy (fun c -> c = '"') << P.prev_char_satisfies (fun c -> c <> '\\'))
+  << space
 
 let infix_ops =
   let infix sym f assoc = P.Infix (
-      (P.get_pos >>= fun (_, lnum, cnum) -> P.skip_string sym >>
+      (P.get_pos >>= fun (_, lnum, cnum) -> P.skip_string sym >> space >>
        P.return (fun e1 e2 ->
            mk_with_loc ~file_name:"" ~lnum ~cnum (f e1 e2))),
       assoc)
   and prefix sym f = P.Prefix (
-      P.get_pos >>= fun (_, lnum, cnum) -> P.skip_string sym >>
+      P.get_pos >>= fun (_, lnum, cnum) -> P.skip_string sym >> space >>
       P.return (fun e -> mk_with_loc ~file_name:"" ~lnum ~cnum (f e)))
   in
   [
@@ -94,7 +96,7 @@ let infix_ops =
 let typ_op =
   let module I = T.Infix_constructors in
   let infix sym op assoc = P.Infix (
-      P.attempt (space >> P.skip_string sym)
+      P.skip_string sym << space
       >> P.return (fun t1 t2 -> T.Infix (op, t1, t2))
     , assoc)
   in
@@ -124,7 +126,7 @@ let typ_atom = any [ typ_singleton; typ_ident; ]
 let rec typ i = i |> P.expression typ_op
                   (any [typ_atom; parens typ])
 
-let type_annot = space >> P.string "/*:" >> typ << space << P.string "*/"
+let type_annot = P.string "/*:" >> space >> typ << P.string "*/" << space
 
 (** {3 Expressions} *)
 
@@ -166,15 +168,15 @@ let rec expr i =
   any [expr_lambda; expr_let; expr_if; expr_infix; expr_apply]
 
 and expr_infix i =
-  i |> (P.expression infix_ops (expr_apply << space))
+  i |> (P.expression infix_ops expr_apply)
 
 and expr_if i =
   i |> add_loc
-    (space >> keyword "if" >>
+    (keyword "if" >>
      expr >>= fun e_if ->
-     space >> keyword "then" >>
+     keyword "then" >>
      expr >>= fun e_then ->
-     space >> keyword "else" >>
+     keyword "else" >>
      expr |>> fun e_else ->
      A.Eite (e_if, e_then, e_else)
     )
@@ -196,16 +198,16 @@ and expr_annot i =
 and expr_lambda i =
   i |> add_loc (
     pattern >>= fun pat ->
-    space >> P.char ':' >>
+    P.char ':' >> space >>
     expr |>> fun body ->
     A.Elambda (pat, body)
   )
 
 and expr_let i =
   i |> add_loc (
-    space >> keyword "let" >>
+    keyword "let" >>
     P.many1 (P.attempt binding) >>= fun b ->
-    space >> keyword "in" >>
+    keyword "in" >>
     expr |>> fun e ->
     A.Elet (b, e)
   )
@@ -213,8 +215,8 @@ and expr_let i =
 and binding i =
   i |>
   (pattern_var >>= fun (id, annot) ->
-   space >> P.char '=' >>
-   expr << space << P.char ';' |>> fun e ->
+   P.char '=' >> space >>
+   expr << P.char ';' << space |>> fun e ->
    A.BstaticDef ((id, annot), e))
 
 and pattern i = i |> any [pattern_ident]
@@ -227,7 +229,7 @@ and expr_apply i =
    List.fold_left (fun accu e -> W.mk loc (A.EfunApp (accu, e))) e0)
 
 let expr =
-  expr << space << P.eof
+  space >> expr << P.eof
 
 let mpresult_to_result = function
   | MParser.Success x -> Ok x
