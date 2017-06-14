@@ -1,4 +1,4 @@
 (library
   ((name "simple")
    (public_name "simple")
-   (libraries (parse type_annotations))))
+   (libraries (parse))))

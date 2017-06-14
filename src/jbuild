@@ -3,5 +3,5 @@
 (library
   ((name "onix")
    (public_name "onix")
-   (libraries (type_annotations parse simple typing))))
+   (libraries (parse simple typing))))
 

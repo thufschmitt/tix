@@ -1,5 +1,5 @@
 open OUnit2
-module TA = Type_annotations
+module TA = Parse.Type_annotations
 module T  = Typing.Types
 
 exception ParseError of string

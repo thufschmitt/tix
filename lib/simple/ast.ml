@@ -30,7 +30,7 @@ and expr_desc =
   | Ewith of expr * expr
   (* with e; e *)
   | Elet of binding list * expr
-  | EtyAnnot of expr * Type_annotations.t
+  | EtyAnnot of expr * Parse.Type_annotations.t
 
 and access_path =
   | Afield of expr * ap_field * expr option
@@ -55,12 +55,12 @@ and nontrivial_pattern =
   | NPrecord of pattern_record_field list * closed_flag
   (** fields * '...' *)
 
-and pattern_var = string * Type_annotations.t option
+and pattern_var = string * Parse.Type_annotations.t option
 
 and pattern_record_field = {
   field_name: string;
   default_value: constant option;
-  type_annot: Type_annotations.t option;
+  type_annot: Parse.Type_annotations.t option;
 }
 
 and closed_flag =
