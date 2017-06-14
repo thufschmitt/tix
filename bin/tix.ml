@@ -1,34 +1,37 @@
-let typecheck_chan _fname chan =
-  let ast = match MParser.parse_channel Parse.Parser.expr chan () with
-    | MParser.Success t -> Simple.Of_onix.expr t
-    | MParser.Failed (msg, _) ->
-      Format.print_string msg;
-      Format.print_flush ();
-      exit 1
+let parse_chan _fname chan =
+  match MParser.parse_channel Parse.Parser.expr chan () with
+  | MParser.Success t -> t
+  | MParser.Failed (msg, _) ->
+    Format.print_string msg;
+    Format.print_flush ();
+    exit 1
+
+let typecheck ast =
+  let typ =
+    Simple.Of_onix.expr ast
+    |> Typing.(Typecheck.Infer.expr
+                 Types.Environment.default
+                 Typing_env.initial)
   in
-  let t =
-    Typing.(Typecheck.Infer.expr
-              Types.Environment.default
-              Typing_env.initial)
-      ast
-  in
-  Typing.Types.pp Format.std_formatter t;
+  Typing.Types.pp Format.std_formatter typ;
   Format.print_newline ()
 
-let typecheck_file name =
-  try
-    begin
-      match name with
-      | "-" -> typecheck_chan "-" stdin
-      | fname -> CCIO.with_in fname (typecheck_chan fname)
-    end
-  with
-    Typing.Typecheck.TypeError (loc, msg) ->
-    Format.eprintf "error: %s, at %a\n"
-      msg
-      Parse.Location.pp loc;
-    Format.pp_print_flush Format.err_formatter ();
-    exit 1
+let process_file is_parse_only f_name =
+  let ast =
+    match f_name with
+    | "-" -> parse_chan "-" stdin
+    | fname -> CCIO.with_in fname (parse_chan fname)
+  in
+  if is_parse_only then
+    Parse.Pp.pp_expr Format.std_formatter ast
+  else
+    try typecheck ast with
+      Typing.Typecheck.TypeError (loc, msg) ->
+      Format.eprintf "error: %s, at %a\n"
+        msg
+        Parse.Location.pp loc;
+      Format.pp_print_flush Format.err_formatter ();
+      exit 1
 
 open Cmdliner
 
@@ -36,7 +39,12 @@ let file_in =
   let doc = "Input file" in
   Arg.(value & pos 0 string "-" & info [] ~docv:"FILE" ~doc)
 
-let eval_stuff = Term.(const typecheck_file $ file_in)
+let parse_only =
+  let doc = "Do not typecheck, just parse the file" in
+  Arg.(value & opt bool false & info [ "p"; "parse-only" ]
+         ~docv:"PARSE_ONLY" ~doc)
+
+let eval_stuff = Term.(const process_file $ parse_only $ file_in)
 let info =
   let doc = "The nix type-checker" in
   let man = [] in
