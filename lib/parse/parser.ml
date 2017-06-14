@@ -106,6 +106,16 @@ let typ_op =
     [ infix "->" I.Arrow P.Assoc_right ];
   ]
 
+let regex_op =
+  let module R = Regex_list in
+  let infix sym f assoc = P.Infix (
+      P.skip_string sym << space
+      >> P.return f, assoc)
+  in
+  [
+    [ infix "|" (fun r1 r2 -> R.Or (r1, r2)) P.Assoc_left ];
+  ]
+
 let typ_int =
   int |>> fun nb ->
   Type_annotations.(Singleton (Singleton.Int nb))
@@ -124,7 +134,16 @@ and typ_singleton = any [typ_int; typ_bool; typ_string ]
 let typ_atom = any [ typ_singleton; typ_ident; ]
 
 let rec typ i = i |> P.expression typ_op
-                  (any [typ_atom; parens typ])
+                  (any [typ_atom; parens typ; typ_list])
+
+and typ_regex i = i |> P.expression regex_op regex_atom
+
+and regex_atom i = i |> (typ |>> fun t -> Regex_list.Type t)
+
+and typ_list i =
+  i |> (
+    P.char '[' >> space >> typ_regex << P.char ']' << space |>>
+    Regex_list.to_type)
 
 let type_annot = P.string "/*:" >> space >> typ << P.string "*/" << space
 
