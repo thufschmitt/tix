@@ -110,14 +110,12 @@ let testsuite =
       "infer_intersection", "x /*: Int & Int */: x", "Int -> Int";
       "test_not_true", "__not true", "false";
       "test_list", "[1 true false]", "[1 true false]";
-      (* ("infer_ite_classic", "let x /*: Bool */ = true; in if x then 1 else
-       * 2", *)
-      (*  "1 | 2"); *)
+      ("infer_ite_classic", "let x /*: Bool */ = true; in if x then 1 else 2",
+       "1 | 2");
       "infer_ite_dead_branch", "if true then 1 else __add 1 true", "1";
-      (*     ("infer_ite_typecase_1", *)
-      (*      "let x /*: Int | Bool */ = 1; in if isInt x then x else __not x",
-       *      *)
-      (*      "Int | Bool"); *)
+      ("infer_ite_typecase_1",
+       "let x /*: Int | Bool */ = 1; in if isInt x then x else __not x",
+       "Int | Bool");
       "infer_plus", "1 + 1", "Int";
       "infer_string", "\"aze\"", "\"aze\"";
       "infer_string_annot", "x /*: \"foo\" */: x", "\"foo\" -> \"foo\"";
@@ -129,9 +127,8 @@ let testsuite =
       "infer_fail_apply", "1 1";
       "infer_fail_apply2", "(x /*: Bool */: x) 1";
       "infer_fail_apply3", "(x /*: Int */: x) true";
-      (*     "infer_fail_where", "(x /*: X where X = Bool */: x) 1"; *)
-      (*     ("infer_fail_ite_not_bool_cond", *)
-      (*      "let x /*: Int | Bool */ = 1; in if x then 1 else 1"); *)
+      ("infer_fail_ite_not_bool_cond",
+       "let x /*: Int | Bool */ = 1; in if x then 1 else 1");
       ("infer_fail_ite_no_refine_1",
        "let x /*: Bool */ = true; in if x then __add x 1 else x");
       ("infer_fail_ite_no_refine_2",
@@ -144,36 +141,33 @@ let testsuite =
     [
       "check_const_one", "1", "1";
       "check_const_int", "1", "Int";
-      (*     "check_const_union", "1", "1 | Bool"; *)
+      "check_const_union", "1", "1 | Bool";
       "check_arrow_1", "x: x", "Int -> Int";
       "check_arrow_2", "x: x", "1 -> Int";
-      (*     "check_intersect_arrow", "x: x", "(Int -> Int) & (Bool -> Bool)";
-       *     *)
+      "check_intersect_arrow", "x: x", "(Int -> Int) & (Bool -> Bool)";
       "check_let", "let x = 1; in y: y", "Int -> Int";
       "check_ite", "let x /*: Bool */ = true; in if x then 1 else 2", "Int";
-      (*     ("check_ite_refine", *)
-      (*      "let x /*: Int | Bool */ = 1; in if isInt x then __add x 1 else
-       *      true", *)
-      (*      "Int | true"); *)
-      (* ("check_ite_dead_branch", *)
-      (*  "let x = true; in if x then true else false", *)
-      (*  "true"); *)
-      (*     "check_cons", "[1]", "Cons(1, nil)"; *)
-      (*     "check_cons_union", "[1]", "Cons(1, nil) | Cons(Bool, nil)"; *)
-      (*     "check_add", "1 + 1", "Int"; *)
-      (*     "check_minus", "1 - 1", "Int"; *)
-      (*     "check_unary_minus", "- (-1)", "1"; *)
+      ("check_ite_refine",
+       "let x /*: Int | Bool */ = 1; in if isInt x then __add x 1 else true",
+       "Int | true");
+      ("check_ite_dead_branch",
+       "let x = true; in if x then true else false",
+       "true");
+      "check_cons", "[1]", "[1]";
+      "check_cons_union", "[1]", "[1] | [ Bool ]";
+      "check_add", "1 + 1", "Int";
+      "check_minus", "1 - 1", "Int";
+      "check_unary_minus", "- (-1)", "1";
     ] @
   List.map (fun (name, expr, result) -> name >:: test_check_fail expr result)
     [
       (* ------ negative check ----- *)
       "check_fail_const_int", "1", "Bool";
       "check_fail_unbound_var", "x", "1";
-      (*     "check_fail_bad_intersect_arrow", "x: x", "(Int -> Bool) & (Bool
-       *     -> Int)"; *)
+      "check_fail_bad_intersect_arrow", "x: x", "(Int -> Bool) & (Bool -> Int)";
       "check_fail_inside_let", "let x = y: y; in x", "Int -> Int";
       "check_fail_ite_not_bool", "if 1 then 1 else 1", "Int";
-      (*     "check_fail_cons", "[1]", "Cons(Bool, nil)"; *)
-      (*     "check_fail_cons_length", "[1]", "Cons(1, Cons(1, nil))"; *)
+      "check_fail_cons", "[1]", "[ Bool ]";
+      "check_fail_cons_length", "[1]", "[ 1 1 ]";
       "check_fail_unary_minus", "-1", "1";
     ]

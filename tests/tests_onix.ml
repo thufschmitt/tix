@@ -54,21 +54,9 @@ let testsuite =
       "test_annot_singleton_false", "x /*: false */: x", "(x /*: false */: x)";
       "test_list", "[1 2 3]", "Cons(1, Cons(2, Cons(3, nil)))";
     ] @
-  List.map (fun (name, input, output) ->
-      name >:: test_parse_pp_str ~isTodo input output)
-    [
-      ("test_record_pattern",
-       "{ x, y, z /*: int */ }: x",
-       "({ x, y, z /*: int */ }: x)");
-      "test_record_expr", "{ x = 1; y = f x; }", "{ x = 1; y = (f x); }";
-      ("test_list",
-       "Cons (1, Cons (2, Cons (3, nil)))",
-       "Cons(1, Cons(2, Cons(3, nil)))");
-      ("test_list_annot",
-       "(Cons (1, Cons (2, Cons (3, nil))) /*: \
-        Cons(int, Cons(int, Cons(int, nil))) */)",
-       "(Cons(1, Cons(2, Cons(3, nil))) /*: \
-        Cons(int, Cons(int, Cons(int, nil))) */)");
-
-      "test_line_comment", "x: #fooooo \n x", "(x: x)";
-    ]
+  [
+    "test_line_comment">:: test_parse_pp_str
+      ~isTodo
+      "x: #fooooo \n x"
+      "(x: x)";
+  ]
