@@ -22,7 +22,7 @@ let typeError loc e = Format.ksprintf (fun s -> raise (TypeError (loc, s))) e
 let check_subtype loc ~inferred ~expected =
   if not (Types.sub inferred expected) then
     typeError loc
-      "The inferred type for this expression is %s while %s was expected"
+      "This expression has type %s while a subtype of %s was expected"
       (Types.show inferred)
       (Types.show expected)
 
@@ -125,21 +125,29 @@ end = struct
           (Types.show t1);
       let t1arrow = Cduce_lib.Types.Arrow.get t1 in
       let dom = Cduce_lib.Types.Arrow.domain t1arrow in
-      if Types.sub t2 dom then
-        Cduce_lib.Types.Arrow.apply t1arrow t2
-      else
-        typeError e.L.With_loc.location "Invalid function application"
+      check_subtype e2.L.With_loc.location ~inferred:t2 ~expected:dom;
+      Cduce_lib.Types.Arrow.apply t1arrow t2
     | P.Elet (binds, e) ->
       Common.let_binding expr tenv env binds e
     | P.EopApp (op, args) ->
       operator tenv env e.L.With_loc.location op args
     | P.Eite (e0, e1, e2) ->
       if_then_else tenv env e0 e1 e2
+    | P.EtyAnnot (sub_e, annot) ->
+      let t =
+        CCOpt.get_lazy
+          (fun () -> typeError e.L.With_loc.location "Invalid type annotation")
+          (Annotations.to_type tenv annot)
+      in
+      check_subtype
+        sub_e.L.With_loc.location
+        ~expected:t
+        ~inferred:(expr tenv env sub_e);
+      t
 
     | P.EaccessPath _
     | P.Erecord _
-    | P.Ewith (_,_)
-    | P.EtyAnnot (_,_) -> assert false
+    | P.Ewith (_,_) -> assert false
 
   and operator tenv env loc op args = match op, args with
     | P.Ocons, [e1; e2] ->
@@ -190,7 +198,7 @@ end = struct
     | P.Ocons, _
     | P.Oeq, _
     | P.Oneg, _
-      -> assert false
+      -> assert false (* This isn't supposed to happend *)
 
   and if_then_else tenv env e0 e1 e2 =
     (* [type_with_exfalso var typ e] types [e] using current env + the
@@ -293,7 +301,7 @@ end = struct
           )
           products
       then
-        typeError loc "Can't type this list with type %s" @@ T.show expected
+        typeError loc "This expression should have type %s" @@ T.show expected
     | P.Oeq, [e1; e2] ->
       check_subtype
         loc
