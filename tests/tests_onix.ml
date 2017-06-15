@@ -43,6 +43,12 @@ let testsuite =
       "test_arith", "x + y - z + (- a)", "+(-(+(x, y), z), -(a))";
       "test_string", "\"x\"", "\"x\"";
       "test_comment", "1 /* 12?3 */ /* /* 1 */", "1";
+      ("test_list_annot_1", "(x /*: [ Int ] */)",
+       "(x /*: Cons(Int, X0) where X0 = nil */)");
+      ("test_list_annot_2", "(x /*: [ Int* ] */)",
+       "(x /*: X0 where X0 = (Cons(Int, X0)) | X1 where X1 = nil */)");
+      ("test_list_annot_3", "(x /*: [ A|B ] */)",
+       "(x /*: (Cons(A, X0)) | Cons(B, X1) where X0 = X1 where X1 = nil */)");
     ] @
   List.map (fun (name, input, output) ->
       name >:: test_parse_pp_str ~isTodo input output)
@@ -64,9 +70,5 @@ let testsuite =
       "test_annot_singleton_int", "x /*: 1 */: x", "(x /*: 1 */: x)";
       "test_annot_singleton_true", "x /*: true */: x", "(x /*: true */: x)";
       "test_annot_singleton_false", "x /*: false */: x", "(x /*: false */: x)";
-      ("test_annot_cons", "x /*: Cons(1, nil) */: x",
-       "(x /*: Cons(1, nil) */: x)");
-      ("test_annot_list", "x /*: X where X = Cons(Int, X) | nil */: x",
-       "(x /*: X where X = (Cons(Int, X)) | nil */: x)");
       "test_line_comment", "x: #fooooo \n x", "(x: x)";
     ]

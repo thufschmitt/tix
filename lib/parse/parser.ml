@@ -106,14 +106,11 @@ let typ_op =
     [ infix "->" I.Arrow P.Assoc_right ];
   ]
 
-let regex_op =
-  let module R = Regex_list in
-  let infix sym f assoc = P.Infix (
-      P.skip_string sym << space
-      >> P.return f, assoc)
-  in
-  [
-    [ infix "|" (fun r1 r2 -> R.Or (r1, r2)) P.Assoc_left ];
+
+let typ_regex_postfix_op = any [
+    P.char '*' >> space >> P.return (fun r -> Regex_list.Star r);
+    P.char '+' >> space >> P.return (fun r -> Regex_list.Plus r);
+    P.char '?' >> space >> P.return (fun r -> Regex_list.Maybe r);
   ]
 
 let typ_int =
@@ -131,14 +128,40 @@ let typ_string =
 let typ_ident = ident |>> fun t -> Type_annotations.Var t
 and typ_singleton = any [typ_int; typ_bool; typ_string ]
 
-let typ_atom = any [ typ_singleton; typ_ident; ]
-
 let rec typ i = i |> P.expression typ_op
-                  (any [typ_atom; parens typ; typ_list])
+                  (any [typ_atom; typ_list])
+and typ_atom i = i |> any [ typ_singleton; typ_ident; parens typ]
 
-and typ_regex i = i |> P.expression regex_op regex_atom
+and typ_regex i = any [typ_regex_alt; typ_regex_concat; ] i
 
-and regex_atom i = i |> (typ |>> fun t -> Regex_list.Type t)
+and typ_regex_alt i =
+  i |> (
+    typ_regex_concat >>= fun t1 ->
+    P.char '|' >> space >>
+    typ_regex |>> fun t2 ->
+    Regex_list.Or (t1, t2))
+
+and typ_regex_postfix i =
+  i |> (
+    typ_regex_atom >>= fun r0 ->
+    P.many typ_regex_postfix_op |>> fun ops ->
+    List.fold_left (fun r op -> op r) r0 ops
+  )
+
+and typ_regex_atom i =
+  i |> (
+    parens typ_regex
+    <|>
+    (typ_atom |>> fun t -> Regex_list.Type t))
+
+and typ_regex_concat i =
+  i |> (
+    typ_regex_postfix >>= fun r0 ->
+    P.many typ_regex_postfix |>> fun tl ->
+    List.fold_left (fun accu r -> Regex_list.Concat (accu, r))
+      r0
+      tl
+  )
 
 and typ_list i =
   i |> (
