@@ -49,6 +49,9 @@ let testsuite =
        "(x /*: X0 where X0 = (Cons(Int, X0)) | X1 where X1 = nil */)");
       ("test_list_annot_3", "(x /*: [ A|B ] */)",
        "(x /*: (Cons(A, X0)) | Cons(B, X1) where X0 = X1 where X1 = nil */)");
+      "test_annot_singleton_int", "x /*: 1 */: x", "(x /*: 1 */: x)";
+      "test_annot_singleton_true", "x /*: true */: x", "(x /*: true */: x)";
+      "test_annot_singleton_false", "x /*: false */: x", "(x /*: false */: x)";
     ] @
   List.map (fun (name, input, output) ->
       name >:: test_parse_pp_str ~isTodo input output)
@@ -67,8 +70,5 @@ let testsuite =
         Cons(int, Cons(int, Cons(int, nil))) */)");
       "test_list_sugar", "[1 2 3]", "Cons(1, Cons(2, Cons(3, nil)))";
 
-      "test_annot_singleton_int", "x /*: 1 */: x", "(x /*: 1 */: x)";
-      "test_annot_singleton_true", "x /*: true */: x", "(x /*: true */: x)";
-      "test_annot_singleton_false", "x /*: false */: x", "(x /*: false */: x)";
       "test_line_comment", "x: #fooooo \n x", "(x: x)";
     ]
