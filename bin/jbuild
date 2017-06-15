@@ -2,7 +2,7 @@
 
 (executables
   ((names (tix))
-   (libraries (onix cmdliner))))
+   (libraries (mparser parse simple typing cmdliner))))
 
 (install
  ((section bin)

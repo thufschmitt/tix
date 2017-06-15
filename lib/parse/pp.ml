@@ -41,22 +41,30 @@ let rec pp_expr fmt = drop_loc %> function
       F.fprintf fmt "@[(%a /*:@ %a */)@]"
         pp_expr e
         pp_typ ty
+    (* XXX: This is printed in an ugly way and not parsable way *)
     | P.EopApp (op, args) ->
       F.fprintf fmt "@[%a(%a)@]"
         pp_op op
         pp_op_args args
+    | P.Elet (bindings, e) ->
+      F.fprintf fmt "@[%a@ in@;%a@]"
+        pp_bindings bindings
+        pp_expr e
     | P.Erecord r -> pp_record fmt r
     | _ -> failwith "TODO"
 
 and pp_pattern fmt = drop_loc %> function
-    | P.Pvar (v, None) -> pp_ident fmt v
-    | P.Pvar (v, Some t) ->
-      F.fprintf fmt "%a /*: %a */"
-        pp_ident v
-        pp_typ   t
+    | P.Pvar (v, a) -> pp_pattern_var fmt (v, a)
     | P.Pnontrivial (sub_pattern, None) ->
       pp_nontrivial_pattern fmt sub_pattern
     | _ -> failwith "TODO"
+
+and pp_pattern_var fmt = function
+  | (v, None) -> pp_ident fmt v
+  | (v, Some t) ->
+    F.fprintf fmt "%a /*: %a */"
+      pp_ident v
+      pp_typ   t
 
 and pp_nontrivial_pattern fmt = function
   | P.NPrecord (fields, P.Closed) ->
@@ -103,3 +111,16 @@ and pp_record_field fmt = drop_loc %> function
         pp_ident name
         pp_expr value
     | _ -> failwith "TODO"
+
+and pp_bindings fmt =
+  Format.pp_print_list
+    ~pp_sep:(fun fmt () -> Format.fprintf fmt "@;and@ ")
+    pp_binding
+    fmt
+
+and pp_binding fmt = function
+  | P.BstaticDef (pat, e) ->
+    Format.fprintf fmt "%a = %a"
+      pp_pattern_var pat
+      pp_expr e
+  | _ -> assert false

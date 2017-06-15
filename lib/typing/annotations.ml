@@ -2,7 +2,7 @@
    Conversion of type annotations into actual types
 *)
 
-module A = Type_annotations
+module A = Parse.Type_annotations
 module T = Types
 exception TypeError
 

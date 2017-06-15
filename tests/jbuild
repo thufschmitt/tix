@@ -2,7 +2,7 @@
 
 (executables
   ((names (nix_tests))
-   (libraries (onix oUnit))))
+   (libraries (onix mparser oUnit))))
 
 (install
  ((section bin)

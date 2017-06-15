@@ -3,4 +3,4 @@
 (library
   ((name "typing")
    (public_name "typing")
-   (libraries (cduce simple type_annotations containers))))
+   (libraries (cduce simple containers))))

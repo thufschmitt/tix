@@ -1,48 +1,17 @@
 (**
    Parser for the nix language
 *)
-type token =
-  | EOF
-  | COLON
-  | SEMICOLON
-  | COMMA
-  | DOT
-  | MINUS
-  | PLUS
-  | AROBASE
-  | EQUAL
-  | DBL_EQUAL
-  | OR_KW
-  | REC_KW
-  | INHERIT_KW
-  | LET_KW
-  | IN_KW
-  | WHERE_KW
-  | IF_KW
-  | THEN_KW
-  | ELSE_KW
-  | DOLLAR_BRACE
-  | BRACE_LR
-  | BRACE_L
-  | BRACE_R
-  | PAREN_L
-  | PAREN_R
-  | BRACKET_L
-  | BRACKET_R
-  | AMPERSAND
-  | PIPE
-  | CONS_KW
-  | TY_START
-  | TY_END
-  | ARROW_R
-  | QUESTION_MARK
-  | ID of string
-  | BOOL of bool
-  | INTEGER of int
-  | STRING of string
 
-(** Parse a nix expression. The type of the function is compatible with Menhir
-   generated parsers *)
-val onix : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> Ast.expr option
+(** The type of a parser *)
+type 'a t = ('a, unit) MParser.t
 
-val typ : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> Type_annotations.t option
+type 'a return = ('a, string * MParser.error) result
+
+(** Parse a nix expression. *)
+val expr : Ast.expr t
+
+(** Parser for a type *)
+val typ  : Type_annotations.t t
+
+
+val parse_string : 'a t -> string -> 'a return

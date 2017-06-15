@@ -1,19 +1,19 @@
 open OUnit2
-module TA = Type_annotations
+module TA = Parse.Type_annotations
 module T  = Typing.Types
 
-exception ParseError
+exception ParseError of string
 
-let parse tokens =
-  match Parse.Parser.onix Parse.Lexer.read tokens with
-  | Some s -> Simple.Of_onix.expr s
-  | None -> raise ParseError
+let parse str =
+  match Parse.Parser.(parse_string expr) str with
+  | Ok s -> Simple.Of_onix.expr s
+  | Error (msg, _) -> raise (ParseError msg)
 
-let typ s =
+let typ str =
   let maybe_t =
-    CCOpt.flat_map
-      (fun t -> Typing.(Annotations.to_type Types.Environment.default t))
-      (Parse.Parser.typ Parse.Lexer.read (Lexing.from_string s))
+    match Parse.Parser.(parse_string typ) str with
+    | Ok t -> Typing.(Annotations.to_type Types.Environment.default t)
+    | Error (msg, _) -> raise (ParseError msg)
   in
   CCOpt.get_exn maybe_t
 
@@ -30,7 +30,7 @@ let test_infer_expr input expected_type _ =
     let open Typing in
     infer Types.Environment.default
       Typing_env.initial
-      (Lexing.from_string input)
+      input
   in
   assert_equal
     ~cmp:T.T.equiv
@@ -45,14 +45,14 @@ let test_check input expected_type _=
     check
       Types.Environment.default
       Typing_env.initial
-      (Lexing.from_string input)
+      input
       expected_type
   in ignore tast
 
 let test_var _ =
   let tenv = Typing.(Typing_env.(add "x" Types.Builtins.int initial)) in
   let typ =
-    infer Typing.Types.Environment.default tenv (Lexing.from_string "x")
+    infer Typing.Types.Environment.default tenv "x"
   in
   assert_equal Typing.Types.Builtins.int typ
 
@@ -68,7 +68,7 @@ let test_infer_expr_fail input =
   infer
     Types.Environment.default
     Typing_env.initial
-    (Lexing.from_string input)
+    input
 
 let test_check_fail input expected_type =
   let expected_type = typ expected_type in
@@ -77,7 +77,7 @@ let test_check_fail input expected_type =
   check
     Types.Environment.default
     Typing_env.initial
-    (Lexing.from_string input)
+    input
     expected_type
 
 let one_singleton = T.Builtins.interval @@ T.Intervals.singleton_of_int 1
@@ -95,14 +95,13 @@ let testsuite =
       "infer_lambda", "x /*: Int */: 1", "Int -> 1";
       "infer_lambda_var", "x /*: Int */: x", "Int -> Int";
       "infer_apply", "(x /*: Int */: x) 1", "Int";
-      ("infer_arrow_annot",
-       "x /*: Int -> Int */: x",
+      ("infer_arrow_annot", "x /*: Int -> Int */: x",
        "(Int -> Int) -> Int -> Int");
       "infer_let_1", "let x = 1; in x", "1";
       "infer_let_2", "let x /*:Int*/ = 1; in x", "Int";
       "infer_let_3", "let x /*:Int*/ = 1; y = x; in y", "Int";
-      "infer_let_4", "let x = 1; y = x; in y", "?";
-      "infer_let_5", "let x = x; in x", "?";
+      (* "infer_let_4", "let x = 1; y = x; in y", "?"; *)
+      (* "infer_let_5", "let x = x; in x", "?"; *)
       "infer_let_6", "let x /*: Int -> Int */ = y: y; in x", "Int -> Int";
       ("infer_let_7", "let x /*: Int -> Int -> Int */ = y: y: y; in x",
        "Int -> Int -> Int");
@@ -110,9 +109,7 @@ let testsuite =
       "infer_union", "x /*: Int | Bool */: x", "(Int | Bool) -> (Int | Bool)";
       "infer_intersection", "x /*: Int & Int */: x", "Int -> Int";
       "test_not_true", "__not true", "false";
-      "test_list", "[1 true false]", "Cons (1, Cons(true, Cons(false, nil)))";
-      "infer_type_where_1", "x /*: X where X = Int */: x", "Int -> Int";
-      "infer_type_where_2", "x /*: Int where X = Int */: x", "Int -> Int";
+      "test_list", "[1 true false]", "[1 true false]";
       ("infer_ite_classic", "let x /*: Bool */ = true; in if x then 1 else 2",
        "1 | 2");
       "infer_ite_dead_branch", "if true then 1 else __add 1 true", "1";
@@ -130,8 +127,6 @@ let testsuite =
       "infer_fail_apply", "1 1";
       "infer_fail_apply2", "(x /*: Bool */: x) 1";
       "infer_fail_apply3", "(x /*: Int */: x) true";
-      "infer_fail_notalist", "Cons (1, 2)";
-      "infer_fail_where", "(x /*: X where X = Bool */: x) 1";
       ("infer_fail_ite_not_bool_cond",
        "let x /*: Int | Bool */ = 1; in if x then 1 else 1");
       ("infer_fail_ite_no_refine_1",
@@ -158,8 +153,8 @@ let testsuite =
       ("check_ite_dead_branch",
        "let x = true; in if x then true else false",
        "true");
-      "check_cons", "[1]", "Cons(1, nil)";
-      "check_cons_union", "[1]", "Cons(1, nil) | Cons(Bool, nil)";
+      "check_cons", "[1]", "[1]";
+      "check_cons_union", "[1]", "[1] | [ Bool ]";
       "check_add", "1 + 1", "Int";
       "check_minus", "1 - 1", "Int";
       "check_unary_minus", "- (-1)", "1";
@@ -172,7 +167,7 @@ let testsuite =
       "check_fail_bad_intersect_arrow", "x: x", "(Int -> Bool) & (Bool -> Int)";
       "check_fail_inside_let", "let x = y: y; in x", "Int -> Int";
       "check_fail_ite_not_bool", "if 1 then 1 else 1", "Int";
-      "check_fail_cons", "[1]", "Cons(Bool, nil)";
-      "check_fail_cons_length", "[1]", "Cons(1, Cons(1, nil))";
+      "check_fail_cons", "[1]", "[ Bool ]";
+      "check_fail_cons_length", "[1]", "[ 1 1 ]";
       "check_fail_unary_minus", "-1", "1";
     ]

@@ -2,23 +2,22 @@
    Simple data structure to add location information to AST nodes
 *)
 type t = {
-  pos_start: Lexing.position [@opaque];
-  pos_end: Lexing.position [@opaque];
+  file_name: string;
+  lnum: int;
+  cnum: int;
 }
 
-let mk pos_start pos_end = {
-  pos_start;
-  pos_end;
+let mk ?(file_name = "") ?(lnum = -1) ?(cnum = -1) () = {
+  file_name;
+  lnum;
+  cnum;
 }
 
-let pp_position fmt pos =
-  let open Lexing in
-  Format.fprintf fmt "%s:%d:%d"
-    pos.pos_fname
-    pos.pos_lnum
-    (pos.pos_cnum - pos.pos_bol)
-
-let pp fmt t = pp_position fmt t.pos_start
+let pp fmt t =
+  Format.fprintf fmt "file %s, line %i, character %i"
+    t.file_name
+    t.lnum
+    t.cnum
 
 module With_loc =
 struct
@@ -30,10 +29,12 @@ struct
 
   type 'a t = 'a _t
 
-  let mk pos_start pos_end elt = {
+  let mk' ?file_name ?lnum ?cnum elt = {
     description = elt;
-    location = mk pos_start pos_end;
+    location = mk ?file_name ?lnum ?cnum ()
   }
+
+  let mk location description = { location; description; }
 
   let map f x = {
     x with

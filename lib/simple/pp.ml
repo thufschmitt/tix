@@ -53,7 +53,7 @@ and pp_pattern fmt = drop_loc %> function
         pp_typ   t
     | _ -> failwith "TODO"
 
-and pp_typ fmt = Type_annotations.pp fmt
+and pp_typ fmt = Parse.Type_annotations.pp fmt
 
 and pp_op_args fmt = function
   | [] -> ()

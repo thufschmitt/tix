@@ -7,11 +7,11 @@ let test_parse_pp_str ?(isTodo=false) input expected_output _ =
   if isTodo then todo "Not implemented yet";
   let output =
     begin
-      match Parse.Parser.onix Parse.Lexer.read (Lexing.from_string input) with
-      | Some x ->
+      match MParser.parse_string Parse.Parser.expr input () with
+      | MParser.Success x ->
         Simple.Of_onix.expr x
         |> fun s -> Simple.Pp.pp_expr Format.str_formatter s
-      | None -> raise ParseError
+      | MParser.Failed _ -> raise ParseError
     end;
     Format.flush_str_formatter ()
   in
@@ -38,9 +38,6 @@ let testsuite =
       "test_Y_comb", "(x: x x) (x: x x)", "(x: x x) (x: x x)";
       "test_annot", "(x /*: int */)", "(x /*: int */)";
       "test_annot_arrow", "(x /*: int -> int */)", "(x /*: (int) -> int */)";
-      ("test_list",
-       "Cons (1, Cons (2, Cons (3, nil)))",
-       "Cons(1, Cons(2, Cons(3, nil)))");
-      "test_list_sugar", "[1 2 3]", "Cons(1, Cons(2, Cons(3, nil)))";
       "test_string", "\"x\"", "\"x\"";
+      "test_list", "[1 2 3]", "Cons(1, Cons(2, Cons(3, nil)))";
     ]
