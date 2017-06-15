@@ -109,12 +109,7 @@ let testsuite =
       "infer_union", "x /*: Int | Bool */: x", "(Int | Bool) -> (Int | Bool)";
       "infer_intersection", "x /*: Int & Int */: x", "Int -> Int";
       "test_not_true", "__not true", "false";
-      (*     "test_list", "[1 true false]", "Cons (1, Cons(true, Cons(false,
-       *     nil)))"; *)
-      (*     "infer_type_where_1", "x /*: X where X = Int */: x", "Int -> Int";
-       *     *)
-      (*     "infer_type_where_2", "x /*: Int where X = Int */: x", "Int ->
-       *     Int"; *)
+      "test_list", "[1 true false]", "[1 true false]";
       (* ("infer_ite_classic", "let x /*: Bool */ = true; in if x then 1 else
        * 2", *)
       (*  "1 | 2"); *)
@@ -134,7 +129,6 @@ let testsuite =
       "infer_fail_apply", "1 1";
       "infer_fail_apply2", "(x /*: Bool */: x) 1";
       "infer_fail_apply3", "(x /*: Int */: x) true";
-      (*     "infer_fail_notalist", "Cons (1, 2)"; *)
       (*     "infer_fail_where", "(x /*: X where X = Bool */: x) 1"; *)
       (*     ("infer_fail_ite_not_bool_cond", *)
       (*      "let x /*: Int | Bool */ = 1; in if x then 1 else 1"); *)

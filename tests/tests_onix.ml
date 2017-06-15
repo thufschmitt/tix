@@ -52,6 +52,7 @@ let testsuite =
       "test_annot_singleton_int", "x /*: 1 */: x", "(x /*: 1 */: x)";
       "test_annot_singleton_true", "x /*: true */: x", "(x /*: true */: x)";
       "test_annot_singleton_false", "x /*: false */: x", "(x /*: false */: x)";
+      "test_list", "[1 2 3]", "Cons(1, Cons(2, Cons(3, nil)))";
     ] @
   List.map (fun (name, input, output) ->
       name >:: test_parse_pp_str ~isTodo input output)
@@ -68,7 +69,6 @@ let testsuite =
         Cons(int, Cons(int, Cons(int, nil))) */)",
        "(Cons(1, Cons(2, Cons(3, nil))) /*: \
         Cons(int, Cons(int, Cons(int, nil))) */)");
-      "test_list_sugar", "[1 2 3]", "Cons(1, Cons(2, Cons(3, nil)))";
 
       "test_line_comment", "x: #fooooo \n x", "(x: x)";
     ]

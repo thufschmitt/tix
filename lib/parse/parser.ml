@@ -237,7 +237,18 @@ and expr_if i =
 
 and expr_atom i =
   i |> (
-    any [expr_const; expr_ident; expr_paren; expr_annot ]
+    any [expr_list; expr_const; expr_ident; expr_paren; expr_annot ]
+  )
+
+and expr_list i =
+  i |> (
+    get_loc >>= fun loc ->
+    P.char '[' >> space >>
+    P.many_rev_fold_left
+      (fun accu elt -> W.mk loc (A.EopApp (A.Ocons, [elt; accu])))
+      (W.mk loc @@ A.Evar "nil")
+      expr_atom
+    << P.char ']' << space
   )
 
 and expr_paren i = i |> parens expr
