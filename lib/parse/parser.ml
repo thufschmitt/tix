@@ -8,6 +8,7 @@ module StrHash = CCHashSet.Make(CCString)
 let (>>=) = P.(>>=)
 let (|>>) = P.(|>>)
 let (<|>) = P.(<|>)
+let (<?>) = P.(<??>)
 let (>>)  = P.(>>)
 let (<<)  = P.(<<)
 
@@ -39,8 +40,9 @@ let comment =
   >> P.skip_many_chars_until
     P.any_char
     (P.char '*' << P.char '/')
+     <?> "comment"
 
-let space = P.skip_many (P.skip P.space <|> comment)
+let space = P.skip_many (P.skip P.space <|> comment <?> "whitespace")
 
 let any x = P.choice @@ List.map P.attempt x
 
@@ -50,13 +52,14 @@ let alphanum_ = P.alphanum <|> P.char '_'
 let letter_ = P.letter <|> P.char '_'
 
 let ident =
-  letter_ >>= fun c0 ->
-  P.many_chars alphanum_ << space >>= fun end_name ->
-  let name = (CCString.of_char c0) ^ end_name in
-  if StrHash.mem keywords name then
-    P.zero
-  else
-    P.return name
+  (letter_ >>= fun c0 ->
+   P.many_chars alphanum_ << space >>= fun end_name ->
+   let name = (CCString.of_char c0) ^ end_name in
+   if StrHash.mem keywords name then
+     P.zero
+   else
+     P.return name)
+  <?> "ident"
 
 let int = P.many1_chars P.digit << space |>> int_of_string
 
@@ -66,12 +69,14 @@ let bool = any
     [keyword "true" >> P.return true;
      keyword "false" >> P.return false]
            << space
+           <?> "boolean"
 
 let string = P.char '"' >>
   P.many_chars_until
     P.any_char
     (P.satisfy (fun c -> c = '"') << P.prev_char_satisfies (fun c -> c <> '\\'))
   << space
+  <?> "litteral string"
 
 let infix_ops =
   let infix sym f assoc = P.Infix (
@@ -128,11 +133,16 @@ let typ_string =
 let typ_ident = ident |>> fun t -> Type_annotations.Var t
 and typ_singleton = any [typ_int; typ_bool; typ_string ]
 
-let rec typ i = i |> P.expression typ_op
-                  (any [typ_atom; typ_list])
+let rec typ i = i |> (P.expression typ_op
+                        (any [typ_atom; typ_list])
+                      <?> "type")
+
 and typ_atom i = i |> any [ typ_singleton; typ_ident; parens typ]
 
-and typ_regex i = any [typ_regex_alt; typ_regex_concat; ] i
+and typ_regex i =
+  i |> (
+    any [typ_regex_alt; typ_regex_concat; ]
+    <?> "type regex")
 
 and typ_regex_alt i =
   i |> (
@@ -168,7 +178,8 @@ and typ_list i =
     P.char '[' >> space >> typ_regex << P.char ']' << space |>>
     Regex_list.to_type)
 
-let type_annot = P.string "/*:" >> space >> typ << P.string "*/" << space
+let type_annot = (P.string "/*:" >> space >> typ << P.string "*/" << space)
+                 <?> "type annotation"
 
 (** {3 Expressions} *)
 
@@ -202,30 +213,32 @@ let pattern_ident = add_loc (
     A.Pvar (id, annot)
   )
 
-and expr_const =
-  any [expr_int; expr_bool; expr_string]
+and expr_const = (any [expr_int; expr_bool; expr_string]) <?> "constant"
 
 let rec expr i =
-  i |>
-  any [expr_lambda; expr_let; expr_if; expr_infix; expr_apply]
+  i |> (
+    any [expr_lambda; expr_let; expr_if; expr_infix; expr_apply]
+  )
 
 and expr_infix i =
   i |> (P.expression infix_ops expr_apply)
 
 and expr_if i =
-  i |> add_loc
-    (keyword "if" >>
-     expr >>= fun e_if ->
-     keyword "then" >>
-     expr >>= fun e_then ->
-     keyword "else" >>
-     expr |>> fun e_else ->
-     A.Eite (e_if, e_then, e_else)
-    )
+  i |> (add_loc
+          (keyword "if" >>
+           expr >>= fun e_if ->
+           keyword "then" >>
+           expr >>= fun e_then ->
+           keyword "else" >>
+           expr |>> fun e_else ->
+           A.Eite (e_if, e_then, e_else)
+          )
+        <?> "if-then-else")
 
 and expr_atom i =
-  i |>
-  any [expr_const; expr_ident; expr_paren; expr_annot ]
+  i |> (
+    any [expr_const; expr_ident; expr_paren; expr_annot ]
+  )
 
 and expr_paren i = i |> parens expr
 
@@ -238,21 +251,23 @@ and expr_annot i =
     ))
 
 and expr_lambda i =
-  i |> add_loc (
-    pattern >>= fun pat ->
-    P.char ':' >> space >>
-    expr |>> fun body ->
-    A.Elambda (pat, body)
-  )
+  i |> (add_loc (
+      pattern >>= fun pat ->
+      P.char ':' >> space >>
+      expr |>> fun body ->
+      A.Elambda (pat, body)
+    )
+        <?> "lambda")
 
 and expr_let i =
-  i |> add_loc (
-    keyword "let" >>
-    P.many1 (P.attempt binding) >>= fun b ->
-    keyword "in" >>
-    expr |>> fun e ->
-    A.Elet (b, e)
-  )
+  i |> (add_loc (
+      keyword "let" >>
+      P.many1 (P.attempt binding) >>= fun b ->
+      keyword "in" >>
+      expr |>> fun e ->
+      A.Elet (b, e)
+    )
+        <?> "let binding")
 
 and binding i =
   i |>
@@ -261,7 +276,7 @@ and binding i =
    expr << P.char ';' << space |>> fun e ->
    A.BstaticDef ((id, annot), e))
 
-and pattern i = i |> any [pattern_ident]
+and pattern i = i |> (any [pattern_ident] <?> "pattern")
 
 and expr_apply i =
   i |>
@@ -270,8 +285,7 @@ and expr_apply i =
    P.many expr_atom |>>
    List.fold_left (fun accu e -> W.mk loc (A.EfunApp (accu, e))) e0)
 
-let expr =
-  space >> expr << P.eof
+let expr = space >> expr << P.eof
 
 let mpresult_to_result = function
   | MParser.Success x -> Ok x
