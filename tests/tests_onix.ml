@@ -53,10 +53,5 @@ let testsuite =
       "test_annot_singleton_true", "x /*: true */: x", "(x /*: true */: x)";
       "test_annot_singleton_false", "x /*: false */: x", "(x /*: false */: x)";
       "test_list", "[1 2 3]", "Cons(1, Cons(2, Cons(3, nil)))";
-    ] @
-  [
-    "test_line_comment">:: test_parse_pp_str
-      ~isTodo
-      "x: #fooooo \n x"
-      "(x: x)";
-  ]
+      "test_line_comment", "x: #fooooo \n x", "(x: x)";
+    ]

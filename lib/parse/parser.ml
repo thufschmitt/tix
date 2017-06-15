@@ -35,16 +35,19 @@ let add_loc x =
   mk_with_loc ~file_name ~lnum ~cnum x
 
 (** {2 Some utility functions } *)
-let comment =
+let any x = P.choice @@ List.map P.attempt x
+
+let block_comment =
   (P.attempt (P.string "/*" << P.satisfy @@ (<>) ':'))
   >> P.skip_many_chars_until
     P.any_char
     (P.char '*' << P.char '/')
-     <?> "comment"
+
+let line_comment = P.char '#' >> P.skip_many_until P.any_char P.newline
+
+let comment = any [ block_comment; line_comment; ] <?> "comment"
 
 let space = P.skip_many (P.skip P.space <|> comment <?> "whitespace")
-
-let any x = P.choice @@ List.map P.attempt x
 
 let keyword k = P.string k << P.not_followed_by P.alphanum "" >> space
 
