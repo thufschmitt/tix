@@ -56,7 +56,7 @@ stdenv.mkDerivation rec {
     containers
     jbuilder
     cduce-lib
-    cmdliner
+    cmdliner_1_0
     mparser
   ];
 
