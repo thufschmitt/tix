@@ -5,28 +5,6 @@ with import nixpkgs { inherit system; };
 let
   ocamlPackages = ocamlPackages_4_03;
   ocaml = ocamlPackages.ocaml;
-  jbuilder = ocamlPackages.buildOcaml rec {
-    name = "jbuilder-${version}";
-    version = "1.0+beta9";
-
-    src = fetchFromGitHub {
-      owner = "janestreet";
-      repo = "jbuilder";
-      rev = version;
-      sha256 = "1pyvv3l3q5754lfwf2yjahrplg6ssnyn94q29gb38p1s0vq5pys7";
-    };
-
-    buildPhase = ''
-      ocaml bootstrap.ml
-      ./boot.exe -j 4
-    '';
-
-    installPhase = ''
-      mkdir -p $out/bin
-      cp ./_build/default/bin/main.exe $out/bin/jbuilder
-    '';
-
-  };
   cduce-lib = stdenv.mkDerivation rec {
     name = "cduce-unstable-${version}";
     version = "2016-06-07";
