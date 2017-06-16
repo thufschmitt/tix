@@ -1,6 +1,17 @@
 {
-  nixpkgs ? <nixpkgs>, system ? builtins.currentSystem
+  nixpkgs' ? null, system ? builtins.currentSystem
 }:
+let
+  nixpkgs = if nixpkgs' != null then nixpkgs' else
+    let nixpkgs' = import <nixpkgs> {}; in
+    nixpkgs'.fetchFromGitHub {
+      # Waiting for the containers library to be updated upstream
+      owner = "regnat";
+      repo = "nixpkgs";
+      rev = "d036d882965989f38a9a414a3f34b692d146bdf6";
+      sha256 = "1njsk8jbwlzqgdazmxcvaxwmkxam61b8zjidsr6hawi1dmlflhfh";
+    };
+in
 with import nixpkgs { inherit system; };
 let
   ocamlPackages = ocamlPackages_4_03;
