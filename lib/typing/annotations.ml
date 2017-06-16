@@ -4,14 +4,14 @@
 
 module A = Parse.Type_annotations
 module T = Types
-exception TypeError
+exception TypeError of string
 
 let singleton =
   let module S = A.Singleton in
   function
-  | S.Bool b -> CCOpt.pure @@ T.Singleton.bool b
-  | S.Int  i -> CCOpt.pure @@ T.Singleton.int  i
-  | S.String s -> CCOpt.pure @@
+  | S.Bool b -> CCResult.pure @@ T.Singleton.bool b
+  | S.Int  i -> CCResult.pure @@ T.Singleton.int  i
+  | S.String s -> CCResult.pure @@
     CCString.fold
       (fun accu char -> T.Builtins.cons
           (T.node @@ Cduce_lib.Types.char
@@ -40,28 +40,34 @@ module Nodes_env = struct
   let lookup t key = M.get key t
 end
 
-let (>|=) = CCOpt.(>|=)
+let (>|=) = CCResult.(>|=)
 let (<+>) = CCOpt.(<+>)
+let (|>) opt msg = CCOpt.to_result msg opt
 
-let rec to_node (nodes_env : Nodes_env.t) env = function
+let rec to_node (nodes_env : Nodes_env.t) env
+  : A.t -> (Cduce_lib.Types.Node.t, string) result = function
   | A.Var v ->
     Nodes_env.lookup nodes_env v
     <+>
-    (Types.Environment.lookup env v >|= T.node)
+    (CCOpt.map T.node @@ Types.Environment.lookup env v)
+    |> ("Unbound variable " ^ v)
   | A.Infix (A.Infix_constructors.Arrow, t1, t2) ->
-    CCOpt.map2 T.Builtins.arrow
+    CCResult.both
       (to_node nodes_env env t1)
       (to_node nodes_env env t2)
+    >|= CCFun.uncurry T.Builtins.arrow
     >|= T.node
   | A.Infix (A.Infix_constructors.And, t1, t2) ->
-    CCOpt.map2 T.Builtins.cap
+    CCResult.both
       (to_type nodes_env env t1)
       (to_type nodes_env env t2)
+    >|= CCFun.uncurry T.Builtins.cap
     >|= T.node
   | A.Infix (A.Infix_constructors.Or, t1, t2) ->
-    CCOpt.map2 T.Builtins.cup
+    CCResult.both
       (to_type nodes_env env t1)
       (to_type nodes_env env t2)
+    >|= CCFun.uncurry T.Builtins.cup
     >|= T.node
   | A.Singleton s -> singleton s
     >|= T.node
@@ -80,19 +86,21 @@ let rec to_node (nodes_env : Nodes_env.t) env = function
         List.iter
           (fun (typ, def) ->
              let type_def =
-               CCOpt.get_lazy
-                 (fun () -> raise TypeError)
+               CCResult.catch
+                 ~ok:CCFun.id
+                 ~err:(fun e -> raise (TypeError e))
                  (to_type new_nodes_env env def)
              in
              T.define typ type_def)
           defs;
         to_node new_nodes_env env t
-      with TypeError -> None
+      with TypeError e -> Error e
     end
   | A.Cons (t1, t2) ->
-    CCOpt.map2 T.Builtins.cons
+    CCResult.both
       (to_node nodes_env env t1)
       (to_node nodes_env env t2)
+    >|= CCFun.uncurry T.Builtins.cons
     >|= T.node
 
 and to_type nodes_env env p = to_node nodes_env env p >|= T.typ

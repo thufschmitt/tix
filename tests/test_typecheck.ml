@@ -15,7 +15,7 @@ let typ str =
     | Ok t -> Typing.(Annotations.to_type Types.Environment.default t)
     | Error (msg, _) -> raise (ParseError msg)
   in
-  CCOpt.get_exn maybe_t
+  CCResult.get_exn maybe_t
 
 let infer tenv env tokens =
   parse tokens

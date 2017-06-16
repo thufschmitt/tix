@@ -28,28 +28,33 @@ let check_subtype loc ~inferred ~expected =
 
 module Bindings = struct
   let explicit_annotations (tenv : TE.t) (bindings : P.binding list)
-    : (string * Types.t option * P.expr) list * E.t =
-    let half_typed_bindings = List.map (fun ((var, maybe_annot), e) ->
-        let type_constraint =
-          CCOpt.flat_map
-            (fun annot ->
-               CCOpt.map
-                 (fun t -> Some t)
-                 (Annotations.to_type tenv annot)
-               |> CCOpt.get_lazy (fun () -> assert false))
-            maybe_annot
-        in (var, type_constraint, e)
-      )
+    : ((string * Types.t option * P.expr) list * E.t, string) result =
+    let half_typed_bindings =
+      List.map
+        (fun ((var, maybe_annot), e) ->
+           let ret_triple x = (var, Some x, e) in
+           CCOpt.map (Annotations.to_type tenv) maybe_annot
+           |> CCOpt.map_or
+             ~default:(Ok (var, None, e))
+             (CCResult.map2 ret_triple CCFun.id)
+        )
         bindings
+      |> List.fold_left (fun accu elt ->
+          CCResult.both elt accu |> CCResult.map @@ CCFun.uncurry CCList.cons)
+        (Ok [])
     in
-    let new_env =
-      List.fold_left
-        (fun accu (x, constr, _) ->
-           E.add x (CCOpt.get_or ~default:Types.Builtins.grad constr) accu)
-        E.empty
-        half_typed_bindings
-    in
-    half_typed_bindings, new_env
+    CCResult.map
+      (fun half_typed_bindings ->
+         let new_env =
+           List.fold_left
+             (fun accu (x, constr, _) ->
+                E.add x (CCOpt.get_or ~default:Types.Builtins.grad constr) accu)
+             E.empty
+             half_typed_bindings
+         in
+         half_typed_bindings, new_env
+      )
+      half_typed_bindings
 
   let report_inference_results
       (typed_binds : (string * Types.t option * Types.t) list)
@@ -110,7 +115,11 @@ end = struct
         (fun () -> typeError e.L.With_loc.location "Unbount variable %s" v)
         (E.lookup env v)
     | P.Elambda (pat, e) ->
-      let (added_env, domain) = Pattern.infer tenv pat in
+      let (added_env, domain) =
+        CCResult.catch (Pattern.infer tenv pat)
+          ~ok:CCFun.id
+          ~err:(fun err -> typeError e.L.With_loc.location "%s" err)
+      in
       let codomain = expr tenv (E.merge env added_env) e in
       Types.(Builtins.arrow (node domain) (node codomain))
     | P.EfunApp (e1, e2) ->
@@ -135,8 +144,9 @@ end = struct
       if_then_else tenv env e0 e1 e2
     | P.EtyAnnot (sub_e, annot) ->
       let t =
-        CCOpt.get_lazy
-          (fun () -> typeError e.L.With_loc.location "Invalid type annotation")
+        CCResult.catch
+          ~err:(fun err -> typeError e.L.With_loc.location "%s" err)
+          ~ok:CCFun.id
           (Annotations.to_type tenv annot)
       in
       check_subtype
@@ -267,7 +277,11 @@ end = struct
       (* XXX: destruct [expected] with the A(t) function from the paper *)
       let expected_arrow = Cduce_lib.Types.Arrow.get expected in
       List.iter (fun (dom, codom) ->
-          let (added_env, _) = Pattern.infer ~t_constr:dom tenv pat in
+          let (added_env, _) =
+            CCResult.catch (Pattern.infer ~t_constr:dom tenv pat)
+              ~ok:CCFun.id
+              ~err:(fun err -> typeError e.L.With_loc.location "%s" err)
+          in
           let _typed_e = expr tenv (E.merge env added_env) e codom in
           ())
         (a_op expected_arrow)
@@ -390,7 +404,11 @@ and Common : sig
 end = struct
   let let_binding expr tenv env binds e =
     let module B = Bindings in
-    let half_typed_binds, binds_env = B.explicit_annotations tenv binds in
+    let half_typed_binds, binds_env =
+      CCResult.catch (B.explicit_annotations tenv binds)
+        ~ok:CCFun.id
+        ~err:(fun err -> typeError e.L.With_loc.location "%s" err)
+    in
     let typed_binds =
       List.map
         (fun (x, constr, rhs) ->
