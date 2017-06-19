@@ -43,7 +43,8 @@ let block_comment =
     P.any_char
     (P.char '*' << P.char '/')
 
-let line_comment = P.char '#' >> P.skip_many_until P.any_char P.newline
+let line_comment = P.char '#' << P.not_followed_by (P.string "::") ""
+  >> P.skip_many_until P.any_char P.newline
 
 let comment = any [ block_comment; line_comment; ] <?> "comment"
 
@@ -220,8 +221,24 @@ and expr_const = (any [expr_int; expr_bool; expr_string]) <?> "constant"
 
 let rec expr i =
   i |> (
-    any [expr_lambda; expr_let; expr_if; expr_infix; expr_apply]
+    any [expr_pragma; expr_lambda; expr_let; expr_if; expr_infix; expr_apply]
   )
+
+and expr_pragma i =
+  i |> (add_loc (
+      P.string "#::" >>
+      space >>
+      keyword "WARN" >>
+      P.many1 warning_annot >>= fun warnings ->
+      P.skip_many P.blank >> P.newline >> space >>
+      expr |>> fun e ->
+      A.Epragma (Pragma.Warnings warnings, e)))
+
+and warning_annot i =
+  i |> (
+    P.any_of "+-" >>= fun sign_char ->
+    let sign = if sign_char = '+' then Pragma.Plus else Pragma.Minus in
+    P.many1_chars P.digit |>> fun nb -> (sign, int_of_string nb))
 
 and expr_infix i =
   i |> (P.expression infix_ops expr_apply)

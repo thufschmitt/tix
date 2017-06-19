@@ -51,7 +51,12 @@ let rec pp_expr fmt = drop_loc %> function
         pp_bindings bindings
         pp_expr e
     | P.Erecord r -> pp_record fmt r
+    | P.Epragma (pragma, e) ->
+      F.fprintf fmt "#:: %a\n%a"
+        Pragma.pp pragma
+        pp_expr e
     | _ -> failwith "TODO"
+
 
 and pp_pattern fmt = drop_loc %> function
     | P.Pvar (v, a) -> pp_pattern_var fmt (v, a)
