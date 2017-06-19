@@ -18,8 +18,7 @@ module Infer : sig
      @return the type of the expression
      @raise TypeError if the expression is not typeable
   *)
-  val expr : Types.Environment.t
-    -> Typing_env.t
+  val expr : Environment.t
     -> Simple.Ast.expr
     -> Types.t withError
 end
@@ -30,8 +29,7 @@ module Check : sig
 
       @raise TypeError if it is not the case.
   *)
-  val expr : Types.Environment.t
-    -> Typing_env.t
+  val expr : Environment.t
     -> Simple.Ast.expr
     -> Types.t
     -> unit withError

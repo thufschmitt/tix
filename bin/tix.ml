@@ -10,8 +10,7 @@ let typecheck ast =
   let typ =
     Simple.Of_onix.expr ast
     |> Typing.(Typecheck.Infer.expr
-                 Types.Environment.default
-                 Typing_env.initial)
+                 Environment.default)
   in
   CCResult.map
     (Format.fprintf Format.std_formatter "%a\n" Typing.Types.pp)

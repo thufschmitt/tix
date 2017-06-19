@@ -1,9 +1,10 @@
 module P = Simple.Ast
-module E = Typing_env
+module E = Environment
 module L = Parse.Location
 module R = CCResult
 module T = Types
 module TE = T.Environment
+module VE = Typing_env
 module W = L.With_loc
 
 module Pattern = Typecheck_pat
@@ -30,7 +31,7 @@ let check_subtype loc ~inferred ~expected =
 
 module Bindings = struct
   let explicit_annotations (tenv : TE.t) (bindings : P.binding list)
-    : ((string * Types.t option * P.expr) list * E.t, string) result =
+    : ((string * Types.t option * P.expr) list * VE.t, string) result =
     let half_typed_bindings =
       List.map
         (fun ((var, maybe_annot), e) ->
@@ -49,8 +50,8 @@ module Bindings = struct
          let new_env =
            List.fold_left
              (fun accu (x, annot, _) ->
-                E.add x (CCOpt.get_or ~default:Types.Builtins.grad annot) accu)
-             E.empty
+                VE.add x (CCOpt.get_or ~default:Types.Builtins.grad annot) accu)
+             VE.empty
              half_typed_bindings
          in
          half_typed_bindings, new_env
@@ -59,11 +60,11 @@ module Bindings = struct
 
   let report_inference_results
       (typed_binds : (string * Types.t option * Types.t) list)
-    : E.t =
+    : VE.t =
     List.fold_left
       (fun accu (x, constr, rhs_typ) ->
-         E.add x (CCOpt.get_or ~default:rhs_typ constr) accu)
-      E.empty
+         VE.add x (CCOpt.get_or ~default:rhs_typ constr) accu)
+      VE.empty
       typed_binds
 end
 
@@ -106,24 +107,25 @@ and get_discriminer typ =
   else None
 
 module rec Infer : sig
-  val expr : TE.t -> E.t -> P.expr -> Types.t withError
+  val expr : Environment.t -> P.expr -> Types.t withError
 end = struct
-  let rec expr (tenv : TE.t) (env : E.t) (e : P.expr) : Types.t withError =
+  let rec expr (env : Environment.t) (e : P.expr) : Types.t withError =
     let loc = L.With_loc.loc e in
+    let { Environment.types = tenv; values = venv; _ } = env in
     L.With_loc.description e |> function
     | P.Econstant c -> R.pure @@ typeof_const c
     | P.Evar v ->
       CCOpt.map_or
         ~default:(typeError e.L.With_loc.location "Unbount variable %s" v)
         R.pure
-        (E.lookup env v)
+        (VE.lookup venv v)
     | P.Elambda (pat, e) ->
       add_loc loc (Pattern.infer tenv pat) >>= fun (added_env, domain) ->
-      expr tenv (E.merge env added_env) e >|= fun codomain ->
+      expr { env with E.values = VE.merge venv added_env } e >|= fun codomain ->
       Types.(Builtins.arrow (node domain) (node codomain))
     | P.EfunApp (e1, e2) ->
-      expr tenv env e1 >>= fun t1 ->
-      expr tenv env e2 >>= fun t2 ->
+      expr env e1 >>= fun t1 ->
+      expr env e2 >>= fun t2 ->
       if not @@ Types.sub t1 Types.(Builtins.(arrow (node empty) (node any)))
       then
         typeError e.L.With_loc.location
@@ -136,15 +138,15 @@ end = struct
         check_subtype e2.L.With_loc.location ~inferred:t2 ~expected:dom >>
         R.pure @@ Cduce_lib.Types.Arrow.apply t1arrow t2
     | P.Elet (binds, e) ->
-      Common.let_binding expr tenv env binds e
+      Common.let_binding expr env binds e
       |> R.join
     | P.EopApp (op, args) ->
-      operator tenv env e.L.With_loc.location op args
+      operator env e.L.With_loc.location op args
     | P.Eite (e0, e1, e2) ->
-      if_then_else tenv env e0 e1 e2
+      if_then_else env e0 e1 e2
     | P.EtyAnnot (sub_e, annot) ->
       add_loc loc (Annotations.to_type tenv annot) >>= fun t ->
-      expr tenv env sub_e >>= fun inferred ->
+      expr env sub_e >>= fun inferred ->
       check_subtype sub_e.L.With_loc.location ~expected:t ~inferred >>
       R.pure @@ t
 
@@ -152,21 +154,21 @@ end = struct
     | P.Erecord _
     | P.Ewith (_,_) -> assert false
 
-  and operator tenv env loc op args = match op, args with
+  and operator env loc op args = match op, args with
     | P.Ocons, [e1; e2] ->
-      expr tenv env e1 >>= fun t1 ->
-      expr tenv env e2 >>= fun t2 ->
+      expr env e1 >>= fun t1 ->
+      expr env e2 >>= fun t2 ->
       check_subtype
         loc
         ~inferred:t2
         ~expected:Types.(Builtins.(cup (cons (node any) (node any)) nil)) >>
       R.pure Types.Builtins.(cons (Types.node t1) (Types.node t2))
     | P.Oeq, [e1; e2] ->
-      expr tenv env e1 >>
-      expr tenv env e2 >>
+      expr env e1 >>
+      expr env e2 >>
       R.pure Types.Builtins.bool
     | P.Oneg, [e] ->
-      expr tenv env e >>= fun t ->
+      expr env e >>= fun t ->
       check_subtype
         loc
         ~inferred:t
@@ -188,8 +190,8 @@ end = struct
     | P.Oplus, [e1; e2]
     | P.Ominus, [e1; e2]
       ->
-      expr tenv env e1 >>= fun t1 ->
-      expr tenv env e2 >>= fun t2 ->
+      expr env e1 >>= fun t1 ->
+      expr env e2 >>= fun t2 ->
       check_subtype loc ~inferred:t1 ~expected:T.Builtins.int >>
       check_subtype loc ~inferred:t2 ~expected:T.Builtins.int >>
       R.pure @@ T.Builtins.int
@@ -200,7 +202,7 @@ end = struct
     | P.Oneg, _
       -> assert false (* This isn't supposed to happend *)
 
-  and if_then_else tenv env e0 e1 e2 =
+  and if_then_else env e0 e1 e2 =
     (* [type_with_exfalso var typ e] types [e] using current env + the
      * hypothesis [var:typ], and an exfalso rule stating that if [typ] is
      * [empty], then [e] can be given any type -- and in particular [empty] *)
@@ -208,10 +210,10 @@ end = struct
       if Types.equiv typ Types.Builtins.empty then
         R.pure Types.Builtins.empty
       else
-        expr tenv (E.add var typ env) e
+        expr (E.add_value env var typ) e
     in
     let type_default () =
-      expr tenv env e0 >>= fun t0 ->
+      expr env e0 >>= fun t0 ->
       type_with_exfalso "_" Types.Builtins.(cap t0 true_type) e1 >>= fun t1 ->
       type_with_exfalso "_" Types.Builtins.(cap t0 false_type) e2 >>= fun t2 ->
       check_subtype
@@ -222,11 +224,11 @@ end = struct
     in
     match W.description e0 with
     | P.EfunApp (f, ({ W.description = P.Evar x; _ } as e_x)) ->
-      expr tenv env f >>= fun t_f ->
+      expr env f >>= fun t_f ->
       begin
         match get_discriminer t_f with
         | Some t ->
-          expr tenv env e_x >>= fun t_x ->
+          expr env e_x >>= fun t_x ->
           type_with_exfalso x Types.Builtins.(cap t_x t) e1 >>= fun t1 ->
           type_with_exfalso x Types.Builtins.(cap t_x (neg t)) e2 >|= fun t2 ->
           Types.Builtins.cup t1 t2
@@ -236,7 +238,7 @@ end = struct
 end
 
 and Check : sig
-  val expr : TE.t -> E.t -> P.expr -> Types.t -> unit withError
+  val expr : E.t -> P.expr -> Types.t -> unit withError
 end = struct
   (** The \mathscr{A} operator from the paper *)
   let a_op (_, arrow_bdd) =
@@ -250,14 +252,14 @@ end = struct
     in
     CCList.fold_left squared_union Types.Builtins.[(any, empty)] arrow_bdd
 
-  let rec expr tenv env e expected =
+  let rec expr env e expected =
     let loc = L.With_loc.loc e in
     L.With_loc.description e |> function
     | P.Econstant c ->
       let c_ty = typeof_const c in
       check_subtype loc ~inferred:c_ty ~expected
     | P.Evar v ->
-      begin match E.lookup env v with
+      begin match VE.lookup env.E.values v with
         | Some t -> check_subtype loc ~inferred:t ~expected;
         | None -> typeError e.L.With_loc.location "Unbount variable %s" v
       end
@@ -267,34 +269,36 @@ end = struct
        (* XXX: destruct [expected] with the A(t) function from the paper *)
        let expected_arrow = Cduce_lib.Types.Arrow.get expected in
        R.map_l (fun (dom, codom) ->
-           add_loc e.L.With_loc.location (Pattern.infer ~t_constr:dom tenv pat)
+           add_loc
+             e.L.With_loc.location
+             (Pattern.infer ~t_constr:dom env.E.types pat)
            >>= fun (added_env, _) ->
-           expr tenv (E.merge env added_env) e codom)
+           expr (E.add_values env added_env) e codom)
          (a_op expected_arrow))
       >> R.pure ()
     | P.Elet (binds, e) ->
-      Common.let_binding expr tenv env binds e >>= fun f -> f expected
+      Common.let_binding expr env binds e >>= fun f -> f expected
     | P.Eite (e0, e1, e2) ->
-      if_then_else tenv env e0 e1 e2 expected
+      if_then_else env e0 e1 e2 expected
     | P.EfunApp (e1, e2) ->
-      Infer.expr tenv env e2 >>= fun t1 ->
-      expr tenv env e1 Types.(Builtins.arrow (node t1) (node expected))
+      Infer.expr env e2 >>= fun t1 ->
+      expr env e1 Types.(Builtins.arrow (node t1) (node expected))
     | P.EopApp (op, args) ->
-      operator tenv env (L.With_loc.loc e) op args expected
+      operator env (L.With_loc.loc e) op args expected
     | P.EaccessPath _
     | P.Erecord _
     | P.Ewith (_,_)
     | P.EtyAnnot (_,_) -> assert false
 
-  and operator tenv env loc op args expected =
+  and operator env loc op args expected =
     match op, args with
     | P.Ocons, [e1; e2] ->
       let products = Cduce_lib.Types.Product.get expected in
       if
         CCList.for_all
           (fun (t1, t2) ->
-             expr tenv env e1 t1 >>
-             expr tenv env e2 t2
+             expr env e1 t1 >>
+             expr env e2 t2
              |> R.is_error
           )
           products
@@ -311,8 +315,8 @@ end = struct
       else if T.equiv expected Types.Builtins.false_type then
         typeError loc "Can't check thas this equality never holds"
       else
-        Infer.expr tenv env e1 >>
-        Infer.expr tenv env e2 >> R.pure ()
+        Infer.expr env e1 >>
+        Infer.expr env e2 >> R.pure ()
     | P.Oneg, [e] ->
       check_subtype
         loc
@@ -332,7 +336,7 @@ end = struct
               | `Var _ -> assert false (* XXX: What are those vars ? *))
           ivl
       in
-      expr tenv env e (Cduce_lib.Types.interval negated_ivl)
+      expr env e (Cduce_lib.Types.interval negated_ivl)
     | P.Oplus, [e1; e2]
     | P.Ominus, [e1; e2] ->
       check_subtype
@@ -340,14 +344,14 @@ end = struct
         ~inferred:expected
         ~expected:T.Builtins.int >>
       R.pure @@
-      ignore @@ List.map (fun e -> expr tenv env e T.Builtins.int) [e1; e2]
+      ignore @@ List.map (fun e -> expr env e T.Builtins.int) [e1; e2]
     | P.Oplus, _
     | P.Ominus, _
     | P.Oneg, _
     | P.Oeq, _ -> assert false
     | P.Ocons, _ -> assert false
 
-  and if_then_else tenv env e0 e1 e2 expected =
+  and if_then_else env e0 e1 e2 expected =
     (* [check_with_exfalso var typ e expected] checks [e] against the type
      * [expected] using current env + the hypothesis [var:typ], and an exfalso
      * rule stating that if [typ] is [empty], then [e] can be given any type --
@@ -356,10 +360,10 @@ end = struct
       if Types.equiv typ Types.Builtins.empty then
         R.pure ()
       else
-        expr tenv (E.add var typ env) e expected
+        expr (E.add_value env var typ) e expected
     in
     let default () =
-      Infer.expr tenv env e0 >>= fun t0 ->
+      Infer.expr env e0 >>= fun t0 ->
       check_subtype
         (L.With_loc.loc e0)
         ~inferred:t0
@@ -369,11 +373,11 @@ end = struct
     in
     match L.With_loc.description e0 with
     | P.EfunApp (f, ({ W.description = P.Evar x; _ } as e_x)) ->
-      Infer.expr tenv env f >>= fun t_f ->
+      Infer.expr env f >>= fun t_f ->
       begin
         match get_discriminer t_f with
         | Some t ->
-          Infer.expr tenv env e_x >>= fun t_x ->
+          Infer.expr env e_x >>= fun t_x ->
           check_with_exfalso x Types.Builtins.(cap t_x t) e1 expected >>
           check_with_exfalso x Types.Builtins.(cap t_x (neg t)) e2 expected
         | None -> default ()
@@ -382,26 +386,26 @@ end = struct
 end
 
 and Common : sig
-  val let_binding : (TE.t -> E.t -> P.expr -> 'a)
-    -> TE.t
+  val let_binding : (E.t -> P.expr -> 'a)
     -> E.t
     -> P.binding list
     -> P.expr
     -> 'a withError
 end = struct
-  let let_binding expr tenv env binds e =
+  let let_binding expr env binds e =
     let module B = Bindings in
-    add_loc e.L.With_loc.location (B.explicit_annotations tenv binds) >>=
+    add_loc e.L.With_loc.location (B.explicit_annotations env.E.types binds) >>=
     fun (half_typed_binds, binds_env) ->
+    let new_env = { env with E.values = VE.merge env.E.values binds_env } in
     let typed_binds =
       List.map
         (fun (x, constr, rhs) ->
            match constr with
            | None ->
-             Infer.expr tenv (E.merge env binds_env) rhs >|= fun typed_rhs ->
+             Infer.expr new_env rhs >|= fun typed_rhs ->
              (x, constr, typed_rhs)
            | Some ty ->
-             Check.expr tenv (E.merge env binds_env) rhs ty >>
+             Check.expr new_env rhs ty >>
              R.pure (x, constr, ty)
         )
         half_typed_binds
@@ -412,5 +416,5 @@ end = struct
     in
     typed_binds >|= fun binds ->
     let added_env = B.report_inference_results binds in
-    expr tenv (E.merge env added_env) e
+    expr (E.add_values env added_env) e
 end

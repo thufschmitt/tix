@@ -17,20 +17,18 @@ let typ str =
   in
   CCResult.get_exn maybe_t
 
-let infer tenv env tokens =
+let infer env tokens =
   parse tokens
-  |> Typing.(Typecheck.Infer.expr tenv env)
+  |> Typing.(Typecheck.Infer.expr env)
 
-let check tenv env tokens expected_type =
-  Typing.(Typecheck.Check.expr tenv env (parse tokens) expected_type)
+let check env tokens expected_type =
+  Typing.(Typecheck.Check.expr env (parse tokens) expected_type)
 
 let test_infer_expr input expected_type _ =
   let expected_type = typ expected_type in
   let typ =
     let open Typing in
-    infer Types.Environment.default
-      Typing_env.initial
-      input
+    infer Environment.default input
   in
   CCResult.iter
     (assert_equal
@@ -44,16 +42,16 @@ let test_check input expected_type _=
   let tast =
     let open Typing in
     check
-      Types.Environment.default
-      Typing_env.initial
+      Environment.default
       input
       expected_type
   in ignore tast
 
 let test_var _ =
-  let tenv = Typing.(Typing_env.(add "x" Types.Builtins.int initial)) in
   let typ =
-    infer Typing.Types.Environment.default tenv "x"
+    infer
+      Typing.Environment.(add_value default "x" Typing.Types.Builtins.int)
+      "x"
   in
   CCResult.iter (assert_equal Typing.Types.Builtins.int) typ
 
@@ -64,19 +62,13 @@ let test_fail typefun _ =
 let test_infer_expr_fail input =
   test_fail @@ fun () ->
   let open Typing in
-  infer
-    Types.Environment.default
-    Typing_env.initial
-    input
+  infer Environment.default input
 
 let test_check_fail input expected_type =
   let expected_type = typ expected_type in
   test_fail @@ fun () ->
   let open Typing in
-  check
-    Types.Environment.default
-    Typing_env.initial
-    input
+  check Environment.default  input
     expected_type
 
 let one_singleton = T.Builtins.interval @@ T.Intervals.singleton_of_int 1
