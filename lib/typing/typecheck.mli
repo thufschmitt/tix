@@ -5,7 +5,7 @@
 (**
    Exception raised whenever a typing error occurs
  *)
-exception TypeError of Parse.Location.t * string
+type 'a withError = ('a, Parse.Location.t * string) result
 
 (**
    The inference type-system
@@ -21,7 +21,7 @@ module Infer : sig
   val expr : Types.Environment.t
     -> Typing_env.t
     -> Simple.Ast.expr
-    -> Types.t
+    -> Types.t withError
 end
 
 module Check : sig
@@ -34,5 +34,5 @@ module Check : sig
     -> Typing_env.t
     -> Simple.Ast.expr
     -> Types.t
-    -> unit
+    -> unit withError
 end

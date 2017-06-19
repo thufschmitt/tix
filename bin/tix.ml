@@ -13,8 +13,9 @@ let typecheck ast =
                  Types.Environment.default
                  Typing_env.initial)
   in
-  Typing.Types.pp Format.std_formatter typ;
-  Format.print_newline ()
+  CCResult.map
+    (Format.fprintf Format.std_formatter "%a\n" Typing.Types.pp)
+    typ
 
 let process_file is_parse_only f_name =
   let ast =
@@ -25,13 +26,14 @@ let process_file is_parse_only f_name =
   if is_parse_only then
     Parse.Pp.pp_expr Format.std_formatter ast
   else
-    try typecheck ast with
-      Typing.Typecheck.TypeError (loc, msg) ->
-      Format.eprintf "error: %s, at %a\n"
-        msg
-        Parse.Location.pp loc;
-      Format.pp_print_flush Format.err_formatter ();
-      exit 1
+    ignore @@ CCResult.map_err
+      (fun (loc, msg) ->
+         Format.eprintf "error: %s, at %a\n"
+           msg
+           Parse.Location.pp loc;
+         Format.pp_print_flush Format.err_formatter ();
+         exit 1)
+      (typecheck ast)
 
 open Cmdliner
 

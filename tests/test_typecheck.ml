@@ -32,10 +32,11 @@ let test_infer_expr input expected_type _ =
       Typing_env.initial
       input
   in
-  assert_equal
-    ~cmp:T.T.equiv
-    ~printer:T.T.Print.string_of_type
-    expected_type
+  CCResult.iter
+    (assert_equal
+       ~cmp:T.T.equiv
+       ~printer:T.T.Print.string_of_type
+       expected_type)
     typ
 
 let test_check input expected_type _=
@@ -54,13 +55,11 @@ let test_var _ =
   let typ =
     infer Typing.Types.Environment.default tenv "x"
   in
-  assert_equal Typing.Types.Builtins.int typ
+  CCResult.iter (assert_equal Typing.Types.Builtins.int) typ
 
 let test_fail typefun _ =
-  try
-    ignore @@ typefun ();
-    assert_failure "type error not detected"
-  with Typing.Typecheck.TypeError _ -> ()
+  typefun ()
+  |> CCResult.iter (fun _ -> assert_failure "type error not detected")
 
 let test_infer_expr_fail input =
   test_fail @@ fun () ->

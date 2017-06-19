@@ -1,26 +1,28 @@
 module P = Simple.Ast
 module E = Typing_env
 module L = Parse.Location
+module R = CCResult
 module T = Types
 module TE = T.Environment
 module W = L.With_loc
 
 module Pattern = Typecheck_pat
 
-exception TypeError of L.t * string
+let (>>=) = R.(>>=)
+let (>|=) = R.(>|=)
+let (>>) e1 e2 = e1 >>= (fun _ -> e2)
 
-let () = Printexc.register_printer @@ function
-  | TypeError (loc, msg) -> CCOpt.pure @@
-    (Format.fprintf Format.str_formatter "TypeError at %a: %s"
-       L.pp loc
-       msg;
-     Format.flush_str_formatter ())
-  | _ -> None
+type typeError = (L.t * string)
+type 'a withError = ('a, typeError) result
 
-let typeError loc e = Format.ksprintf (fun s -> raise (TypeError (loc, s))) e
+let add_loc loc result = R.map_err (fun msg -> loc, msg) result
+
+let typeError loc e = Format.ksprintf (fun s -> Error (loc, s)) e
 
 let check_subtype loc ~inferred ~expected =
-  if not (Types.sub inferred expected) then
+  if Types.sub inferred expected then
+    R.pure ()
+  else
     typeError loc
       "This expression has type %s while a subtype of %s was expected"
       (Types.show inferred)
@@ -32,23 +34,22 @@ module Bindings = struct
     let half_typed_bindings =
       List.map
         (fun ((var, maybe_annot), e) ->
-           let ret_triple x = (var, Some x, e) in
            CCOpt.map (Annotations.to_type tenv) maybe_annot
            |> CCOpt.map_or
              ~default:(Ok (var, None, e))
-             (CCResult.map2 ret_triple CCFun.id)
+             (R.map (fun x -> (var, Some x, e)))
         )
         bindings
       |> List.fold_left (fun accu elt ->
-          CCResult.both elt accu |> CCResult.map @@ CCFun.uncurry CCList.cons)
+          R.both elt accu |> R.map @@ CCFun.uncurry CCList.cons)
         (Ok [])
     in
-    CCResult.map
+    R.map
       (fun half_typed_bindings ->
          let new_env =
            List.fold_left
-             (fun accu (x, constr, _) ->
-                E.add x (CCOpt.get_or ~default:Types.Builtins.grad constr) accu)
+             (fun accu (x, annot, _) ->
+                E.add x (CCOpt.get_or ~default:Types.Builtins.grad annot) accu)
              E.empty
              half_typed_bindings
          in
@@ -105,55 +106,47 @@ and get_discriminer typ =
   else None
 
 module rec Infer : sig
-  val expr : TE.t -> E.t -> P.expr -> Types.t
+  val expr : TE.t -> E.t -> P.expr -> Types.t withError
 end = struct
-  let rec expr (tenv : TE.t) (env : E.t) : P.expr -> Types.t = fun e ->
+  let rec expr (tenv : TE.t) (env : E.t) (e : P.expr) : Types.t withError =
+    let loc = L.With_loc.loc e in
     L.With_loc.description e |> function
-    | P.Econstant c -> typeof_const c
+    | P.Econstant c -> R.pure @@ typeof_const c
     | P.Evar v ->
-      CCOpt.get_lazy
-        (fun () -> typeError e.L.With_loc.location "Unbount variable %s" v)
+      CCOpt.map_or
+        ~default:(typeError e.L.With_loc.location "Unbount variable %s" v)
+        R.pure
         (E.lookup env v)
     | P.Elambda (pat, e) ->
-      let (added_env, domain) =
-        CCResult.catch (Pattern.infer tenv pat)
-          ~ok:CCFun.id
-          ~err:(fun err -> typeError e.L.With_loc.location "%s" err)
-      in
-      let codomain = expr tenv (E.merge env added_env) e in
+      add_loc loc (Pattern.infer tenv pat) >>= fun (added_env, domain) ->
+      expr tenv (E.merge env added_env) e >|= fun codomain ->
       Types.(Builtins.arrow (node domain) (node codomain))
     | P.EfunApp (e1, e2) ->
-      let t1 = expr tenv env e1
-      and t2 = expr tenv env e2
-      in
+      expr tenv env e1 >>= fun t1 ->
+      expr tenv env e2 >>= fun t2 ->
       if not @@ Types.sub t1 Types.(Builtins.(arrow (node empty) (node any)))
       then
         typeError e.L.With_loc.location
           "This expression has type %s which is not an arrow type. \
            It can't be applied"
-          (Types.show t1);
-      let t1arrow = Cduce_lib.Types.Arrow.get t1 in
-      let dom = Cduce_lib.Types.Arrow.domain t1arrow in
-      check_subtype e2.L.With_loc.location ~inferred:t2 ~expected:dom;
-      Cduce_lib.Types.Arrow.apply t1arrow t2
+          (Types.show t1)
+      else
+        let t1arrow = Cduce_lib.Types.Arrow.get t1 in
+        let dom = Cduce_lib.Types.Arrow.domain t1arrow in
+        check_subtype e2.L.With_loc.location ~inferred:t2 ~expected:dom >>
+        R.pure @@ Cduce_lib.Types.Arrow.apply t1arrow t2
     | P.Elet (binds, e) ->
       Common.let_binding expr tenv env binds e
+      |> R.join
     | P.EopApp (op, args) ->
       operator tenv env e.L.With_loc.location op args
     | P.Eite (e0, e1, e2) ->
       if_then_else tenv env e0 e1 e2
     | P.EtyAnnot (sub_e, annot) ->
-      let t =
-        CCResult.catch
-          ~err:(fun err -> typeError e.L.With_loc.location "%s" err)
-          ~ok:CCFun.id
-          (Annotations.to_type tenv annot)
-      in
-      check_subtype
-        sub_e.L.With_loc.location
-        ~expected:t
-        ~inferred:(expr tenv env sub_e);
-      t
+      add_loc loc (Annotations.to_type tenv annot) >>= fun t ->
+      expr tenv env sub_e >>= fun inferred ->
+      check_subtype sub_e.L.With_loc.location ~expected:t ~inferred >>
+      R.pure @@ t
 
     | P.EaccessPath _
     | P.Erecord _
@@ -161,26 +154,23 @@ end = struct
 
   and operator tenv env loc op args = match op, args with
     | P.Ocons, [e1; e2] ->
-      let t1 = expr tenv env e1
-      and t2 = expr tenv env e2
-      in
+      expr tenv env e1 >>= fun t1 ->
+      expr tenv env e2 >>= fun t2 ->
       check_subtype
         loc
         ~inferred:t2
-        ~expected:Types.(Builtins.(cup (cons (node any) (node any)) nil));
-      Types.Builtins.(cons (Types.node t1) (Types.node t2))
+        ~expected:Types.(Builtins.(cup (cons (node any) (node any)) nil)) >>
+      R.pure Types.Builtins.(cons (Types.node t1) (Types.node t2))
     | P.Oeq, [e1; e2] ->
-      let t1 = expr tenv env e1
-      and t2 = expr tenv env e2
-      in
-      ignore t1; ignore t2;
-      Types.Builtins.bool
+      expr tenv env e1 >>
+      expr tenv env e2 >>
+      R.pure Types.Builtins.bool
     | P.Oneg, [e] ->
-      let t = expr tenv env e in
+      expr tenv env e >>= fun t ->
       check_subtype
         loc
         ~inferred:t
-        ~expected:Types.Builtins.int;
+        ~expected:Types.Builtins.int >>
       let ivl = Cduce_lib.Types.Int.get t in
       let negated_ivl =
         Cduce_lib.Types.VarIntervals.compute
@@ -193,16 +183,16 @@ end = struct
               | `Atm i -> Cduce_lib.Intervals.negat i
               | `Var _ -> assert false (* XXX: What are those vars ? *))
           ivl
-      in Cduce_lib.Types.interval negated_ivl
+      in
+      R.pure @@ Cduce_lib.Types.interval negated_ivl
     | P.Oplus, [e1; e2]
     | P.Ominus, [e1; e2]
       ->
-      let t1 = expr tenv env e1
-      and t2 = expr tenv env e2
-      in
-      check_subtype loc ~inferred:t1 ~expected:T.Builtins.int;
-      check_subtype loc ~inferred:t2 ~expected:T.Builtins.int;
-      T.Builtins.int
+      expr tenv env e1 >>= fun t1 ->
+      expr tenv env e2 >>= fun t2 ->
+      check_subtype loc ~inferred:t1 ~expected:T.Builtins.int >>
+      check_subtype loc ~inferred:t2 ~expected:T.Builtins.int >>
+      R.pure @@ T.Builtins.int
     | P.Oplus, _
     | P.Ominus, _
     | P.Ocons, _
@@ -216,38 +206,37 @@ end = struct
      * [empty], then [e] can be given any type -- and in particular [empty] *)
     let type_with_exfalso var typ e =
       if Types.equiv typ Types.Builtins.empty then
-        Types.Builtins.empty
+        R.pure Types.Builtins.empty
       else
         expr tenv (E.add var typ env) e
     in
     let type_default () =
-      let t0 = expr tenv env e0 in
-      let t1 = type_with_exfalso "_" Types.Builtins.(cap t0 true_type) e1
-      and t2 = type_with_exfalso "_" Types.Builtins.(cap t0 false_type) e2
-      in
+      expr tenv env e0 >>= fun t0 ->
+      type_with_exfalso "_" Types.Builtins.(cap t0 true_type) e1 >>= fun t1 ->
+      type_with_exfalso "_" Types.Builtins.(cap t0 false_type) e2 >>= fun t2 ->
       check_subtype
         e0.L.With_loc.location
         ~inferred:t0
-        ~expected:Types.Builtins.bool;
-      Types.Builtins.cup t1 t2
+        ~expected:Types.Builtins.bool >>
+      R.pure @@ Types.Builtins.cup t1 t2
     in
     match W.description e0 with
     | P.EfunApp (f, ({ W.description = P.Evar x; _ } as e_x)) ->
-      let t_f = expr tenv env f in
+      expr tenv env f >>= fun t_f ->
       begin
         match get_discriminer t_f with
         | Some t ->
-          let t_x = expr tenv env e_x in
-          let t1 = type_with_exfalso x Types.Builtins.(cap t_x t) e1
-          and t2 = type_with_exfalso x Types.Builtins.(cap t_x (neg t)) e2
-          in Types.Builtins.cup t1 t2
+          expr tenv env e_x >>= fun t_x ->
+          type_with_exfalso x Types.Builtins.(cap t_x t) e1 >>= fun t1 ->
+          type_with_exfalso x Types.Builtins.(cap t_x (neg t)) e2 >|= fun t2 ->
+          Types.Builtins.cup t1 t2
         | None -> type_default ()
       end
     | _ -> type_default ()
 end
 
 and Check : sig
-  val expr : TE.t -> E.t -> P.expr -> Types.t -> unit
+  val expr : TE.t -> E.t -> P.expr -> Types.t -> unit withError
 end = struct
   (** The \mathscr{A} operator from the paper *)
   let a_op (_, arrow_bdd) =
@@ -273,24 +262,22 @@ end = struct
         | None -> typeError e.L.With_loc.location "Unbount variable %s" v
       end
     | P.Elambda (pat, e) ->
-      check_subtype loc ~inferred:expected ~expected:Cduce_lib.Types.Arrow.any;
-      (* XXX: destruct [expected] with the A(t) function from the paper *)
-      let expected_arrow = Cduce_lib.Types.Arrow.get expected in
-      List.iter (fun (dom, codom) ->
-          let (added_env, _) =
-            CCResult.catch (Pattern.infer ~t_constr:dom tenv pat)
-              ~ok:CCFun.id
-              ~err:(fun err -> typeError e.L.With_loc.location "%s" err)
-          in
-          let _typed_e = expr tenv (E.merge env added_env) e codom in
-          ())
-        (a_op expected_arrow)
+      (check_subtype loc ~inferred:expected ~expected:Cduce_lib.Types.Arrow.any
+       >>
+       (* XXX: destruct [expected] with the A(t) function from the paper *)
+       let expected_arrow = Cduce_lib.Types.Arrow.get expected in
+       R.map_l (fun (dom, codom) ->
+           add_loc e.L.With_loc.location (Pattern.infer ~t_constr:dom tenv pat)
+           >>= fun (added_env, _) ->
+           expr tenv (E.merge env added_env) e codom)
+         (a_op expected_arrow))
+      >> R.pure ()
     | P.Elet (binds, e) ->
-      Common.let_binding expr tenv env binds e expected
+      Common.let_binding expr tenv env binds e >>= fun f -> f expected
     | P.Eite (e0, e1, e2) ->
       if_then_else tenv env e0 e1 e2 expected
     | P.EfunApp (e1, e2) ->
-      let t1 = Infer.expr tenv env e2 in
+      Infer.expr tenv env e2 >>= fun t1 ->
       expr tenv env e1 Types.(Builtins.arrow (node t1) (node expected))
     | P.EopApp (op, args) ->
       operator tenv env (L.With_loc.loc e) op args expected
@@ -306,34 +293,31 @@ end = struct
       if
         CCList.for_all
           (fun (t1, t2) ->
-             try
-               expr tenv env e1 t1;
-               expr tenv env e2 t2;
-               false
-             with
-               TypeError _ -> true
+             expr tenv env e1 t1 >>
+             expr tenv env e2 t2
+             |> R.is_error
           )
           products
       then
         typeError loc "This expression should have type %s" @@ T.show expected
+      else R.pure ()
     | P.Oeq, [e1; e2] ->
       check_subtype
         loc
         ~inferred:expected
-        ~expected:Types.Builtins.bool;
+        ~expected:Types.Builtins.bool >>
       if T.equiv expected Types.Builtins.true_type then
         typeError loc "Can't check thas this equality always holds"
       else if T.equiv expected Types.Builtins.false_type then
-        typeError loc "Can't check thas this equality never holds";
-      let t1 = Infer.expr tenv env e1
-      and t2 = Infer.expr tenv env e2
-      in
-      ignore (t1, t2)
+        typeError loc "Can't check thas this equality never holds"
+      else
+        Infer.expr tenv env e1 >>
+        Infer.expr tenv env e2 >> R.pure ()
     | P.Oneg, [e] ->
       check_subtype
         loc
         ~inferred:expected
-        ~expected:Types.Builtins.int;
+        ~expected:Types.Builtins.int >>
       (* We just check that [e] has type [-expected] *)
       let ivl = Cduce_lib.Types.Int.get expected in
       let negated_ivl =
@@ -354,7 +338,8 @@ end = struct
       check_subtype
         loc
         ~inferred:expected
-        ~expected:T.Builtins.int;
+        ~expected:T.Builtins.int >>
+      R.pure @@
       ignore @@ List.map (fun e -> expr tenv env e T.Builtins.int) [e1; e2]
     | P.Oplus, _
     | P.Ominus, _
@@ -368,26 +353,28 @@ end = struct
      * rule stating that if [typ] is [empty], then [e] can be given any type --
      * and in particular [empty] *)
     let check_with_exfalso var typ e expected =
-      if not @@ Types.equiv typ Types.Builtins.empty then
-        expr tenv (E.add var typ env) e expected;
+      if Types.equiv typ Types.Builtins.empty then
+        R.pure ()
+      else
+        expr tenv (E.add var typ env) e expected
     in
     let default () =
-      let t0 = Infer.expr tenv env e0 in
+      Infer.expr tenv env e0 >>= fun t0 ->
       check_subtype
         (L.With_loc.loc e0)
         ~inferred:t0
-        ~expected:T.Builtins.bool;
-      check_with_exfalso "_" T.Builtins.(cap t0 true_type) e1 expected;
+        ~expected:T.Builtins.bool >>
+      check_with_exfalso "_" T.Builtins.(cap t0 true_type) e1 expected >>
       check_with_exfalso "_" T.Builtins.(cap t0 false_type) e2 expected
     in
     match L.With_loc.description e0 with
     | P.EfunApp (f, ({ W.description = P.Evar x; _ } as e_x)) ->
-      let t_f = Infer.expr tenv env f in
+      Infer.expr tenv env f >>= fun t_f ->
       begin
         match get_discriminer t_f with
         | Some t ->
-          let t_x = Infer.expr tenv env e_x in
-          check_with_exfalso x Types.Builtins.(cap t_x t) e1 expected;
+          Infer.expr tenv env e_x >>= fun t_x ->
+          check_with_exfalso x Types.Builtins.(cap t_x t) e1 expected >>
           check_with_exfalso x Types.Builtins.(cap t_x (neg t)) e2 expected
         | None -> default ()
       end
@@ -400,27 +387,30 @@ and Common : sig
     -> E.t
     -> P.binding list
     -> P.expr
-    -> 'a
+    -> 'a withError
 end = struct
   let let_binding expr tenv env binds e =
     let module B = Bindings in
-    let half_typed_binds, binds_env =
-      CCResult.catch (B.explicit_annotations tenv binds)
-        ~ok:CCFun.id
-        ~err:(fun err -> typeError e.L.With_loc.location "%s" err)
-    in
+    add_loc e.L.With_loc.location (B.explicit_annotations tenv binds) >>=
+    fun (half_typed_binds, binds_env) ->
     let typed_binds =
       List.map
         (fun (x, constr, rhs) ->
            match constr with
            | None ->
-             (x, constr, Infer.expr tenv (E.merge env binds_env) rhs)
+             Infer.expr tenv (E.merge env binds_env) rhs >|= fun typed_rhs ->
+             (x, constr, typed_rhs)
            | Some ty ->
-             Check.expr tenv (E.merge env binds_env) rhs ty;
-             (x, constr, ty)
+             Check.expr tenv (E.merge env binds_env) rhs ty >>
+             R.pure (x, constr, ty)
         )
         half_typed_binds
+      |> List.fold_left
+        (fun accu elt ->
+           R.both elt accu |> R.map @@ CCFun.uncurry CCList.cons)
+        (R.pure [])
     in
-    let added_env = B.report_inference_results typed_binds in
+    typed_binds >|= fun binds ->
+    let added_env = B.report_inference_results binds in
     expr tenv (E.merge env added_env) e
 end
