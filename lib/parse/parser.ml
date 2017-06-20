@@ -238,7 +238,7 @@ and warning_annot i =
   i |> (
     P.any_of "+-" >>= fun sign_char ->
     let sign = if sign_char = '+' then Pragma.Plus else Pragma.Minus in
-    P.many1_chars P.digit |>> fun nb -> (sign, int_of_string nb))
+    ident |>> fun name -> (sign, name))
 
 and expr_infix i =
   i |> (P.expression infix_ops expr_apply)

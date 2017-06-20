@@ -7,11 +7,11 @@ let show_sign = function
   | Minus -> "-"
 
 type t =
-  | Warnings of (sign * int) list
-  | Errors of (sign * int) list
+  | Warnings of (sign * string) list
+  | Errors of (sign * string) list
 
 let pp_signValue_pair fmt (sign, value) =
-  F.fprintf fmt "%s%i"
+  F.fprintf fmt "%s%s"
     (show_sign sign)
     value
 
