@@ -31,6 +31,7 @@ and expr_desc =
   (* with e; e *)
   | Elet of binding list * expr
   | EtyAnnot of expr * Parse.Type_annotations.t
+  | Epragma of Parse.Pragma.t * expr
 
 and access_path =
   | Afield of expr * ap_field * expr option

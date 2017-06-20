@@ -149,6 +149,9 @@ end = struct
       expr env sub_e >>= fun inferred ->
       check_subtype sub_e.L.With_loc.location ~expected:t ~inferred >>
       R.pure @@ t
+    | P.Epragma (pragma, e) ->
+      let env = Common.pragma env pragma in
+      expr env e
 
     | P.EaccessPath _
     | P.Erecord _
@@ -285,6 +288,9 @@ end = struct
       expr env e1 Types.(Builtins.arrow (node t1) (node expected))
     | P.EopApp (op, args) ->
       operator env (L.With_loc.loc e) op args expected
+    | P.Epragma (pragma, e) ->
+      let env = Common.pragma env pragma in
+      expr env e expected
     | P.EaccessPath _
     | P.Erecord _
     | P.Ewith (_,_)
@@ -391,6 +397,7 @@ and Common : sig
     -> P.binding list
     -> P.expr
     -> 'a withError
+  val pragma : E.t -> Parse.Pragma.t -> E.t
 end = struct
   let let_binding expr env binds e =
     let module B = Bindings in
@@ -417,4 +424,12 @@ end = struct
     typed_binds >|= fun binds ->
     let added_env = B.report_inference_results binds in
     expr (E.add_values env added_env) e
+
+  let pragma env =
+    let module P = Parse.Pragma in
+    function
+    | P.Warnings warns ->
+      E.map_config (fun c -> Config.proceed_warnings_annot c warns) env
+    | P.Errors warns ->
+      E.map_config (fun c -> Config.proceed_errors_annot c warns) env
 end

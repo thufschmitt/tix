@@ -29,6 +29,7 @@ let rec expr_desc : O.expr_desc -> N.expr_desc = function
   | O.Elet (binds, e) -> N.Elet (bindings binds, expr e)
   | O.Eite (e0, e1, e2) -> N.Eite (expr e0, expr e1, expr e2)
   (* TODO: smarter compilation of some form of if-then-else *)
+  | O.Epragma (p, e) -> N.Epragma (p, expr e)
   | _ -> failwith "Not implemented"
 
 and bindings b = List.map binding b

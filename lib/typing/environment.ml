@@ -14,10 +14,9 @@ let default = {
   config = C.default;
 }
 
-let map_values f e = {
-  e with
-  values = f e.values;
-}
+let map_values f e = { e with values = f e.values; }
+
+let map_config f e = { e with config = f e.config }
 
 let add_values e new_values =
   map_values (fun v -> VE.merge v new_values) e
