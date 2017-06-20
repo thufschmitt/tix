@@ -16,18 +16,18 @@ module Warning = struct
     | TypeError -> "TypeError"
 
   let read = function
-    | "TypeError" -> TypeError
-    | _ -> raise (Invalid_argument "Config.Warnings.Warning.read")
+    | "TypeError" -> Some TypeError
+    | _ -> None
 end
 
 type t =
-  | Warnings of (sign * string) list
-  | Errors of (sign * string) list
+  | Warnings of (sign *  Warning.t) list
+  | Errors of (sign * Warning.t) list
 
 let pp_signValue_pair fmt (sign, value) =
   F.fprintf fmt "%s%s"
     (show_sign sign)
-    value
+    (Warning.show value)
 
 let pp_warn_list fmt =
   F.pp_print_list ~pp_sep:(fun _ () -> ()) pp_signValue_pair fmt

@@ -4,8 +4,7 @@ module WSet = struct
   let default = empty
   let default_err = of_list [ Parse.Pragma.Warning.TypeError ]
 
-  let proceed_annot warns (sign, warning_name) =
-    let warning = Parse.Pragma.Warning.read warning_name in
+  let proceed_annot warns (sign, warning) =
     match sign with
     | Parse.Pragma.Plus -> add warning warns
     | Parse.Pragma.Minus -> remove warning warns
