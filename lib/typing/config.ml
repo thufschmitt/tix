@@ -1,39 +1,32 @@
-module Warnings = struct
-  module Warning = struct
-    type t =
-      | TypeError
+module WSet = struct
+  include  CCSet.Make (Parse.Pragma.Warning)
 
-    let compare (a: t) b = Pervasives.compare a b
-
-    let show = function
-      | TypeError -> "TypeError"
-
-    let read = function
-      | "TypeError" -> TypeError
-      | _ -> raise (Invalid_argument "Config.Warnings.Warning.read")
-  end
-  module WSet = CCSet.Make (Warning)
-
-  type t = WSet.t
-
-  let default = WSet.of_list [ Warning.TypeError ]
+  let default = empty
+  let default_err = of_list [ Parse.Pragma.Warning.TypeError ]
 
   let proceed_annot warns (sign, warning_name) =
-    let warning = Warning.read warning_name in
+    let warning = Parse.Pragma.Warning.read warning_name in
     match sign with
-    | Parse.Pragma.Plus -> WSet.add warning warns
-    | Parse.Pragma.Minus -> WSet.remove warning warns
+    | Parse.Pragma.Plus -> add warning warns
+    | Parse.Pragma.Minus -> remove warning warns
 
   let proceed_annots = List.fold_left proceed_annot
 end
 
 type t = {
-  warnings: Warnings.t;
+  warnings: WSet.t;
+  errors: WSet.t;
 }
 
-let default = { warnings = Warnings.default; }
+let default = {
+  warnings = WSet.default;
+  errors = WSet.default_err;
+}
 
-let map_warnings f t = { warnings = f t.warnings; }
+let map_warnings f t = { t with warnings = f t.warnings; }
+let map_errors f t = { t with errors = f t.errors; }
 
 let proceed_warnings_annot t annot =
-  map_warnings (fun w -> Warnings.proceed_annots w annot) t
+  map_warnings (fun w -> WSet.proceed_annots w annot) t
+let proceed_errors_annot t annot =
+  map_errors (fun w -> WSet.proceed_annots w annot) t

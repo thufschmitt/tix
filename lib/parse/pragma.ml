@@ -6,6 +6,20 @@ let show_sign = function
   | Plus -> "+"
   | Minus -> "-"
 
+module Warning = struct
+  type t =
+    | TypeError
+
+  let compare (a: t) b = Pervasives.compare a b
+
+  let show = function
+    | TypeError -> "TypeError"
+
+  let read = function
+    | "TypeError" -> TypeError
+    | _ -> raise (Invalid_argument "Config.Warnings.Warning.read")
+end
+
 type t =
   | Warnings of (sign * string) list
   | Errors of (sign * string) list
