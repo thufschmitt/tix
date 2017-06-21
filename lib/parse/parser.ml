@@ -105,9 +105,10 @@ let infix_ops =
 let typ_op =
   let module I = T.Infix_constructors in
   let infix sym op assoc = P.Infix (
-      P.skip_string sym << space
-      >> P.return (fun t1 t2 -> T.Infix (op, t1, t2))
-    , assoc)
+      (P.get_pos >>= fun (_, lnum, cnum) -> P.skip_string sym >> space >>
+       P.return (fun t1 t2 ->
+           mk_with_loc ~file_name:"" ~lnum ~cnum (T.Infix (op, t1, t2)))),
+      assoc)
   in
   [
     [ infix "&" I.And P.Assoc_left ];
@@ -116,10 +117,13 @@ let typ_op =
   ]
 
 
-let typ_regex_postfix_op = any [
-    P.char '*' >> space >> P.return (fun r -> Regex_list.Star r);
-    P.char '+' >> space >> P.return (fun r -> Regex_list.Plus r);
-    P.char '?' >> space >> P.return (fun r -> Regex_list.Maybe r);
+let typ_regex_postfix_op =
+  P.get_pos >>= fun (_, lnum, cnum) ->
+  let mkloc = W.mk' ~lnum ~cnum in
+  any [
+    P.char '*' >> space >> P.return (fun r -> mkloc @@ Regex_list.Star r);
+    P.char '+' >> space >> P.return (fun r -> mkloc @@ Regex_list.Plus r);
+    P.char '?' >> space >> P.return (fun r -> mkloc @@ Regex_list.Maybe r);
   ]
 
 let typ_int =
@@ -134,8 +138,8 @@ let typ_string =
   string |>> fun s ->
   Type_annotations.(Singleton (Singleton.String s))
 
-let typ_ident = ident |>> fun t -> Type_annotations.Var t
-and typ_singleton = any [typ_int; typ_bool; typ_string ]
+let typ_ident i = i |> add_loc (ident |>> fun t -> Type_annotations.Var t)
+and typ_singleton i = i |> add_loc @@ any [typ_int; typ_bool; typ_string ]
 
 let rec typ i = i |> (P.expression typ_op
                         (any [typ_atom; typ_list])
@@ -149,7 +153,7 @@ and typ_regex i =
     <?> "type regex")
 
 and typ_regex_alt i =
-  i |> (
+  i |> add_loc (
     typ_regex_concat >>= fun t1 ->
     P.char '|' >> space >>
     typ_regex |>> fun t2 ->
@@ -166,13 +170,15 @@ and typ_regex_atom i =
   i |> (
     parens typ_regex
     <|>
-    (typ_atom |>> fun t -> Regex_list.Type t))
+    (add_loc (typ_atom |>> fun t -> Regex_list.Type t)))
 
 and typ_regex_concat i =
   i |> (
+    P.get_pos >>= fun (_, lnum, cnum) ->
     typ_regex_postfix >>= fun r0 ->
     P.many typ_regex_postfix |>> fun tl ->
-    List.fold_left (fun accu r -> Regex_list.Concat (accu, r))
+    List.fold_left (fun accu r ->
+        W.mk' ~lnum ~cnum (Regex_list.Concat (accu, r)))
       r0
       tl
   )

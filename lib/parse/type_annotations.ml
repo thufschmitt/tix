@@ -2,6 +2,8 @@
  * Definition of the types used by tix
 *)
 
+let (%>) f g x = g (f x)
+
 module Infix_constructors =
 struct
   type t =
@@ -33,31 +35,33 @@ struct
     | String s -> "\"" ^ s ^ "\""
 end
 
-type t =
+type _t =
   | Var of string
   | Singleton of Singleton.t
   | Infix of Infix_constructors.t * t * t
   | Cons  of t * t
   | TyBind of bindings * t
 
+and t = _t Location.With_loc.t
+
 and bindings = (string * t ) list
 
-let rec pp fmt = function
-  | Var v -> Format.pp_print_string fmt v
-  | Infix (constr, t1, t2) ->
-    Format.fprintf fmt "(%a) %s %a"
-      pp t1
-      (Infix_constructors.show constr)
-      pp t2
-  | Cons (t1, t2) ->
-    Format.fprintf fmt "Cons(%a, %a)"
-      pp t1
-      pp t2
-  | TyBind (binds, t) ->
-    Format.fprintf fmt "%a where %a"
-      pp t
-      pp_bindings binds
-  | Singleton s -> Singleton.pp fmt s
+let rec pp fmt = Location.With_loc.description %> function
+    | Var v -> Format.pp_print_string fmt v
+    | Infix (constr, t1, t2) ->
+      Format.fprintf fmt "(%a) %s %a"
+        pp t1
+        (Infix_constructors.show constr)
+        pp t2
+    | Cons (t1, t2) ->
+      Format.fprintf fmt "Cons(%a, %a)"
+        pp t1
+        pp t2
+    | TyBind (binds, t) ->
+      Format.fprintf fmt "%a where %a"
+        pp t
+        pp_bindings binds
+    | Singleton s -> Singleton.pp fmt s
 
 and pp_bindings fmt =
   Format.pp_print_list

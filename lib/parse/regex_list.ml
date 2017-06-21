@@ -1,3 +1,6 @@
+let (%>) f g x = g (f x)
+
+module L = Location.With_loc
 module T = Type_annotations
 
 module Counter = functor () -> struct
@@ -18,7 +21,7 @@ module FreshVars = functor () -> struct
   let pop () = "X" ^ (string_of_int @@ C.pop ())
 end
 
-type t =
+type _t =
   | Type of T.t
   | Or of t * t
   | Concat of t * t
@@ -27,36 +30,43 @@ type t =
   | Maybe of t
   | Empty
 
+and t = _t L.t
+
 let to_type (regex: t) : T.t =
   let module V = FreshVars () in
-  let rec aux : t -> (T.t * string) = function
+  let rec aux (regex : t) : (T.t * string) =
+    let loc = L.loc regex in
+    match L.description regex with
     | Type t ->
       let tail = V.pop () in
-      (T.Cons (t, T.Var tail), tail)
+      (L.mk loc @@ T.Cons (t, L.mk loc @@ T.Var tail), tail)
     | Or (r1, r2) ->
       let (t1, tl1) = aux r1
       and (t2, tl2) = aux r2
       in
-      (T.TyBind (
-          [tl1, T.Var tl2],
-          T.Infix (T.Infix_constructors.Or, t1, t2)),
+      (L.mk loc @@ T.TyBind (
+          [tl1, L.mk loc @@ T.Var tl2],
+          L.mk loc @@ T.Infix (T.Infix_constructors.Or, t1, t2)),
        tl2)
     | Concat (r1, r2) ->
       let (t1, tl1) = aux r1
       and (t2, tl2) = aux r2
       in
-      (T.TyBind ([tl1, t2], t1), tl2)
+      (L.mk loc @@ T.TyBind ([tl1, t2], t1), tl2)
     | Star r ->
       let (t, tl) = aux r
       and new_tail = V.pop () in
-      (T.TyBind ([(tl, T.Infix (T.Infix_constructors.Or, t, T.Var new_tail))],
-                 T.Var tl),
+      (L.mk loc @@ T.TyBind ([(
+           tl, L.mk loc @@ T.Infix (T.Infix_constructors.Or,
+                                    t, L.mk loc @@ T.Var new_tail))],
+                             L.mk loc @@ T.Var tl),
        new_tail)
-    | Plus r -> aux (Concat(r, Star r))
-    | Maybe r -> aux (Or (r, Empty))
+    | Plus r -> aux (L.mk loc @@ Concat(r, L.mk loc @@ Star r))
+    | Maybe r -> aux (L.mk loc @@ Or (r, L.mk loc @@ Empty))
     | Empty ->
       let tail = V.pop () in
-      (T.Var tail, tail)
+      (L.mk loc @@ T.Var tail, tail)
   in
   let (typ, tail) = aux regex in
-  T.TyBind ([tail, T.Var "nil"], typ)
+  let loc = L.loc regex in
+  L.mk loc @@ T.TyBind ([tail, L.mk loc @@ T.Var "nil"], typ)

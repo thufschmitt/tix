@@ -43,9 +43,12 @@ end
 let (>|=) = CCResult.(>|=)
 let (<+>) = CCOpt.(<+>)
 let (|>) opt msg = CCOpt.to_result msg opt
+let (%>) = CCFun.(%>)
 
 let rec to_node (nodes_env : Nodes_env.t) env
-  : A.t -> (Cduce_lib.Types.Node.t, string) result = function
+  : A.t -> (Cduce_lib.Types.Node.t, string) result =
+  Parse.Location.With_loc.description %>
+  function
   | A.Var v ->
     Nodes_env.lookup nodes_env v
     <+>
