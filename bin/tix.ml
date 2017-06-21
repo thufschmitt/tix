@@ -38,8 +38,7 @@ let file_in =
 
 let parse_only =
   let doc = "Do not typecheck, just parse the file" in
-  Arg.(value & opt bool false & info [ "p"; "parse-only" ]
-         ~docv:"PARSE_ONLY" ~doc)
+  Arg.(value & flag & info [ "p"; "parse-only" ] ~docv:"PARSE_ONLY" ~doc)
 
 let eval_stuff = Term.(const process_file $ parse_only $ file_in)
 let info =
