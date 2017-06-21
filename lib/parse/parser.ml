@@ -16,316 +16,327 @@ type 'a t = ('a, unit) MParser.t
 
 type 'a return = ('a, string * MParser.error) result
 
-let mk_with_loc = Location.With_loc.mk'
+module Make(I : sig val file_name : string end) =
+struct
+  let file_name = I.file_name
 
-let keywords = StrHash.of_list [
-    "if"; "then"; "else";
-    "let"; "in";
-    "true"; "false";
-  ]
+  let keywords = StrHash.of_list [
+      "if"; "then"; "else";
+      "let"; "in";
+      "true"; "false";
+    ]
 
-let get_loc =
-  P.get_pos |>> fun (_, lnum, cnum) ->
-  Location.{ file_name = ""; lnum; cnum; }
+  let get_loc =
+    P.get_pos |>> fun (_, lnum, cnum) ->
+    Location.{ file_name; lnum; cnum; }
 
-let add_loc x =
-  let file_name = "" in
-  P.get_pos >>= fun (_, lnum, cnum) ->
-  x |>> fun x ->
-  mk_with_loc ~file_name ~lnum ~cnum x
-
-(** {2 Some utility functions } *)
-let any x = P.choice @@ List.map P.attempt x
-
-let block_comment =
-  (P.attempt (P.string "/*" << P.satisfy @@ (<>) ':'))
-  >> P.skip_many_chars_until
-    P.any_char
-    (P.char '*' << P.char '/')
-
-let line_comment = P.char '#' << P.not_followed_by (P.string "::") ""
-  >> P.skip_many_until P.any_char P.newline
-
-let comment = any [ block_comment; line_comment; ] <?> "comment"
-
-let space = P.skip_many (P.skip P.space <|> comment <?> "whitespace")
-
-let keyword k = P.string k << P.not_followed_by P.alphanum "" >> space
-
-let alphanum_ = P.alphanum <|> P.char '_'
-let letter_ = P.letter <|> P.char '_'
-
-let ident =
-  (letter_ >>= fun c0 ->
-   P.many_chars alphanum_ << space >>= fun end_name ->
-   let name = (CCString.of_char c0) ^ end_name in
-   if StrHash.mem keywords name then
-     P.zero
-   else
-     P.return name)
-  <?> "ident"
-
-let int = P.many1_chars P.digit << space |>> int_of_string
-
-let parens x = P.char '(' >> x << space << P.char ')' << space
-
-let bool = any
-    [keyword "true" >> P.return true;
-     keyword "false" >> P.return false]
-           << space
-           <?> "boolean"
-
-let string = P.char '"' >>
-  P.many_chars_until
-    P.any_char
-    (P.satisfy (fun c -> c = '"') << P.prev_char_satisfies (fun c -> c <> '\\'))
-  << space
-  <?> "litteral string"
-
-let infix_ops =
-  let infix sym f assoc = P.Infix (
-      (P.get_pos >>= fun (_, lnum, cnum) -> P.skip_string sym >> space >>
-       P.return (fun e1 e2 ->
-           mk_with_loc ~file_name:"" ~lnum ~cnum (f e1 e2))),
-      assoc)
-  and prefix sym f = P.Prefix (
-      P.get_pos >>= fun (_, lnum, cnum) -> P.skip_string sym >> space >>
-      P.return (fun e -> mk_with_loc ~file_name:"" ~lnum ~cnum (f e)))
-  in
-  [
-    [ infix "+" (fun e1 e2 -> A.EopApp (A.Oplus, [e1; e2])) P.Assoc_left;
-      infix "-" (fun e1 e2 -> A.EopApp (A.Ominus, [e1; e2])) P.Assoc_left; ];
-    [ prefix "-" (fun e -> A.EopApp (A.Oneg, [e])); ];
-  ]
-
-(** {2 Begining of the parser } *)
-
-(** {3 Type annotations} *)
-
-let typ_op =
-  let module I = T.Infix_constructors in
-  let infix sym op assoc = P.Infix (
-      (P.get_pos >>= fun (_, lnum, cnum) -> P.skip_string sym >> space >>
-       P.return (fun t1 t2 ->
-           mk_with_loc ~file_name:"" ~lnum ~cnum (T.Infix (op, t1, t2)))),
-      assoc)
-  in
-  [
-    [ infix "&" I.And P.Assoc_left ];
-    [ infix "|" I.Or P.Assoc_left ];
-    [ infix "->" I.Arrow P.Assoc_right ];
-  ]
-
-
-let typ_regex_postfix_op =
-  P.get_pos >>= fun (_, lnum, cnum) ->
-  let mkloc = W.mk' ~lnum ~cnum in
-  any [
-    P.char '*' >> space >> P.return (fun r -> mkloc @@ Regex_list.Star r);
-    P.char '+' >> space >> P.return (fun r -> mkloc @@ Regex_list.Plus r);
-    P.char '?' >> space >> P.return (fun r -> mkloc @@ Regex_list.Maybe r);
-  ]
-
-let typ_int =
-  int |>> fun nb ->
-  Type_annotations.(Singleton (Singleton.Int nb))
-
-let typ_bool =
-  bool |>> fun b ->
-  Type_annotations.(Singleton (Singleton.Bool b))
-
-let typ_string =
-  string |>> fun s ->
-  Type_annotations.(Singleton (Singleton.String s))
-
-let typ_ident i = i |> add_loc (ident |>> fun t -> Type_annotations.Var t)
-and typ_singleton i = i |> add_loc @@ any [typ_int; typ_bool; typ_string ]
-
-let rec typ i = i |> (P.expression typ_op
-                        (any [typ_atom; typ_list])
-                      <?> "type")
-
-and typ_atom i = i |> any [ typ_singleton; typ_ident; parens typ]
-
-and typ_regex i =
-  i |> (
-    any [typ_regex_alt; typ_regex_concat; ]
-    <?> "type regex")
-
-and typ_regex_alt i =
-  i |> add_loc (
-    typ_regex_concat >>= fun t1 ->
-    P.char '|' >> space >>
-    typ_regex |>> fun t2 ->
-    Regex_list.Or (t1, t2))
-
-and typ_regex_postfix i =
-  i |> (
-    typ_regex_atom >>= fun r0 ->
-    P.many typ_regex_postfix_op |>> fun ops ->
-    List.fold_left (fun r op -> op r) r0 ops
-  )
-
-and typ_regex_atom i =
-  i |> (
-    parens typ_regex
-    <|>
-    (add_loc (typ_atom |>> fun t -> Regex_list.Type t)))
-
-and typ_regex_concat i =
-  i |> (
-    P.get_pos >>= fun (_, lnum, cnum) ->
-    typ_regex_postfix >>= fun r0 ->
-    P.many typ_regex_postfix |>> fun tl ->
-    List.fold_left (fun accu r ->
-        W.mk' ~lnum ~cnum (Regex_list.Concat (accu, r)))
-      r0
-      tl
-  )
-
-and typ_list i =
-  i |> (
-    P.char '[' >> space >> typ_regex << P.char ']' << space |>>
-    Regex_list.to_type)
-
-let type_annot = (P.string "/*:" >> space >> typ << P.string "*/" << space)
-                 <?> "type annotation"
-
-(** {3 Expressions} *)
-
-let expr_int = add_loc (
-    int |>> fun nb ->
-    A.Econstant (A.Cint nb)
-  )
-
-let expr_bool = add_loc (
-    bool |>> fun b ->
-    A.Econstant (A.Cbool b)
-  )
-
-let expr_string = add_loc (
-    string |>> fun s ->
-    A.Econstant (A.Cstring s)
-  )
-
-let expr_ident = add_loc (
-    ident |>> fun id ->
-    A.Evar id
-  )
-
-let pattern_var =
-  ident >>= fun id ->
-  P.option (P.attempt type_annot) |>> fun annot ->
-  (id, annot)
-
-let pattern_ident = add_loc (
-    pattern_var |>> fun (id, annot) ->
-    A.Pvar (id, annot)
-  )
-
-and expr_const = (any [expr_int; expr_bool; expr_string]) <?> "constant"
-
-let rec expr i =
-  i |> (
-    any [expr_pragma; expr_lambda; expr_let; expr_if; expr_infix; expr_apply]
-  )
-
-and expr_pragma i =
-  i |> (add_loc (
-      P.string "#::" >>
-      space >>
-      keyword "WARN" >>
-      P.many1 warning_annot >>= fun warnings ->
-      P.skip_many P.blank >> P.newline >> space >>
-      expr |>> fun e ->
-      A.Epragma (Pragma.Warnings warnings, e)))
-
-and warning_annot i =
-  i |> (
-    P.any_of "+-" >>= fun sign_char ->
-    let sign = if sign_char = '+' then Pragma.Plus else Pragma.Minus in
-    ident >>= fun name ->
-    match Pragma.Warning.read name with
-    | Some w -> P.return (sign, w)
-    | None -> P.fail "Invalid warning name")
-
-and expr_infix i =
-  i |> (P.expression infix_ops expr_apply)
-
-and expr_if i =
-  i |> (add_loc
-          (keyword "if" >>
-           expr >>= fun e_if ->
-           keyword "then" >>
-           expr >>= fun e_then ->
-           keyword "else" >>
-           expr |>> fun e_else ->
-           A.Eite (e_if, e_then, e_else)
-          )
-        <?> "if-then-else")
-
-and expr_atom i =
-  i |> (
-    any [expr_list; expr_const; expr_ident; expr_paren; expr_annot ]
-  )
-
-and expr_list i =
-  i |> (
+  let add_loc x =
     get_loc >>= fun loc ->
-    P.char '[' >> space >>
-    P.many_rev_fold_left
-      (fun accu elt -> W.mk loc (A.EopApp (A.Ocons, [elt; accu])))
-      (W.mk loc @@ A.Evar "nil")
-      expr_atom
-    << P.char ']' << space
-  )
+    x |>> fun x ->
+    W.mk loc x
 
-and expr_paren i = i |> parens expr
+  (** {2 Some utility functions } *)
+  let any x = P.choice @@ List.map P.attempt x
 
-and expr_annot i =
-  i |> add_loc (
-    parens (
-      expr >>= fun e ->
-      type_annot |>> fun t ->
-      A.EtyAnnot (e, t)
-    ))
+  let block_comment =
+    (P.attempt (P.string "/*" << P.satisfy @@ (<>) ':'))
+    >> P.skip_many_chars_until
+      P.any_char
+      (P.char '*' << P.char '/')
 
-and expr_lambda i =
-  i |> (add_loc (
-      pattern >>= fun pat ->
-      P.char ':' >> space >>
-      expr |>> fun body ->
-      A.Elambda (pat, body)
+  let line_comment = P.char '#' << P.not_followed_by (P.string "::") ""
+    >> P.skip_many_until P.any_char P.newline
+
+  let comment = any [ block_comment; line_comment; ] <?> "comment"
+
+  let space = P.skip_many (P.skip P.space <|> comment <?> "whitespace")
+
+  let keyword k = P.string k << P.not_followed_by P.alphanum "" >> space
+
+  let alphanum_ = P.alphanum <|> P.char '_'
+  let letter_ = P.letter <|> P.char '_'
+
+  let ident =
+    (letter_ >>= fun c0 ->
+     P.many_chars alphanum_ << space >>= fun end_name ->
+     let name = (CCString.of_char c0) ^ end_name in
+     if StrHash.mem keywords name then
+       P.zero
+     else
+       P.return name)
+    <?> "ident"
+
+  let int = P.many1_chars P.digit << space |>> int_of_string
+
+  let parens x = P.char '(' >> x << space << P.char ')' << space
+
+  let bool = any
+      [keyword "true" >> P.return true;
+       keyword "false" >> P.return false]
+             << space
+             <?> "boolean"
+
+  let string = P.char '"' >>
+    P.many_chars_until
+      P.any_char
+      (P.satisfy (fun c -> c = '"')
+       << P.prev_char_satisfies (fun c -> c <> '\\'))
+    << space
+    <?> "litteral string"
+
+  let infix_ops =
+    let infix sym f assoc = P.Infix (
+        (get_loc >>= fun loc ->
+         P.skip_string sym >> space >>
+         P.return (fun e1 e2 ->
+             W.mk loc (f e1 e2))),
+        assoc)
+    and prefix sym f = P.Prefix (
+        get_loc >>= fun loc ->
+        P.skip_string sym >> space >>
+        P.return (fun e -> W.mk loc (f e)))
+    in
+    [
+      [ infix "+" (fun e1 e2 -> A.EopApp (A.Oplus, [e1; e2])) P.Assoc_left;
+        infix "-" (fun e1 e2 -> A.EopApp (A.Ominus, [e1; e2])) P.Assoc_left; ];
+      [ prefix "-" (fun e -> A.EopApp (A.Oneg, [e])); ];
+    ]
+
+  (** {2 Begining of the parser } *)
+
+  (** {3 Type annotations} *)
+
+  let typ_op =
+    let module I = T.Infix_constructors in
+    let infix sym op assoc = P.Infix (
+        (get_loc >>= fun loc -> P.skip_string sym >> space >>
+         P.return (fun t1 t2 ->
+             W.mk loc (T.Infix (op, t1, t2)))),
+        assoc)
+    in
+    [
+      [ infix "&" I.And P.Assoc_left ];
+      [ infix "|" I.Or P.Assoc_left ];
+      [ infix "->" I.Arrow P.Assoc_right ];
+    ]
+
+
+  let typ_regex_postfix_op =
+    get_loc >>= fun loc ->
+    let mkloc = W.mk loc in
+    any [
+      P.char '*' >> space >> P.return (fun r -> mkloc @@ Regex_list.Star r);
+      P.char '+' >> space >> P.return (fun r -> mkloc @@ Regex_list.Plus r);
+      P.char '?' >> space >> P.return (fun r -> mkloc @@ Regex_list.Maybe r);
+    ]
+
+  let typ_int =
+    int |>> fun nb ->
+    Type_annotations.(Singleton (Singleton.Int nb))
+
+  let typ_bool =
+    bool |>> fun b ->
+    Type_annotations.(Singleton (Singleton.Bool b))
+
+  let typ_string =
+    string |>> fun s ->
+    Type_annotations.(Singleton (Singleton.String s))
+
+  let typ_ident i = i |> add_loc (ident |>> fun t -> Type_annotations.Var t)
+  and typ_singleton i = i |> add_loc @@ any [typ_int; typ_bool; typ_string ]
+
+  let rec typ i = i |> (P.expression typ_op
+                          (any [typ_atom; typ_list])
+                        <?> "type")
+
+  and typ_atom i = i |> any [ typ_singleton; typ_ident; parens typ]
+
+  and typ_regex i =
+    i |> (
+      any [typ_regex_alt; typ_regex_concat; ]
+      <?> "type regex")
+
+  and typ_regex_alt i =
+    i |> add_loc (
+      typ_regex_concat >>= fun t1 ->
+      P.char '|' >> space >>
+      typ_regex |>> fun t2 ->
+      Regex_list.Or (t1, t2))
+
+  and typ_regex_postfix i =
+    i |> (
+      typ_regex_atom >>= fun r0 ->
+      P.many typ_regex_postfix_op |>> fun ops ->
+      List.fold_left (fun r op -> op r) r0 ops
     )
-        <?> "lambda")
 
-and expr_let i =
-  i |> (add_loc (
-      keyword "let" >>
-      P.many1 (P.attempt binding) >>= fun b ->
-      keyword "in" >>
-      expr |>> fun e ->
-      A.Elet (b, e)
+  and typ_regex_atom i =
+    i |> (
+      parens typ_regex
+      <|>
+      (add_loc (typ_atom |>> fun t -> Regex_list.Type t)))
+
+  and typ_regex_concat i =
+    i |> (
+      get_loc >>= fun loc ->
+      typ_regex_postfix >>= fun r0 ->
+      P.many typ_regex_postfix |>> fun tl ->
+      List.fold_left (fun accu r ->
+          W.mk loc (Regex_list.Concat (accu, r)))
+        r0
+        tl
     )
-        <?> "let binding")
 
-and binding i =
-  i |>
-  (pattern_var >>= fun (id, annot) ->
-   P.char '=' >> space >>
-   expr << P.char ';' << space |>> fun e ->
-   A.BstaticDef ((id, annot), e))
+  and typ_list i =
+    i |> (
+      P.char '[' >> space >> typ_regex << P.char ']' << space |>>
+      Regex_list.to_type)
 
-and pattern i = i |> (any [pattern_ident] <?> "pattern")
+  let type_annot = (P.string "/*:" >> space >> typ << P.string "*/" << space)
+                   <?> "type annotation"
 
-and expr_apply i =
-  i |>
-  (get_loc >>= fun loc ->
-   expr_atom >>= fun e0 ->
-   P.many expr_atom |>>
-   List.fold_left (fun accu e -> W.mk loc (A.EfunApp (accu, e))) e0)
+  (** {3 Expressions} *)
 
-let expr = space >> expr << P.eof
+  let expr_int = add_loc (
+      int |>> fun nb ->
+      A.Econstant (A.Cint nb)
+    )
+
+  let expr_bool = add_loc (
+      bool |>> fun b ->
+      A.Econstant (A.Cbool b)
+    )
+
+  let expr_string = add_loc (
+      string |>> fun s ->
+      A.Econstant (A.Cstring s)
+    )
+
+  let expr_ident = add_loc (
+      ident |>> fun id ->
+      A.Evar id
+    )
+
+  let pattern_var =
+    ident >>= fun id ->
+    P.option (P.attempt type_annot) |>> fun annot ->
+    (id, annot)
+
+  let pattern_ident = add_loc (
+      pattern_var |>> fun (id, annot) ->
+      A.Pvar (id, annot)
+    )
+
+  and expr_const = (any [expr_int; expr_bool; expr_string]) <?> "constant"
+
+  let rec expr i =
+    i |> (
+      any [expr_pragma; expr_lambda; expr_let; expr_if; expr_infix; expr_apply]
+    )
+
+  and expr_pragma i =
+    i |> (add_loc (
+        P.string "#::" >>
+        space >>
+        keyword "WARN" >>
+        P.many1 warning_annot >>= fun warnings ->
+        P.skip_many P.blank >> P.newline >> space >>
+        expr |>> fun e ->
+        A.Epragma (Pragma.Warnings warnings, e)))
+
+  and warning_annot i =
+    i |> (
+      P.any_of "+-" >>= fun sign_char ->
+      let sign = if sign_char = '+' then Pragma.Plus else Pragma.Minus in
+      ident >>= fun name ->
+      match Pragma.Warning.read name with
+      | Some w -> P.return (sign, w)
+      | None -> P.fail "Invalid warning name")
+
+  and expr_infix i =
+    i |> (P.expression infix_ops expr_apply)
+
+  and expr_if i =
+    i |> (add_loc
+            (keyword "if" >>
+             expr >>= fun e_if ->
+             keyword "then" >>
+             expr >>= fun e_then ->
+             keyword "else" >>
+             expr |>> fun e_else ->
+             A.Eite (e_if, e_then, e_else)
+            )
+          <?> "if-then-else")
+
+  and expr_atom i =
+    i |> (
+      any [expr_list; expr_const; expr_ident; expr_paren; expr_annot ]
+    )
+
+  and expr_list i =
+    i |> (
+      get_loc >>= fun loc ->
+      P.char '[' >> space >>
+      P.many_rev_fold_left
+        (fun accu elt -> W.mk loc (A.EopApp (A.Ocons, [elt; accu])))
+        (W.mk loc @@ A.Evar "nil")
+        expr_atom
+      << P.char ']' << space
+    )
+
+  and expr_paren i = i |> parens expr
+
+  and expr_annot i =
+    i |> add_loc (
+      parens (
+        expr >>= fun e ->
+        type_annot |>> fun t ->
+        A.EtyAnnot (e, t)
+      ))
+
+  and expr_lambda i =
+    i |> (add_loc (
+        pattern >>= fun pat ->
+        P.char ':' >> space >>
+        expr |>> fun body ->
+        A.Elambda (pat, body)
+      )
+          <?> "lambda")
+
+  and expr_let i =
+    i |> (add_loc (
+        keyword "let" >>
+        P.many1 (P.attempt binding) >>= fun b ->
+        keyword "in" >>
+        expr |>> fun e ->
+        A.Elet (b, e)
+      )
+          <?> "let binding")
+
+  and binding i =
+    i |>
+    (pattern_var >>= fun (id, annot) ->
+     P.char '=' >> space >>
+     expr << P.char ';' << space |>> fun e ->
+     A.BstaticDef ((id, annot), e))
+
+  and pattern i = i |> (any [pattern_ident] <?> "pattern")
+
+  and expr_apply i =
+    i |>
+    (get_loc >>= fun loc ->
+     expr_atom >>= fun e0 ->
+     P.many expr_atom |>>
+     List.fold_left (fun accu e -> W.mk loc (A.EfunApp (accu, e))) e0)
+end
+
+let expr fname =
+  let module Parser = Make(struct let file_name = fname end) in
+  Parser.space >> Parser.expr << P.eof
+
+let typ fname =
+  let module Parser = Make(struct let file_name = fname end) in
+  Parser.space >> Parser.typ << P.eof
 
 let mpresult_to_result = function
   | MParser.Success x -> Ok x

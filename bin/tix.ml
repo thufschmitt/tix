@@ -1,5 +1,5 @@
-let parse_chan _fname chan =
-  match MParser.parse_channel Parse.Parser.expr chan () with
+let parse_chan fname chan =
+  match MParser.parse_channel (Parse.Parser.expr fname) chan () with
   | MParser.Success t -> t
   | MParser.Failed (msg, _) ->
     Format.print_string msg;
@@ -15,7 +15,7 @@ let process_file is_parse_only f_name =
   let ast =
     match f_name with
     | "-" -> parse_chan "-" stdin
-    | fname -> CCIO.with_in fname (parse_chan fname)
+    | _ -> CCIO.with_in f_name (parse_chan f_name)
   in
   if is_parse_only then
     Parse.Pp.pp_expr Format.std_formatter ast

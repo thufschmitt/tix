@@ -5,12 +5,12 @@ module T  = Typing.Types
 exception ParseError of string
 
 let parse str =
-  match Parse.Parser.(parse_string expr) str with
+  match Parse.Parser.(parse_string (expr "NONE")) str with
   | Ok s -> Simple.Of_onix.expr s
   | Error (msg, _) -> raise (ParseError msg)
 
 let typ str =
-  match Parse.Parser.(parse_string typ) str with
+  match Parse.Parser.(parse_string (typ "NONE")) str with
   | Ok t -> Typing.Typecheck.W.value
               Typing.(Annotations.to_type Types.Environment.default t)
   | Error (msg, _) -> raise (ParseError msg)
