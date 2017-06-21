@@ -1,51 +1,50 @@
 module P = Simple.Ast
 module E = Environment
 module L = Parse.Location
-module R = CCResult
 module T = Types
 module TE = T.Environment
 module VE = Typing_env
-module W = L.With_loc
+module WL = L.With_loc
 
 module Pattern = Typecheck_pat
 
-let (>>=) = R.(>>=)
-let (>|=) = R.(>|=)
+module W = Writer.Make(Warning.List)
+
+open W.Infix
 let (>>) e1 e2 = e1 >>= (fun _ -> e2)
 
-type typeError = (L.t * string)
-type 'a withError = ('a, typeError) result
+let default_typ = T.Builtins.grad
+let log_only l =
+  W.append l @@ W.pure default_typ
 
-let add_loc loc result = R.map_err (fun msg -> loc, msg) result
-
-let typeError loc e = Format.ksprintf (fun s -> Error (loc, s)) e
+let typeError loc e = Format.ksprintf (fun s -> log_only [Warning.make loc s]) e
 
 let check_subtype loc ~inferred ~expected =
   if Types.sub inferred expected then
-    R.pure ()
+    W.pure ()
   else
-    typeError loc
-      "This expression has type %s while a subtype of %s was expected"
-      (Types.show inferred)
-      (Types.show expected)
+    W.append
+      [Warning.format loc
+         "This expression has type %s while a subtype of %s was expected"
+         (Types.show inferred)
+         (Types.show expected)]
+      (W.pure ())
 
 module Bindings = struct
   let explicit_annotations (tenv : TE.t) (bindings : P.binding list)
-    : ((string * Types.t option * P.expr) list * VE.t, string) result =
+    : ((string * Types.t option * P.expr) list * VE.t) W.t =
     let half_typed_bindings =
       List.map
         (fun ((var, maybe_annot), e) ->
            CCOpt.map (Annotations.to_type tenv) maybe_annot
            |> CCOpt.map_or
-             ~default:(Ok (var, None, e))
-             (R.map (fun x -> (var, Some x, e)))
+             ~default:(W.pure (var, None, e))
+             (W.map (fun x -> (var, Some x, e)))
         )
         bindings
-      |> List.fold_left (fun accu elt ->
-          R.both elt accu |> R.map @@ CCFun.uncurry CCList.cons)
-        (Ok [])
+      |> List.fold_left (CCFun.flip @@ W.map2 CCList.cons) (W.pure [])
     in
-    R.map
+    W.map
       (fun half_typed_bindings ->
          let new_env =
            List.fold_left
@@ -107,20 +106,19 @@ and get_discriminer typ =
   else None
 
 module rec Infer : sig
-  val expr : Environment.t -> P.expr -> Types.t withError
+  val expr : Environment.t -> P.expr -> Types.t W.t
 end = struct
-  let rec expr (env : Environment.t) (e : P.expr) : Types.t withError =
-    let loc = L.With_loc.loc e in
+  let rec expr (env : Environment.t) (e : P.expr) : Types.t W.t =
     let { Environment.types = tenv; values = venv; _ } = env in
     L.With_loc.description e |> function
-    | P.Econstant c -> R.pure @@ typeof_const c
+    | P.Econstant c -> W.pure @@ typeof_const c
     | P.Evar v ->
       CCOpt.map_or
-        ~default:(typeError e.L.With_loc.location "Unbount variable %s" v)
-        R.pure
+        ~default:(typeError e.L.With_loc.location "Unbound variable %s" v)
+        W.pure
         (VE.lookup venv v)
     | P.Elambda (pat, e) ->
-      add_loc loc (Pattern.infer tenv pat) >>= fun (added_env, domain) ->
+      (Pattern.infer tenv pat) >>= fun (added_env, domain) ->
       expr { env with E.values = VE.merge venv added_env } e >|= fun codomain ->
       Types.(Builtins.arrow (node domain) (node codomain))
     | P.EfunApp (e1, e2) ->
@@ -136,19 +134,19 @@ end = struct
         let t1arrow = Cduce_lib.Types.Arrow.get t1 in
         let dom = Cduce_lib.Types.Arrow.domain t1arrow in
         check_subtype e2.L.With_loc.location ~inferred:t2 ~expected:dom >>
-        R.pure @@ Cduce_lib.Types.Arrow.apply t1arrow t2
+        W.pure @@ Cduce_lib.Types.Arrow.apply t1arrow t2
     | P.Elet (binds, e) ->
       Common.let_binding expr env binds e
-      |> R.join
+      |> W.join
     | P.EopApp (op, args) ->
       operator env e.L.With_loc.location op args
     | P.Eite (e0, e1, e2) ->
       if_then_else env e0 e1 e2
     | P.EtyAnnot (sub_e, annot) ->
-      add_loc loc (Annotations.to_type tenv annot) >>= fun t ->
+      Annotations.to_type tenv annot >>= fun t ->
       expr env sub_e >>= fun inferred ->
       check_subtype sub_e.L.With_loc.location ~expected:t ~inferred >>
-      R.pure @@ t
+      W.pure @@ t
     | P.Epragma (pragma, e) ->
       let env = Common.pragma env pragma in
       expr env e
@@ -165,11 +163,11 @@ end = struct
         loc
         ~inferred:t2
         ~expected:Types.(Builtins.(cup (cons (node any) (node any)) nil)) >>
-      R.pure Types.Builtins.(cons (Types.node t1) (Types.node t2))
+      W.pure Types.Builtins.(cons (Types.node t1) (Types.node t2))
     | P.Oeq, [e1; e2] ->
       expr env e1 >>
       expr env e2 >>
-      R.pure Types.Builtins.bool
+      W.pure Types.Builtins.bool
     | P.Oneg, [e] ->
       expr env e >>= fun t ->
       check_subtype
@@ -189,7 +187,7 @@ end = struct
               | `Var _ -> assert false (* XXX: What are those vars ? *))
           ivl
       in
-      R.pure @@ Cduce_lib.Types.interval negated_ivl
+      W.pure @@ Cduce_lib.Types.interval negated_ivl
     | P.Oplus, [e1; e2]
     | P.Ominus, [e1; e2]
       ->
@@ -197,7 +195,7 @@ end = struct
       expr env e2 >>= fun t2 ->
       check_subtype loc ~inferred:t1 ~expected:T.Builtins.int >>
       check_subtype loc ~inferred:t2 ~expected:T.Builtins.int >>
-      R.pure @@ T.Builtins.int
+      W.pure @@ T.Builtins.int
     | P.Oplus, _
     | P.Ominus, _
     | P.Ocons, _
@@ -211,7 +209,7 @@ end = struct
      * [empty], then [e] can be given any type -- and in particular [empty] *)
     let type_with_exfalso var typ e =
       if Types.equiv typ Types.Builtins.empty then
-        R.pure Types.Builtins.empty
+        W.pure Types.Builtins.empty
       else
         expr (E.add_value env var typ) e
     in
@@ -223,10 +221,10 @@ end = struct
         e0.L.With_loc.location
         ~inferred:t0
         ~expected:Types.Builtins.bool >>
-      R.pure @@ Types.Builtins.cup t1 t2
+      W.pure @@ Types.Builtins.cup t1 t2
     in
-    match W.description e0 with
-    | P.EfunApp (f, ({ W.description = P.Evar x; _ } as e_x)) ->
+    match WL.description e0 with
+    | P.EfunApp (f, ({ WL.description = P.Evar x; _ } as e_x)) ->
       expr env f >>= fun t_f ->
       begin
         match get_discriminer t_f with
@@ -241,8 +239,13 @@ end = struct
 end
 
 and Check : sig
-  val expr : E.t -> P.expr -> Types.t -> unit withError
+  val expr : E.t -> P.expr -> Types.t -> unit W.t
 end = struct
+
+  let typeError loc e = Format.ksprintf
+      (fun s -> W.append [Warning.make loc s] (W.pure ())) e
+
+
   (** The \mathscr{A} operator from the paper *)
   let a_op (_, arrow_bdd) =
     let squared_union i_set j_set =
@@ -263,22 +266,23 @@ end = struct
       check_subtype loc ~inferred:c_ty ~expected
     | P.Evar v ->
       begin match VE.lookup env.E.values v with
-        | Some t -> check_subtype loc ~inferred:t ~expected;
-        | None -> typeError e.L.With_loc.location "Unbount variable %s" v
+        | Some t -> check_subtype loc ~inferred:t ~expected
+        | None ->
+          W.append
+            [Warning.format e.L.With_loc.location "Unbound variable %s" v]
+            (W.pure ())
       end
     | P.Elambda (pat, e) ->
       (check_subtype loc ~inferred:expected ~expected:Cduce_lib.Types.Arrow.any
        >>
        (* XXX: destruct [expected] with the A(t) function from the paper *)
        let expected_arrow = Cduce_lib.Types.Arrow.get expected in
-       R.map_l (fun (dom, codom) ->
-           add_loc
-             e.L.With_loc.location
-             (Pattern.infer ~t_constr:dom env.E.types pat)
+       W.iter_l (fun (dom, codom) ->
+           Pattern.infer ~t_constr:dom env.E.types pat
            >>= fun (added_env, _) ->
            expr (E.add_values env added_env) e codom)
          (a_op expected_arrow))
-      >> R.pure ()
+      >> W.pure ()
     | P.Elet (binds, e) ->
       Common.let_binding expr env binds e >>= fun f -> f expected
     | P.Eite (e0, e1, e2) ->
@@ -305,12 +309,12 @@ end = struct
           (fun (t1, t2) ->
              expr env e1 t1 >>
              expr env e2 t2
-             |> R.is_error
+             |> W.log |> Warning.List.contains_error
           )
           products
       then
         typeError loc "This expression should have type %s" @@ T.show expected
-      else R.pure ()
+      else W.pure ()
     | P.Oeq, [e1; e2] ->
       check_subtype
         loc
@@ -322,7 +326,7 @@ end = struct
         typeError loc "Can't check thas this equality never holds"
       else
         Infer.expr env e1 >>
-        Infer.expr env e2 >> R.pure ()
+        Infer.expr env e2 >> W.pure ()
     | P.Oneg, [e] ->
       check_subtype
         loc
@@ -349,7 +353,7 @@ end = struct
         loc
         ~inferred:expected
         ~expected:T.Builtins.int >>
-      R.pure @@
+      W.pure @@
       ignore @@ List.map (fun e -> expr env e T.Builtins.int) [e1; e2]
     | P.Oplus, _
     | P.Ominus, _
@@ -364,7 +368,7 @@ end = struct
      * and in particular [empty] *)
     let check_with_exfalso var typ e expected =
       if Types.equiv typ Types.Builtins.empty then
-        R.pure ()
+        W.pure ()
       else
         expr (E.add_value env var typ) e expected
     in
@@ -378,7 +382,7 @@ end = struct
       check_with_exfalso "_" T.Builtins.(cap t0 false_type) e2 expected
     in
     match L.With_loc.description e0 with
-    | P.EfunApp (f, ({ W.description = P.Evar x; _ } as e_x)) ->
+    | P.EfunApp (f, ({ WL.description = P.Evar x; _ } as e_x)) ->
       Infer.expr env f >>= fun t_f ->
       begin
         match get_discriminer t_f with
@@ -396,12 +400,12 @@ and Common : sig
     -> E.t
     -> P.binding list
     -> P.expr
-    -> 'a withError
+    -> 'a W.t
   val pragma : E.t -> Parse.Pragma.t -> E.t
 end = struct
   let let_binding expr env binds e =
     let module B = Bindings in
-    add_loc e.L.With_loc.location (B.explicit_annotations env.E.types binds) >>=
+    B.explicit_annotations env.E.types binds >>=
     fun (half_typed_binds, binds_env) ->
     let new_env = { env with E.values = VE.merge env.E.values binds_env } in
     let typed_binds =
@@ -413,13 +417,12 @@ end = struct
              (x, constr, typed_rhs)
            | Some ty ->
              Check.expr new_env rhs ty >>
-             R.pure (x, constr, ty)
+             W.pure (x, constr, ty)
         )
         half_typed_binds
       |> List.fold_left
-        (fun accu elt ->
-           R.both elt accu |> R.map @@ CCFun.uncurry CCList.cons)
-        (R.pure [])
+        (CCFun.flip @@ W.map2 CCList.cons)
+        (W.pure [])
     in
     typed_binds >|= fun binds ->
     let added_env = B.report_inference_results binds in

@@ -10,12 +10,10 @@ let parse str =
   | Error (msg, _) -> raise (ParseError msg)
 
 let typ str =
-  let maybe_t =
-    match Parse.Parser.(parse_string typ) str with
-    | Ok t -> Typing.(Annotations.to_type Types.Environment.default t)
-    | Error (msg, _) -> raise (ParseError msg)
-  in
-  CCResult.get_exn maybe_t
+  match Parse.Parser.(parse_string typ) str with
+  | Ok t -> Typing.Typecheck.W.value
+              Typing.(Annotations.to_type Types.Environment.default t)
+  | Error (msg, _) -> raise (ParseError msg)
 
 let infer env tokens =
   parse tokens
@@ -30,7 +28,7 @@ let test_infer_expr input expected_type _ =
     let open Typing in
     infer Environment.default input
   in
-  CCResult.iter
+  Typing.Typecheck.W.iter
     (assert_equal
        ~cmp:T.T.equiv
        ~printer:T.T.Print.string_of_type
@@ -53,11 +51,12 @@ let test_var _ =
       Typing.Environment.(add_value default "x" Typing.Types.Builtins.int)
       "x"
   in
-  CCResult.iter (assert_equal Typing.Types.Builtins.int) typ
+  Typing.Typecheck.W.iter (assert_equal Typing.Types.Builtins.int) typ
 
 let test_fail typefun _ =
-  typefun ()
-  |> CCResult.iter (fun _ -> assert_failure "type error not detected")
+  let result = typefun () in
+  if Typing.Typecheck.W.log result = Typing.Warning.List.empty then
+    assert_failure "type error not detected"
 
 let test_infer_expr_fail input =
   test_fail @@ fun () ->

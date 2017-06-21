@@ -7,14 +7,9 @@ let parse_chan _fname chan =
     exit 1
 
 let typecheck ast =
-  let typ =
-    Simple.Of_onix.expr ast
-    |> Typing.(Typecheck.Infer.expr
-                 Environment.default)
-  in
-  CCResult.map
-    (Format.fprintf Format.std_formatter "%a\n" Typing.Types.pp)
-    typ
+  Simple.Of_onix.expr ast
+  |> Typing.(Typecheck.Infer.expr
+               Environment.default)
 
 let process_file is_parse_only f_name =
   let ast =
@@ -25,14 +20,15 @@ let process_file is_parse_only f_name =
   if is_parse_only then
     Parse.Pp.pp_expr Format.std_formatter ast
   else
-    ignore @@ CCResult.map_err
-      (fun (loc, msg) ->
-         Format.eprintf "error: %s, at %a\n"
-           msg
-           Parse.Location.pp loc;
-         Format.pp_print_flush Format.err_formatter ();
-         exit 1)
-      (typecheck ast)
+    let typed = typecheck ast in
+    let log = Typing.Typecheck.W.log typed
+    and value = Typing.Typecheck.W.value typed
+    in
+    CCList.iter (fun t ->
+        Typing.Warning.pp Format.err_formatter t;
+        Format.pp_print_newline Format.err_formatter ())
+      (CCList.rev log);
+    Format.fprintf Format.std_formatter "%a\n" Typing.Types.pp value
 
 open Cmdliner
 

@@ -2,10 +2,7 @@
    Typecheck nix-light expressions
  *)
 
-(**
-   Exception raised whenever a typing error occurs
- *)
-type 'a withError = ('a, Parse.Location.t * string) result
+module W : module type of Annotations.W
 
 (**
    The inference type-system
@@ -20,7 +17,7 @@ module Infer : sig
   *)
   val expr : Environment.t
     -> Simple.Ast.expr
-    -> Types.t withError
+    -> Types.t W.t
 end
 
 module Check : sig
@@ -32,5 +29,5 @@ module Check : sig
   val expr : Environment.t
     -> Simple.Ast.expr
     -> Types.t
-    -> unit withError
+    -> unit W.t
 end

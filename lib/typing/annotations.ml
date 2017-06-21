@@ -3,15 +3,17 @@
 *)
 
 module A = Parse.Type_annotations
+module L = Parse.Location
 module T = Types
-exception TypeError of string
+
+module W = Writer.Make (Warning.List)
 
 let singleton =
   let module S = A.Singleton in
   function
-  | S.Bool b -> CCResult.pure @@ T.Singleton.bool b
-  | S.Int  i -> CCResult.pure @@ T.Singleton.int  i
-  | S.String s -> CCResult.pure @@
+  | S.Bool b -> W.pure @@ T.Singleton.bool b
+  | S.Int  i -> W.pure @@ T.Singleton.int  i
+  | S.String s -> W.pure @@
     CCString.fold
       (fun accu char -> T.Builtins.cons
           (T.node @@ Cduce_lib.Types.char
@@ -40,40 +42,47 @@ module Nodes_env = struct
   let lookup t key = M.get key t
 end
 
-let (>|=) = CCResult.(>|=)
+open W.Infix
 let (<+>) = CCOpt.(<+>)
-let (|>) opt msg = CCOpt.to_result msg opt
+(* let (||>) opt msg = CCOpt.to_result msg opt *)
 let (%>) = CCFun.(%>)
 
-let rec to_node (nodes_env : Nodes_env.t) env
-  : A.t -> (Cduce_lib.Types.Node.t, string) result =
-  Parse.Location.With_loc.description %>
+let rec to_node (nodes_env : Nodes_env.t) env (annot: A.t)
+  : Cduce_lib.Types.Node.t W.t =
+  let loc = Parse.Location.With_loc.loc annot in
+  Parse.Location.With_loc.description annot |>
   function
   | A.Var v ->
-    Nodes_env.lookup nodes_env v
-    <+>
-    (CCOpt.map T.node @@ Types.Environment.lookup env v)
-    |> ("Unbound variable " ^ v)
+    begin
+      Nodes_env.lookup nodes_env v
+      <+>
+      (CCOpt.map T.node @@ Types.Environment.lookup env v)
+      |> function
+      | Some t -> W.pure t
+      | None ->
+        W.append
+          [Warning.make loc ("Unbound type variable " ^ v)]
+          (W.pure @@ T.node T.Builtins.grad)
+    end
   | A.Infix (A.Infix_constructors.Arrow, t1, t2) ->
-    CCResult.both
+    W.map2
+      T.Builtins.arrow
       (to_node nodes_env env t1)
       (to_node nodes_env env t2)
-    >|= CCFun.uncurry T.Builtins.arrow
     >|= T.node
   | A.Infix (A.Infix_constructors.And, t1, t2) ->
-    CCResult.both
+    W.map2
+      T.Builtins.cap
       (to_type nodes_env env t1)
       (to_type nodes_env env t2)
-    >|= CCFun.uncurry T.Builtins.cap
     >|= T.node
   | A.Infix (A.Infix_constructors.Or, t1, t2) ->
-    CCResult.both
+    W.map2
+      T.Builtins.cup
       (to_type nodes_env env t1)
       (to_type nodes_env env t2)
-    >|= CCFun.uncurry T.Builtins.cup
     >|= T.node
-  | A.Singleton s -> singleton s
-    >|= T.node
+  | A.Singleton s -> singleton s >|= T.node
   | A.TyBind (binds, t) ->
     let new_nodes_env, defs =
       List.fold_left
@@ -85,25 +94,25 @@ let rec to_node (nodes_env : Nodes_env.t) env
         binds
     in
     begin
-      try
-        List.iter
-          (fun (typ, def) ->
-             let type_def =
-               CCResult.catch
-                 ~ok:CCFun.id
-                 ~err:(fun e -> raise (TypeError e))
-                 (to_type new_nodes_env env def)
-             in
-             T.define typ type_def)
-          defs;
-        to_node new_nodes_env env t
-      with TypeError e -> Error e
+      let binds_errors =
+        List.fold_left
+          (fun accu (typ, def) ->
+             let (type_def, errors) = to_type new_nodes_env env def in
+             T.define typ type_def;
+             errors @ accu
+          )
+          []
+          defs
+      in
+      W.append
+        binds_errors
+        (to_node new_nodes_env env t)
     end
   | A.Cons (t1, t2) ->
-    CCResult.both
+    W.map2
+      T.Builtins.cons
       (to_node nodes_env env t1)
       (to_node nodes_env env t2)
-    >|= CCFun.uncurry T.Builtins.cons
     >|= T.node
 
 and to_type nodes_env env p = to_node nodes_env env p >|= T.typ
