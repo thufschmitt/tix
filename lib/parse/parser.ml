@@ -229,7 +229,10 @@ and expr_const = (any [expr_int; expr_bool; expr_string]) <?> "constant"
 
 let rec expr i =
   i |> (
-    any [ expr_pragma; expr_lambda; expr_let; expr_if; expr_infix; expr_apply ]
+    any [
+      expr_pragma; expr_lambda; expr_let; expr_if; expr_infix;
+      expr_import; expr_apply
+    ]
   )
 
 and expr_pragma i =
@@ -250,6 +253,12 @@ and warning_annot i =
     match Pragma.Warning.read name with
     | Some w -> P.return (sign, w)
     | None -> P.fail "Invalid warning name")
+
+and expr_import i =
+  i |> add_loc (
+    keyword "import" >>
+    expr_atom |>> fun e ->
+    A.Eimport e)
 
 and expr_infix i =
   i |> (P.expression infix_ops expr_apply)

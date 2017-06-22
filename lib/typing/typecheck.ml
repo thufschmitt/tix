@@ -17,8 +17,6 @@ let default_typ = T.Builtins.grad
 let log_only l =
   W.append l @@ W.pure default_typ
 
-let typeError loc e = Format.ksprintf (fun s -> log_only [Warning.make loc s]) e
-
 let check_subtype loc ~inferred ~expected =
   if Types.sub inferred expected then
     W.pure ()
@@ -108,6 +106,11 @@ and get_discriminer typ =
 module rec Infer : sig
   val expr : Environment.t -> P.expr -> Types.t W.t
 end = struct
+
+  let typeError loc e = Format.ksprintf
+      (fun s -> log_only [Warning.make loc s])
+      e
+
   let rec expr (env : Environment.t) (e : P.expr) : Types.t W.t =
     let { Environment.types = tenv; values = venv; _ } = env in
     L.With_loc.description e |> function
@@ -150,7 +153,7 @@ end = struct
     | P.Epragma (pragma, e) ->
       let env = Common.pragma env pragma in
       expr env e
-
+    | P.Eimport e -> Common.import expr default_typ env e
     | P.EaccessPath _
     | P.Erecord _
     | P.Ewith (_,_) -> assert false
@@ -295,6 +298,8 @@ end = struct
     | P.Epragma (pragma, e) ->
       let env = Common.pragma env pragma in
       expr env e expected
+    | P.Eimport e ->
+      Common.import (fun env e -> expr env e expected) () env e
     | P.EaccessPath _
     | P.Erecord _
     | P.Ewith (_,_)
@@ -402,7 +407,9 @@ and Common : sig
     -> P.expr
     -> 'a W.t
   val pragma : E.t -> Parse.Pragma.t -> E.t
+  val import : (E.t -> P.expr -> 'a W.t) -> 'a -> E.t -> P.expr -> 'a W.t
 end = struct
+
   let let_binding expr env binds e =
     let module B = Bindings in
     B.explicit_annotations env.E.types binds >>=
@@ -435,4 +442,24 @@ end = struct
       E.map_config (fun c -> Config.proceed_warnings_annot c warns) env
     | P.Errors warns ->
       E.map_config (fun c -> Config.proceed_errors_annot c warns) env
+
+  let import expr default_value _env e =
+    let typeError loc e = Format.ksprintf
+        (fun s -> W.append [Warning.make loc s] (W.pure default_value)) e
+    in
+    match e.WL.description with
+    | P.Econstant (P.Cstring f_name) ->
+      begin try
+          CCIO.with_in f_name (fun chan ->
+              match MParser.parse_channel Parse.Parser.expr chan f_name with
+              | MParser.Success e ->
+                expr
+                  Environment.default
+                  (Simple.Of_onix.expr e)
+              | MParser.Failed (_, _) ->
+                typeError e.WL.location "Parse error in %s" f_name)
+        with Sys_error _ ->
+          typeError e.WL.location "Unable to read file %s" f_name
+      end
+    | _ -> typeError e.WL.location "Not a litteral string"
 end
