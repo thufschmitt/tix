@@ -6,9 +6,9 @@ let test_parse_pp_str ?(isTodo=false) input expected_output _ =
   if isTodo then todo "Not implemented yet";
   let output =
     begin
-      match MParser.parse_string (Parse.Parser.expr "NONE") input () with
-      | MParser.Success s -> Parse.Pp.pp_expr Format.str_formatter s;
-      | MParser.Failed (msg, _) ->
+      match Parse.Parser.parse_string Parse.Parser.expr input with
+      | Ok s -> Parse.Pp.pp_expr Format.str_formatter s;
+      | Error (msg, _) ->
         output_string stderr msg;
         raise ParseError
     end;

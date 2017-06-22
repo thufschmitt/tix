@@ -7,11 +7,11 @@ let test_parse_pp_str ?(isTodo=false) input expected_output _ =
   if isTodo then todo "Not implemented yet";
   let output =
     begin
-      match MParser.parse_string (Parse.Parser.expr "NONE") input () with
-      | MParser.Success x ->
+      match Parse.Parser.parse_string Parse.Parser.expr input with
+      | Ok x ->
         Simple.Of_onix.expr x
         |> fun s -> Simple.Pp.pp_expr Format.str_formatter s
-      | MParser.Failed _ -> raise ParseError
+      | Error _ -> raise ParseError
     end;
     Format.flush_str_formatter ()
   in

@@ -33,6 +33,7 @@ and expr_desc =
   | Elet of binding list * expr
   | EtyAnnot of expr * Type_annotations.t
   | Epragma of Pragma.t * expr
+  | Eimport of expr MParser.result
 
 and access_path =
   | Afield of expr * ap_field * expr option

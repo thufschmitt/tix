@@ -1,5 +1,5 @@
 let parse_chan fname chan =
-  match MParser.parse_channel (Parse.Parser.expr fname) chan () with
+  match MParser.parse_channel Parse.Parser.expr chan fname with
   | MParser.Success t -> t
   | MParser.Failed (msg, _) ->
     Format.print_string msg;
