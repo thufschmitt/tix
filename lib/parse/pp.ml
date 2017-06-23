@@ -55,6 +55,11 @@ let rec pp_expr fmt = drop_loc %> function
       F.fprintf fmt "#:: %a\n%a"
         Pragma.pp pragma
         pp_expr e
+    | P.Eite (eif, ethen, eelse) ->
+      F.fprintf fmt "@[if (%a)@;then@ %a@;else@ %a@]"
+        pp_expr eif
+        pp_expr ethen
+        pp_expr eelse
     | _ -> failwith "TODO"
 
 

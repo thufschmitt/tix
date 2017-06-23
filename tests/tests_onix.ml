@@ -54,4 +54,5 @@ let testsuite =
       "test_annot_singleton_false", "x /*: false */: x", "(x /*: false */: x)";
       "test_list", "[1 2 3]", "Cons(1, Cons(2, Cons(3, nil)))";
       "test_line_comment", "x: #fooooo \n x", "(x: x)";
+      "test_ite", "if e0 then e1 else e2", "if (e0) then e1 else e2";
     ]
