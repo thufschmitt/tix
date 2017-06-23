@@ -55,4 +55,7 @@ let testsuite =
       "test_list", "[1 2 3]", "Cons(1, Cons(2, Cons(3, nil)))";
       "test_line_comment", "x: #fooooo \n x", "(x: x)";
       "test_ite", "if e0 then e1 else e2", "if (e0) then e1 else e2";
+      ("test_assert",
+       "assert true; 1",
+       "if (true) then 1 else (raise \"assertion failed\")");
     ]

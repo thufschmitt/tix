@@ -21,6 +21,7 @@ let keywords = StrHash.of_list [
     "let"; "in";
     "true"; "false";
     "import"; (* This isn't a keyword in Nix, but a regular function. *)
+    "assert";
   ]
 
 let get_loc =
@@ -231,7 +232,7 @@ let rec expr i =
   i |> (
     any [
       expr_pragma; expr_lambda; expr_let; expr_if; expr_infix;
-      expr_import; expr_apply
+      expr_assert; expr_import; expr_apply
     ]
   )
 
@@ -259,6 +260,17 @@ and expr_import i =
     keyword "import" >>
     expr_atom |>> fun e ->
     A.Eimport e)
+
+and expr_assert i =
+  i |> add_loc (
+    get_loc >>= fun loc ->
+    keyword "assert" >>
+    expr >>= fun assertion ->
+    P.char ';' >> space >>
+    expr |>> fun k ->
+    A.Eite ( assertion, k, W.mk loc @@ A.EfunApp (
+        W.mk loc (A.Evar "raise"),
+        W.mk loc (A.Econstant (A.Cstring "assertion failed")))))
 
 and expr_infix i =
   i |> (P.expression infix_ops expr_apply)
