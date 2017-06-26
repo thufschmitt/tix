@@ -79,7 +79,6 @@ and record = {
 
 and field =
   | Fdef of access_path * expr
-  | FstaticDef of string * expr
   | Finherit of inherit_
   (** inherit x y z...;
       inherit (e) x y z...;

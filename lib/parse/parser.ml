@@ -305,10 +305,10 @@ and expr_record i =
 
 and expr_record_field i =
   i |> add_loc (
-    ident >>= fun f_name ->
+    ap >>= fun ap ->
     P.char '=' >> space >>
     expr << P.char ';' << space |>> fun value ->
-    A.FstaticDef (f_name, value)
+    A.Fdef (ap, value)
   )
 
 and expr_list i =
@@ -372,11 +372,13 @@ and expr_select i =
         add_loc (
           expr_atom >>= fun e ->
           P.char '.' >> space >>
-          P.sep_by1 ap_field (P.char '.' >> space) |>> fun a ->
+          ap |>> fun a ->
           A.Eaccess (e, a, None)
         )
         <|>
         expr_atom)
+
+and ap i = i |> P.sep_by1 ap_field (P.char '.' >> space)
 
 and ap_field i =
   i |> add_loc (
