@@ -59,4 +59,5 @@ let testsuite =
        "assert true; 1",
        "if (true) then 1 else (raise \"assertion failed\")");
       "test_record_1", "{ x = 1; y = 2; }", "{ x = 1; y = 2; }";
+      "test_record_access", "x.y.z.a.b", "x.y.z.a.b";
     ]

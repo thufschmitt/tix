@@ -15,11 +15,11 @@ type expr = expr_desc with_loc
 
 and expr_desc =
   | Evar of string
-  | EaccessPath of access_path
+  | Eaccess of  expr * access_path * expr option
   (**
-     x
-     x.y
-     x.y or e
+     e
+     e.y
+     e.y or e
   *)
   | Econstant of constant
   | Elambda of lambda
@@ -35,9 +35,7 @@ and expr_desc =
   | Epragma of Pragma.t * expr
   | Eimport of expr
 
-and access_path =
-  | Afield of expr * ap_field * expr option
-  (** e.f or e' *)
+and access_path = ap_field list
 
 and ap_field = ap_field_desc with_loc
 

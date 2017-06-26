@@ -363,9 +363,26 @@ and pattern i = i |> (any [pattern_ident] <?> "pattern")
 and expr_apply i =
   i |>
   (get_loc >>= fun loc ->
-   expr_atom >>= fun e0 ->
-   P.many expr_atom |>>
+   expr_select >>= fun e0 ->
+   P.many expr_select |>>
    List.fold_left (fun accu e -> W.mk loc (A.EfunApp (accu, e))) e0)
+
+and expr_select i =
+  i |> (P.attempt @@
+        add_loc (
+          expr_atom >>= fun e ->
+          P.char '.' >> space >>
+          P.sep_by1 ap_field (P.char '.' >> space) |>> fun a ->
+          A.Eaccess (e, a, None)
+        )
+        <|>
+        expr_atom)
+
+and ap_field i =
+  i |> add_loc (
+    ident |>> fun f_name ->
+    A.AFidentifier f_name
+  )
 
 let expr =
   space >> expr << P.eof

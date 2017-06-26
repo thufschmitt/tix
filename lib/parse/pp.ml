@@ -60,8 +60,21 @@ let rec pp_expr fmt = drop_loc %> function
         pp_expr eif
         pp_expr ethen
         pp_expr eelse
+    | P.Eaccess (e, ap, None) ->
+      F.fprintf fmt "%a.%a"
+        pp_expr e
+        pp_ap ap
     | _ -> failwith "TODO"
 
+and pp_ap fmt = F.pp_print_list
+    ~pp_sep:(fun fmt () -> F.pp_print_char fmt '.')
+    pp_ap_field
+    fmt
+
+and pp_ap_field fmt = drop_loc %> function
+    | P.AFexpr e ->
+      F.fprintf fmt "${%a}" pp_expr e
+    | P.AFidentifier s -> F.pp_print_string fmt s
 
 and pp_pattern fmt = drop_loc %> function
     | P.Pvar (v, a) -> pp_pattern_var fmt (v, a)
