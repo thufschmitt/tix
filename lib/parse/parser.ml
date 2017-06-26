@@ -380,8 +380,17 @@ and expr_select i =
 
 and ap_field i =
   i |> add_loc (
-    ident |>> fun f_name ->
-    A.AFidentifier f_name
+    (
+      P.attempt (P.string "${") >> space >>
+      expr >>= fun e ->
+      P.char '}' >> space >>
+      P.return (A.AFexpr e)
+    )
+    <|>
+    (
+      ident |>> fun f_name ->
+      A.AFidentifier f_name
+    )
   )
 
 let expr =
