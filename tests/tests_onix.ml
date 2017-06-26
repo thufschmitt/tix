@@ -58,4 +58,5 @@ let testsuite =
       ("test_assert",
        "assert true; 1",
        "if (true) then 1 else (raise \"assertion failed\")");
+      "test_record_1", "{ x = 1; y = 2; }", "{ x = 1; y = 2; }";
     ]

@@ -116,7 +116,7 @@ and pp_record fmt { P.recursive; fields } =
     (fun fmt -> List.iter (pp_record_field fmt)) fields
 
 and pp_record_field fmt = drop_loc %> function
-    | P.Fdef (name, value) ->
+    | P.FstaticDef (name, value) ->
       F.fprintf fmt "%a = %a;@ "
         pp_ident name
         pp_expr value

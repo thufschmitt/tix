@@ -80,7 +80,7 @@ and record = {
 }
 
 and field =
-  | Fdef of string * expr
+  | Fdef of access_path * expr
   | FstaticDef of string * expr
   | Finherit of inherit_
   (** inherit x y z...;

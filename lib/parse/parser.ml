@@ -289,7 +289,26 @@ and expr_if i =
 
 and expr_atom i =
   i |> (
-    any [expr_list; expr_const; expr_ident; expr_paren; expr_annot ]
+    any [expr_record; expr_list;
+         expr_const; expr_ident;
+         expr_paren; expr_annot
+        ]
+  )
+
+and expr_record i =
+  i |> add_loc (
+    P.char '{' >> space >>
+    P.many expr_record_field >>= fun fields ->
+    P.char '}' >> space >>
+    P.return A.(Erecord { recursive = false; fields; })
+  )
+
+and expr_record_field i =
+  i |> add_loc (
+    ident >>= fun f_name ->
+    P.char '=' >> space >>
+    expr << P.char ';' << space |>> fun value ->
+    A.FstaticDef (f_name, value)
   )
 
 and expr_list i =
