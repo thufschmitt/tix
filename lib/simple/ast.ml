@@ -15,7 +15,7 @@ type expr = expr_desc with_loc
 
 and expr_desc =
   | Evar of string
-  | EaccessPath of access_path
+  | EaccessPath of expr * access_path * expr option
   (**
      x
      x.y
@@ -34,11 +34,9 @@ and expr_desc =
   | Epragma of Parse.Pragma.t * expr
   | Eimport of expr
 
-and access_path =
-  | Afield of expr * ap_field * expr option
-  (** e.f or e' *)
+and access_path = ap_field list
 
-and ap_field = expr with_loc
+and ap_field = expr
 
 and constant =
   | Cint of int

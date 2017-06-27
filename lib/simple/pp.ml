@@ -46,7 +46,15 @@ let rec pp_expr fmt = drop_loc %> function
     | P.Erecord r ->
       F.fprintf fmt "@[{@;%a}@]"
         pp_fields r
+    | P.EaccessPath (e, ap, None) -> pp_ap fmt e ap
     | _ -> failwith "TODO"
+
+and pp_ap fmt e ap =
+  F.pp_print_list
+    ~pp_sep:(fun fmt () -> F.pp_print_char fmt '.')
+    pp_expr
+    fmt
+    (e::ap)
 
 and pp_fields fmt =
   F.pp_print_list pp_field fmt

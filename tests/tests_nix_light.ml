@@ -61,6 +61,7 @@ let testsuite =
       ("test_record_3",
        "{ x.y = 1; x.z = 2; }",
        "{ \"x\" = { \"y\" = 1; \"z\" = 2; }; }");
+      "test_apath", "x.y.${\"z\"}", "x.\"y\".\"z\"";
     ] @
   List.map (fun (name, input) ->
       name >:: test_parse_pp_str_fail input)

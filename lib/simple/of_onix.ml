@@ -36,7 +36,17 @@ let rec expr_desc : O.expr_desc -> N.expr_desc = function
   | O.Epragma (p, e) -> N.Epragma (p, expr e)
   | O.Eimport e -> N.Eimport (expr e)
   | O.Erecord r -> N.Erecord (record r)
+  | O.Eaccess (e, ap, default) ->
+    N.EaccessPath (expr e, access_path ap, CCOpt.map expr default)
   | _ -> failwith "Not implemented"
+
+and access_path ap = List.map ap_field ap
+
+and apf_to_expr = function
+  | O.AFexpr e -> e.W.description
+  | O.AFidentifier s -> O.Econstant (O.Cstring s)
+
+and ap_field f = expr @@ map_loc apf_to_expr f
 
 and bindings b = List.map binding b
 
@@ -60,10 +70,6 @@ and constant = function
 and record r =
   (* Don't handle recursive records now for the sake of simplicity *)
   assert (not r.O.recursive);
-  let apf_to_expr = function
-    | O.AFexpr e -> e.W.description
-    | O.AFidentifier s -> O.Econstant (O.Cstring s)
-  in
   let fields = r.O.fields in
   let non_inherit_fields, inherit_fields =
     CCList.partition_map
