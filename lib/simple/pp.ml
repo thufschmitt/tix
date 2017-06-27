@@ -43,7 +43,18 @@ let rec pp_expr fmt = drop_loc %> function
       F.fprintf fmt "@[%a(%a)@]"
         pp_op op
         pp_op_args args
+    | P.Erecord r ->
+      F.fprintf fmt "@[{@;%a}@]"
+        pp_fields r
     | _ -> failwith "TODO"
+
+and pp_fields fmt =
+  F.pp_print_list pp_field fmt
+
+and pp_field fmt = drop_loc %> function (e1, e2) ->
+    F.fprintf fmt "%a = %a; "
+      pp_expr e1
+      pp_expr e2
 
 and pp_pattern fmt = drop_loc %> function
     | P.Pvar (v, None) -> pp_ident fmt v

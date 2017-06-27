@@ -20,6 +20,22 @@ let test_parse_pp_str ?(isTodo=false) input expected_output _ =
     expected_output
     output
 
+let test_parse_pp_str_fail ?(isTodo=false) input _ =
+  if isTodo then todo "Not implemented yet";
+  begin
+    match Parse.Parser.parse_string Parse.Parser.expr input with
+    | Ok x ->
+      begin
+        try
+          ignore @@ Simple.Of_onix.expr x;
+          assert_failure "Translation error not raised"
+        with
+          Failure _ -> ()
+      end
+
+    | Error _ -> raise ParseError
+  end
+
 let isTodo = true (* To use [~isTodo] as a shortcut for [~isTodo=true] *)
 
 let testsuite =
@@ -40,4 +56,15 @@ let testsuite =
       "test_annot_arrow", "(x /*: int -> int */)", "(x /*: (int) -> int */)";
       "test_string", "\"x\"", "\"x\"";
       "test_list", "[1 2 3]", "Cons(1, Cons(2, Cons(3, nil)))";
+      "test_record_1", "{ x = 1; y = 2; }", "{ \"x\" = 1; \"y\" = 2; }";
+      "test_record_2", "{ x.y = 1; }", "{ \"x\" = { \"y\" = 1; }; }";
+      ("test_record_3",
+       "{ x.y = 1; x.z = 2; }",
+       "{ \"x\" = { \"y\" = 1; \"z\" = 2; }; }");
+    ] @
+  List.map (fun (name, input) ->
+      name >:: test_parse_pp_str_fail input)
+    [
+      "test_record_fail_1", "{ x = 1; x = 2; }";
+      "test_record_fail_2", "{ x.y = 1; x.y = 2; }";
     ]
