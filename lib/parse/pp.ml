@@ -49,7 +49,7 @@ let rec pp_expr fmt = drop_loc %> function
         pp_op op
         pp_op_args args
     | P.Elet (bindings, e) ->
-      F.fprintf fmt "@[%a@ in@;%a@]"
+      F.fprintf fmt "@[let %a@ in@;%a@]"
         pp_bindings bindings
         pp_expr e
     | P.Erecord r -> pp_record fmt r

@@ -10,6 +10,8 @@ let (%>) f g x = g (f x)
 let pp_ident = F.pp_print_string
 let kwd   = F.pp_print_string
 
+let pp_option printer (fmt : F.formatter) = CCOpt.iter (fun x -> printer fmt x)
+
 let pp_op fmt = function
   | P.Ocons -> F.pp_print_string fmt "Cons"
   | P.Oeq   -> F.pp_print_string fmt "=="
@@ -21,6 +23,7 @@ let const fmt = function
   | P.Cbool b -> F.pp_print_bool fmt b
   | P.Cint i-> F.pp_print_int  fmt i
   | P.Cstring s -> F.fprintf fmt "\"%s\"" s
+  | P.Cundef -> F.pp_print_string fmt "%%undef"
 
 let rec pp_expr fmt = drop_loc %> function
     | P.Evar v ->
@@ -47,7 +50,28 @@ let rec pp_expr fmt = drop_loc %> function
       F.fprintf fmt "@[{@;%a}@]"
         pp_fields r
     | P.EaccessPath (e, ap, None) -> pp_ap fmt e ap
+    | P.Elet (bindings, e) ->
+      F.fprintf fmt "@[let %a@ in@;%a@]"
+        pp_bindings bindings
+        pp_expr e
+    | P.Eite (eif, ethen, eelse) ->
+      F.fprintf fmt "@[if (%a)@;then@ %a@;else@ %a@]"
+        pp_expr eif
+        pp_expr ethen
+        pp_expr eelse
     | _ -> failwith "TODO"
+
+and pp_bindings fmt =
+  Format.pp_print_list
+    ~pp_sep:(fun fmt () -> Format.fprintf fmt "@;and@ ")
+    pp_binding
+    fmt
+
+and pp_binding fmt = function
+    (pat, e) ->
+    Format.fprintf fmt "%a = %a"
+      pp_pattern_var pat
+      pp_expr e
 
 and pp_ap fmt e ap =
   F.pp_print_list
@@ -70,7 +94,43 @@ and pp_pattern fmt = drop_loc %> function
       F.fprintf fmt "(%a: %a)"
         pp_ident v
         pp_typ   t
-    | _ -> failwith "TODO"
+    | P.Pnontrivial (sub_pattern, alias) ->
+      pp_nontrivial_pattern fmt sub_pattern;
+      pp_option (fun fmt var -> F.fprintf fmt "@%s" var) fmt alias
+
+and pp_pattern_var fmt = function
+  | (v, None) -> pp_ident fmt v
+  | (v, Some t) ->
+    F.fprintf fmt "%a %a"
+      pp_ident v
+      pp_type_annot   t
+
+and pp_nontrivial_pattern fmt = function
+  | P.NPrecord ([], P.Open) ->
+    F.pp_print_string fmt "{ ... }"
+  | P.NPrecord (fields, open_flag) ->
+    F.fprintf fmt "{ %a%s }"
+      pp_pat_record_fields fields
+      (match open_flag with
+       | P.Closed -> ""
+       | P.Open -> ", ...")
+
+and pp_pat_record_fields fmt = function
+  | [] -> ()
+  | [f] -> pp_pat_record_field fmt f
+  | f::tl ->
+    pp_pat_record_field fmt f;
+    F.pp_print_string fmt ", ";
+    pp_pat_record_fields fmt tl
+
+and pp_pat_record_field fmt = function
+  | { P.field_name; optional; type_annot; } ->
+    F.fprintf fmt "%a%s%a"
+      pp_ident field_name
+      (if optional then "?" else "")
+      (pp_option (fun fmt -> F.fprintf fmt " %a" pp_type_annot)) type_annot
+
+and pp_type_annot fmt = F.fprintf fmt "/*: %a */" pp_typ
 
 and pp_typ fmt = Parse.Type_annotations.pp fmt
 

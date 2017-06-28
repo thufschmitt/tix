@@ -42,6 +42,7 @@ and constant =
   | Cint of int
   | Cbool of bool
   | Cstring of string
+  | Cundef (* Used for pattern-matching against records with optinal fields *)
 
 and lambda = pattern * expr
 
@@ -59,7 +60,7 @@ and pattern_var = string * Parse.Type_annotations.t option
 
 and pattern_record_field = {
   field_name: string;
-  default_value: constant option;
+  optional: bool;
   type_annot: Parse.Type_annotations.t option;
 }
 

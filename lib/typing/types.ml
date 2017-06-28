@@ -51,6 +51,7 @@ module Builtins : sig
   val any : t
   val empty : t
   val grad : t
+  val undef : t
 
   val interval : Intervals.t -> t
 
@@ -67,6 +68,8 @@ end
 
   (* TODO: find a cleaner way to define this *)
   let grad = T.atom (C.Atoms.(atom @@ V.mk_ascii "?"))
+
+  let undef = T.atom (C.Atoms.(atom @@ V.mk_ascii "%%undef"))
 
   let interval = C.Types.interval
 

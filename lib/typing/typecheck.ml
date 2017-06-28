@@ -80,6 +80,7 @@ let typeof_const = function
           (T.node accu))
       T.Builtins.nil
       (CCString.rev s)
+  | P.Cundef -> Types.Builtins.undef
 
 let () = ()
 (* For some reason, ocp-indent don't work correctly if we don't put this here *)
