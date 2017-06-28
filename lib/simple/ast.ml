@@ -53,16 +53,12 @@ and pattern_desc =
   | Pnontrivial of nontrivial_pattern * string option
 
 and nontrivial_pattern =
-  | NPrecord of pattern_record_field list * closed_flag
-  (** fields * '...' *)
+  | NPrecord of (bool * Parse.Type_annotations.t option) Record.t * closed_flag
+  (** fields * '...'
+   * For each field, the boolean indicates whether the field is optional
+   * *)
 
 and pattern_var = string * Parse.Type_annotations.t option
-
-and pattern_record_field = {
-  field_name: string;
-  optional: bool;
-  type_annot: Parse.Type_annotations.t option;
-}
 
 and closed_flag =
   | Closed

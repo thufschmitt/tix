@@ -106,7 +106,7 @@ and pp_pattern_var fmt = function
       pp_type_annot   t
 
 and pp_nontrivial_pattern fmt = function
-  | P.NPrecord ([], P.Open) ->
+  | P.NPrecord (f, P.Open) when Record.is_empty f ->
     F.pp_print_string fmt "{ ... }"
   | P.NPrecord (fields, open_flag) ->
     F.fprintf fmt "{ %a%s }"
@@ -115,20 +115,18 @@ and pp_nontrivial_pattern fmt = function
        | P.Closed -> ""
        | P.Open -> ", ...")
 
-and pp_pat_record_fields fmt = function
-  | [] -> ()
-  | [f] -> pp_pat_record_field fmt f
-  | f::tl ->
-    pp_pat_record_field fmt f;
-    F.pp_print_string fmt ", ";
-    pp_pat_record_fields fmt tl
+and pp_pat_record_fields fmt =
+  Record.pp
+    ~arrow:""
+    ~sep:", "
+    Format.pp_print_string
+    pp_pat_record_field_args
+    fmt
 
-and pp_pat_record_field fmt = function
-  | { P.field_name; optional; type_annot; } ->
-    F.fprintf fmt "%a%s%a"
-      pp_ident field_name
-      (if optional then "?" else "")
-      (pp_option (fun fmt -> F.fprintf fmt " %a" pp_type_annot)) type_annot
+and pp_pat_record_field_args fmt (optional, type_annot) =
+  F.fprintf fmt "%s%a"
+    (if optional then "?" else "")
+    (pp_option (fun fmt -> F.fprintf fmt " %a" pp_type_annot)) type_annot
 
 and pp_type_annot fmt = F.fprintf fmt "/*: %a */" pp_typ
 

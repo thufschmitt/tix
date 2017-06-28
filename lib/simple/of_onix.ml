@@ -62,7 +62,7 @@ and open_flag = function
   | O.Closed -> N.Closed
 
 and pattern_record_field { O.field_name; default_value; type_annot } =
-  (N.{ field_name; optional = CCOpt.is_some default_value; type_annot; },
+  ((field_name, (CCOpt.is_some default_value, type_annot)),
    CCOpt.map (fun e -> (field_name, type_annot), expr e)default_value)
 
 
@@ -76,8 +76,8 @@ and nontrivial_pattern :
       in
       let default_values =
         CCList.flat_map CCOpt.to_list default_values
-      in
-      N.NPrecord (new_fields, open_flag flag), default_values
+      and fields = Record.of_list new_fields in
+      N.NPrecord (fields, open_flag flag), default_values
 
 and pattern_desc : O.pattern_desc -> N.pattern_desc * N.binding list
   = function
