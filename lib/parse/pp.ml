@@ -80,9 +80,9 @@ and pp_ap_field fmt = drop_loc %> function
 
 and pp_pattern fmt = drop_loc %> function
     | P.Pvar (v, a) -> pp_pattern_var fmt (v, a)
-    | P.Pnontrivial (sub_pattern, None) ->
-      pp_nontrivial_pattern fmt sub_pattern
-    | _ -> failwith "TODO"
+    | P.Pnontrivial (sub_pattern, alias) ->
+      pp_nontrivial_pattern fmt sub_pattern;
+      pp_option (fun fmt var -> F.fprintf fmt "@%s" var) fmt alias
 
 and pp_pattern_var fmt = function
   | (v, None) -> pp_ident fmt v

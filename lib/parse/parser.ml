@@ -359,7 +359,15 @@ and binding i =
    expr << P.char ';' << space |>> fun e ->
    A.BstaticDef ((id, annot), e))
 
-and pattern i = i |> (any [pattern_ident; pattern_record] <?> "pattern")
+and pattern i = i |> (any [pattern_ident; pattern_complex] <?> "pattern")
+
+and pattern_complex i =
+  i |> add_loc @@ any [
+    (pattern_record >>= fun record ->
+     P.option (P.char '@' >> space >> ident) |>> fun alias_opt ->
+     A.Pnontrivial (record, alias_opt));
+  ]
+
 
 and pattern_record_field i =
   i |> ((
@@ -384,10 +392,9 @@ and pattern_inside i =
   ]
 
 and pattern_record i =
-  i |> add_loc ((
+  i |> ((
       P.char '{' >> space >>
-      pattern_inside << P.char '}' << space |>> fun prec ->
-      A.Pnontrivial (prec, None))
+      pattern_inside << P.char '}' << space)
       <?> "record pattern")
 
 and expr_apply i =

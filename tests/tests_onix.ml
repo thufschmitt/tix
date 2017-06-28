@@ -67,4 +67,5 @@ let testsuite =
        "({ f, y ? (f 3) /*: Int */ }: 1)");
       "test_pattern_record_trailing_comma", "{x,}:x", "({ x }: x)";
       "test_pattern_record_open", "{x, ...}:x", "({ x, ... }: x)";
+      "test_pattern_alias", "{}@x:x", "({  }@x: x)";
     ]
