@@ -73,4 +73,5 @@ let testsuite =
     [
       "test_record_fail_1", "{ x = 1; x = 2; }";
       "test_record_fail_2", "{ x.y = 1; x.y = 2; }";
+      "test_record_pattern_fail", "{ x, x }: x";
     ]

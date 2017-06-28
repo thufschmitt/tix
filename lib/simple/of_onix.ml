@@ -74,9 +74,11 @@ and nontrivial_pattern :
         List.map pattern_record_field fields
         |> List.split
       in
-      let default_values =
-        CCList.flat_map CCOpt.to_list default_values
-      and fields = Record.of_list new_fields in
+      let default_values = CCList.flat_map CCOpt.to_list default_values
+      and fields =
+        try Record.of_list_uniq new_fields
+        with Invalid_argument _ -> failwith "Duplicate element in pattern"
+      in
       N.NPrecord (fields, open_flag flag), default_values
 
 and pattern_desc : O.pattern_desc -> N.pattern_desc * N.binding list
