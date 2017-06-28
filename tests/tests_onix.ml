@@ -62,4 +62,9 @@ let testsuite =
       "test_record_access", "x.y.z.a.b", "x.y.z.a.b";
       "test_record_access_dynamic", "x.${y}", "x.${y}";
       "test_record_def_dynamec", "{ ${foo} = x; }" , "{ ${foo} = x; }";
+      ("test_pattern_record",
+       "{ f, y ? f 3 /*: Int */ }: 1",
+       "({ f, y ? (f 3) /*: Int */ }: 1)");
+      "test_pattern_record_trailing_comma", "{x,}:x", "({ x }: x)";
+      "test_pattern_record_open", "{x, ...}:x", "({ x, ... }: x)";
     ]

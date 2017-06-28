@@ -304,12 +304,13 @@ and expr_record i =
   )
 
 and expr_record_field i =
-  i |> add_loc (
-    ap >>= fun ap ->
-    P.char '=' >> space >>
-    expr << P.char ';' << space |>> fun value ->
-    A.Fdef (ap, value)
-  )
+  i |> add_loc ((
+      ap >>= fun ap ->
+      P.char '=' >> space >>
+      expr << P.char ';' << space |>> fun value ->
+      A.Fdef (ap, value))
+      <?> "record field"
+    )
 
 and expr_list i =
   i |> (
@@ -358,7 +359,36 @@ and binding i =
    expr << P.char ';' << space |>> fun e ->
    A.BstaticDef ((id, annot), e))
 
-and pattern i = i |> (any [pattern_ident] <?> "pattern")
+and pattern i = i |> (any [pattern_ident; pattern_record] <?> "pattern")
+
+and pattern_record_field i =
+  i |> ((
+      ident >>= fun field_name ->
+      P.option (P.char '?' >> space >> expr) >>= fun default_value ->
+      P.option type_annot |>> fun type_annot ->
+      A.{ field_name; default_value; type_annot })
+      <?> "pattern record field")
+
+and pattern_inside i =
+  i |> any [
+    (pattern_record_field << P.char ',' << space >>= fun field ->
+     pattern_inside |>> fun (A.NPrecord (fields, open_flag)) ->
+     A.NPrecord (field::fields, open_flag));
+
+    (pattern_record_field |>> fun field ->
+     A.NPrecord ([field], A.Closed));
+
+    (P.string "..." >> space >> P.return @@ A.NPrecord ([], A.Open));
+
+    P.return @@ A.NPrecord ([], A.Closed);
+  ]
+
+and pattern_record i =
+  i |> add_loc ((
+      P.char '{' >> space >>
+      pattern_inside << P.char '}' << space |>> fun prec ->
+      A.Pnontrivial (prec, None))
+      <?> "record pattern")
 
 and expr_apply i =
   i |>

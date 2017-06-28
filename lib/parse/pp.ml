@@ -12,6 +12,8 @@ let (%>) f g x = g (f x)
 let pp_ident = F.pp_print_string
 let kwd   = F.pp_print_string
 
+let pp_option printer (fmt : F.formatter) = CCOpt.iter (fun x -> printer fmt x)
+
 let const fmt = function
   | P.Cbool b -> F.pp_print_bool fmt b
   | P.Cint i-> F.pp_print_int  fmt i
@@ -38,9 +40,9 @@ let rec pp_expr fmt = drop_loc %> function
         pp_expr e1
         pp_expr e2
     | P.EtyAnnot (e, ty) ->
-      F.fprintf fmt "@[(%a /*:@ %a */)@]"
+      F.fprintf fmt "@[(%a %a)@]"
         pp_expr e
-        pp_typ ty
+        pp_type_annot ty
     (* XXX: This is printed in an ugly way and not parsable way *)
     | P.EopApp (op, args) ->
       F.fprintf fmt "@[%a(%a)@]"
@@ -85,15 +87,19 @@ and pp_pattern fmt = drop_loc %> function
 and pp_pattern_var fmt = function
   | (v, None) -> pp_ident fmt v
   | (v, Some t) ->
-    F.fprintf fmt "%a /*: %a */"
+    F.fprintf fmt "%a %a"
       pp_ident v
-      pp_typ   t
+      pp_type_annot   t
 
 and pp_nontrivial_pattern fmt = function
-  | P.NPrecord (fields, P.Closed) ->
-    F.fprintf fmt "{ %a }"
+  | P.NPrecord ([], P.Open) ->
+    F.pp_print_string fmt "{ ... }"
+  | P.NPrecord (fields, open_flag) ->
+    F.fprintf fmt "{ %a%s }"
       pp_pat_record_fields fields
-  | _ -> failwith "TODO"
+      (match open_flag with
+       | P.Closed -> ""
+       | P.Open -> ", ...")
 
 and pp_pat_record_fields fmt = function
   | [] -> ()
@@ -104,13 +110,13 @@ and pp_pat_record_fields fmt = function
     pp_pat_record_fields fmt tl
 
 and pp_pat_record_field fmt = function
-  | { P.field_name; default_value = None; type_annot = None } ->
-    pp_ident fmt field_name
-  | { P.field_name; default_value = None; type_annot = Some t } ->
-    F.fprintf fmt "%a /*: %a */"
+  | { P.field_name; default_value; type_annot; } ->
+    F.fprintf fmt "%a%a%a"
       pp_ident field_name
-      pp_typ   t
-  | _ -> failwith "TODO"
+      (pp_option (fun fmt -> F.fprintf fmt " ? %a" pp_expr)) default_value
+      (pp_option (fun fmt -> F.fprintf fmt " %a" pp_type_annot)) type_annot
+
+and pp_type_annot fmt = F.fprintf fmt "/*: %a */" pp_typ
 
 and pp_typ fmt = T.pp fmt
 
