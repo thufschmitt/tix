@@ -8,6 +8,8 @@ module T = Types
 
 module W = Writer.Make (Warning.List)
 
+open W.Infix
+
 let singleton =
   let module S = A.Singleton in
   function
@@ -42,7 +44,6 @@ module Nodes_env = struct
   let lookup t key = M.get key t
 end
 
-open W.Infix
 let (<+>) = CCOpt.(<+>)
 (* let (||>) opt msg = CCOpt.to_result msg opt *)
 let (%>) = CCFun.(%>)
@@ -114,7 +115,20 @@ let rec to_node (nodes_env : Nodes_env.t) env (annot: A.t)
       (to_node nodes_env env t1)
       (to_node nodes_env env t2)
     >|= T.node
-  | A.Record _ -> assert false
+  | A.Record (fields, is_open) ->
+    let real_fields =
+      W.map_l (
+        fun (n, (is_optional, typ)) ->
+          to_node nodes_env env typ >|= fun t ->
+          let typ' =
+            if is_optional then
+              Cduce_lib.Types.Record.or_absent (T.typ t)
+            else (T.typ t)
+          in (n, T.node typ'))
+        fields
+    in
+    real_fields >|= fun f ->
+    T.node @@ T.Builtins.record is_open (Simple.Record.of_list_uniq f)
 
 and to_type nodes_env env p = to_node nodes_env env p >|= T.typ
 

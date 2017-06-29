@@ -28,6 +28,7 @@ module type S = sig
 
   val map2 : ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
 
+  val map_l  : ('a -> 'b t) -> 'a list -> 'b list t
   val iter_l : ('a -> unit t) -> 'a list -> unit t
 
   module Infix : sig
@@ -71,12 +72,14 @@ struct
 
   let map2 f (x, log) (y, log') = (f x y, M.append log log')
 
-  let iter_l f l =
+  let map_l f l =
     CCList.map f l
-    |> CCList.split
-    |> snd
-    |> List.fold_left (fun accu elt -> M.append elt accu) M.empty
-    |> (fun l -> ((), l))
+    |> List.fold_left (fun accu (elt, log) ->
+        bind (fun partial_list -> (elt :: partial_list, log)) accu)
+      (pure [])
+
+  let iter_l f l =
+    map (fun _ -> ()) (map_l f l)
 
   module Infix = struct
     let (<$>) = map

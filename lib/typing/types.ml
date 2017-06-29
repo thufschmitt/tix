@@ -60,6 +60,7 @@ module Builtins : sig
   val cup   : t -> t -> t
   val cap   : t -> t -> t
   val neg   : t -> t
+  val record : bool -> Node.t Simple.Record.t -> t
 end
 = struct
   include C.Builtin_defs
@@ -80,6 +81,16 @@ end
   let cup = C.Types.cup
   let cap = C.Types.cap
   let neg = C.Types.neg
+
+  let record is_rec fields =
+    let label_fields =
+      fields
+      |> Simple.Record.to_list
+      |> List.map (fun (key, value) ->
+          (Cduce_lib.Ns.Label.mk_ascii key, value))
+      |> Cduce_lib.Ident.LabelMap.from_list_disj
+    in
+    Cduce_lib.Types.record_fields (is_rec, label_fields)
 end
 
 module Singleton = struct
