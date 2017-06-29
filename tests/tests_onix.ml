@@ -68,4 +68,16 @@ let testsuite =
       "test_pattern_record_trailing_comma", "{x,}:x", "({ x }: x)";
       "test_pattern_record_open", "{x, ...}:x", "({ x, ... }: x)";
       "test_pattern_alias", "{}@x:x", "({  }@x: x)";
+      ("test_record_annot",
+       "(x /*: { x = Int; y =? Bool } */)",
+       "(x /*: { x = Int; y =? Bool}  */)");
+      ("test_record_annot_trailing_semi",
+       "(x /*: { x = Int; y =? Bool; } */)",
+       "(x /*: { x = Int; y =? Bool}  */)");
+      ("test_record_annot_empty", "(x /*: { } */)", "(x /*: { }  */)");
+      ("test_record_annot_dots", "(x /*: { ... } */)", "(x /*: { ... }  */)");
+      ("test_record_annot_open",
+       "(x /*: { x = Int; ... } */)",
+       "(x /*: { x = Int; ... }  */)");
+
     ]

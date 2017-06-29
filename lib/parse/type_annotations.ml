@@ -2,6 +2,8 @@
  * Definition of the types used by tix
 *)
 
+module F = Format
+
 let (%>) f g x = g (f x)
 
 module Infix_constructors =
@@ -39,6 +41,7 @@ type _t =
   | Var of string
   | Singleton of Singleton.t
   | Infix of Infix_constructors.t * t * t
+  | Record of (string * (bool * t)) list * bool
   | Cons  of t * t
   | TyBind of bindings * t
 
@@ -62,6 +65,20 @@ let rec pp fmt = Location.With_loc.description %> function
         pp t
         pp_bindings binds
     | Singleton s -> Singleton.pp fmt s
+    | Record (fields, is_open) ->
+      let open_mark = if is_open then
+          if fields = [] then "... "
+          else "; ... "
+        else ""
+      in
+      F.fprintf fmt "{ %a%s} "
+        pp_record_fields fields
+        open_mark
+
+and pp_record_fields fmt f = CCList.pp ~sep:"; " pp_record_field fmt f
+
+and pp_record_field fmt (name, (is_optional, typ)) =
+  F.fprintf fmt "%s =%s %a" name (if is_optional then "?" else "") pp typ
 
 and pp_bindings fmt =
   Format.pp_print_list

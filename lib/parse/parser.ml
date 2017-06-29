@@ -145,7 +145,7 @@ let typ_ident i = i |> add_loc (ident |>> fun t -> Type_annotations.Var t)
 and typ_singleton i = i |> add_loc @@ any [typ_int; typ_bool; typ_string ]
 
 let rec typ i = i |> (P.expression typ_op
-                        (any [typ_atom; typ_list])
+                        (any [typ_atom; typ_list; typ_record])
                       <?> "type")
 
 and typ_atom i = i |> any [ typ_singleton; typ_ident; parens typ]
@@ -190,6 +190,31 @@ and typ_list i =
   i |> (
     P.char '[' >> space >> typ_regex << P.char ']' << space |>>
     Regex_list.to_type)
+
+and typ_record i =
+  i |> add_loc ((
+      P.char '{' >> space >> typ_record_fields << P.char '}' << space
+      |>> fun (fields, is_open) ->
+      T.Record (fields, is_open))
+      <?> "type record")
+
+and typ_record_fields i =
+  i |> any [
+    (typ_record_field << P.char ';' << space >>= fun field ->
+     typ_record_fields |>> fun (fields, is_open) ->
+     (field :: fields, is_open));
+    (P.string "..." >> space >> P.return ([], true));
+    (typ_record_field |>> fun field -> ([field], false));
+    (P.return ([], false));
+  ]
+
+and typ_record_field i =
+  i |> (
+    ident >>= fun name ->
+    (P.char '=' >> P.option (P.char '?') << space |>> CCOpt.is_some)
+    >>= fun is_optional ->
+    typ |>> fun t -> (name, (is_optional, t))
+  )
 
 let type_annot = (P.string "/*:" >> space >> typ << P.string "*/" << space)
                  <?> "type annotation"

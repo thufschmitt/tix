@@ -114,6 +114,7 @@ let rec to_node (nodes_env : Nodes_env.t) env (annot: A.t)
       (to_node nodes_env env t1)
       (to_node nodes_env env t2)
     >|= T.node
+  | A.Record _ -> assert false
 
 and to_type nodes_env env p = to_node nodes_env env p >|= T.typ
 
