@@ -142,13 +142,15 @@ let typ_string =
   Type_annotations.(Singleton (Singleton.String s))
 
 let typ_ident i = i |> add_loc (ident |>> fun t -> Type_annotations.Var t)
+and typ_gradual =
+  add_loc (P.char '?' >> space >> P.return (Type_annotations.Var "?"))
 and typ_singleton i = i |> add_loc @@ any [typ_int; typ_bool; typ_string ]
 
 let rec typ i = i |> (P.expression typ_op
                         (any [typ_atom; typ_list; typ_record])
                       <?> "type")
 
-and typ_atom i = i |> any [ typ_singleton; typ_ident; parens typ]
+and typ_atom i = i |> any [ typ_singleton; typ_ident; typ_gradual; parens typ]
 
 and typ_regex i =
   i |> (
