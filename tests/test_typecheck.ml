@@ -109,6 +109,9 @@ let testsuite =
       "infer_plus", "1 + 1", "Int";
       "infer_string", "\"aze\"", "\"aze\"";
       "infer_string_annot", "x /*: \"foo\" */: x", "\"foo\" -> \"foo\"";
+      ("infer_record_pattern",
+       "{ x /*: Bool */, y ? 1 /*: Int */ }: x",
+       "{ x= Bool; y =? Int } -> Bool";)
     ] @
   (* ----- Negative tests ----- *)
   List.map (fun (name, expr) -> name >:: test_infer_expr_fail expr)
