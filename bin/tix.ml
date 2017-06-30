@@ -7,11 +7,9 @@ let parse_chan fname chan =
     exit 1
 
 let typecheck ast =
-  Simple.Of_onix.expr ast
-  |> Typing.(Typecheck.Infer.expr
-               Environment.default)
+  Typing.(Typecheck.Infer.expr Environment.default) ast
 
-let process_file is_parse_only f_name =
+let process_file is_parse_only is_convert_only f_name =
   let ast =
     match f_name with
     | "-" -> parse_chan "-" stdin
@@ -20,15 +18,19 @@ let process_file is_parse_only f_name =
   if is_parse_only then
     Parse.Pp.pp_expr Format.std_formatter ast
   else
-    let typed = typecheck ast in
-    let log = Typing.Typecheck.W.log typed
-    and value = Typing.Typecheck.W.value typed
-    in
-    CCList.iter (fun t ->
-        Typing.Warning.pp Format.err_formatter t;
-        Format.pp_print_newline Format.err_formatter ())
-      (CCList.rev log);
-    Format.fprintf Format.std_formatter "%a\n" Typing.Types.pp value
+    let converted = Simple.Of_onix.expr ast in
+    if is_convert_only then
+      Simple.Pp.pp_expr Format.std_formatter converted
+    else
+      let typed = typecheck converted in
+      let log = Typing.Typecheck.W.log typed
+      and value = Typing.Typecheck.W.value typed
+      in
+      CCList.iter (fun t ->
+          Typing.Warning.pp Format.err_formatter t;
+          Format.pp_print_newline Format.err_formatter ())
+        (CCList.rev log);
+      Format.fprintf Format.std_formatter "%a\n" Typing.Types.pp value
 
 open Cmdliner
 
@@ -37,10 +39,14 @@ let file_in =
   Arg.(value & pos 0 string "-" & info [] ~docv:"FILE" ~doc)
 
 let parse_only =
-  let doc = "Do not typecheck, just parse the file" in
+  let doc = "Do not typecheck nor convert, just parse the file" in
   Arg.(value & flag & info [ "p"; "parse-only" ] ~docv:"PARSE_ONLY" ~doc)
 
-let eval_stuff = Term.(const process_file $ parse_only $ file_in)
+let convert_only =
+  let doc = "Do not typecheck, just convert the file" in
+  Arg.(value & flag & info [ "c"; "convert-only" ] ~docv:"CONVERT_ONLY" ~doc)
+
+let eval_stuff = Term.(const process_file $ parse_only $ convert_only $ file_in)
 let info =
   let doc = "The nix type-checker" in
   let man = [] in
