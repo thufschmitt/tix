@@ -82,7 +82,7 @@ end
   let cap = C.Types.cap
   let neg = C.Types.neg
 
-  let record is_rec fields =
+  let record is_open fields =
     let label_fields =
       fields
       |> Simple.Record.to_list
@@ -90,7 +90,7 @@ end
           (Cduce_lib.Ns.Label.mk_ascii key, value))
       |> Cduce_lib.Ident.LabelMap.from_list_disj
     in
-    Cduce_lib.Types.record_fields (is_rec, label_fields)
+    Cduce_lib.Types.record_fields (is_open, label_fields)
 end
 
 module Singleton = struct
@@ -138,6 +138,7 @@ end = struct
       "false", B.false_type;
       "?", B.grad;
       "nil", B.nil;
+      "%%undef", B.undef;
     ]
 
   let default =

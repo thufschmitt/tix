@@ -148,8 +148,18 @@ and lambda pat e =
   let mangle_name = (^) "%%" in
   let mangled_values_def =
     List.map
-      (fun ((var, annot), e) -> ((mangle_name var, annot),
-                                 W.mk (W.loc e) @@ N.Evar var))
+      (* [let %%x /*: t | %%undef */ = x ] *)
+      (fun ((var, annot), e) ->
+         let annot = CCOpt.map
+             (fun a ->
+                let loc = W.loc a in
+                W.mk loc
+                  Parse.Type_annotations.(Infix (
+                      Infix_constructors.Or, W.mk loc (Var "%%undef"), a)))
+             annot
+         in
+         ((mangle_name var, annot),
+          W.mk (W.loc e) @@ N.Evar var))
       default_values
   in
   let substitute_values =
@@ -158,10 +168,10 @@ and lambda pat e =
          let loc = W.loc e in
          let al = W.mk loc in
          let new_expr =
-           (* [if [%e var] = %%undef then [%e e] else [%e %%var]] *)
+           (* [if isUndef [%e %%var] then [%e e] else [%e %%var]] *)
            al @@ N.Eite
-             (al @@ N.EopApp
-                (N.Oeq, [ al @@ N.Econstant N.Cundef; al @@ N.Evar var; ]),
+             (al @@ N.EfunApp
+                (al @@ N.Evar "%%isUndef", al @@ N.Evar (mangle_name var)),
               e,
               al @@ N.Evar (mangle_name var))
          in

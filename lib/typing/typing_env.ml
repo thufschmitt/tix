@@ -27,6 +27,7 @@ let initial_values =
   and string = Types.node string
   and true_type = Types.node true_type
   and any = Types.node any
+  and undef = Types.node undef
   and false_type = Types.node false_type in
   [
     "nil", nil;
@@ -38,6 +39,9 @@ let initial_values =
     "isInt", cap
       (arrow int true_type)
       (arrow (Types.node Types.Builtins.(neg int)) false_type);
+    "%%isUndef", cap
+      (arrow undef true_type)
+      (arrow (Types.node Types.Builtins.(neg undef)) false_type);
   ]
 
 let initial = StrMap.of_list initial_values
