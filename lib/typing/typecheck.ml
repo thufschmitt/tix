@@ -66,16 +66,10 @@ module Bindings = struct
 end
 
 let typeof_const = function
-  | P.Cbool true -> Types.Builtins.true_type
-  | P.Cbool false -> Types.Builtins.false_type
-  | P.Cint  i ->
-    Types.Builtins.interval
-      (Types.Intervals.singleton_of_int i)
+  | P.Cbool b -> T.Singleton.bool b
+  | P.Cint  i -> T.Singleton.int i
   | P.Cstring s -> Types.Singleton.string s
   | P.Cundef -> Types.Builtins.undef
-
-let () = ()
-(* For some reason, ocp-indent don't work correctly if we don't put this here *)
 
 (* [get_discriminer t] returns [Some t1] if [t] is of the form
    `(t1 -> true) & (not t1 -> false)`, and [None] otherwise. *)
