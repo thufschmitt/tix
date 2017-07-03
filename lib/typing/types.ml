@@ -101,6 +101,16 @@ module Singleton = struct
   let bool = function
     | true -> C.Builtin_defs.true_type
     | false -> C.Builtin_defs.false_type
+
+  let string s =
+    (* Cduce strings are lists of chars, we can keep it the same *)
+    CCString.fold
+      (fun accu char -> Builtins.cons
+          (node @@ Cduce_lib.Types.char
+             (Cduce_lib.Chars.(atom @@ V.mk_char char)))
+          (node accu))
+      Builtins.nil
+      (CCString.rev s)
 end
 
 module Environment : sig
