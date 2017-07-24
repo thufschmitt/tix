@@ -111,6 +111,9 @@ let testsuite =
       "infer_string_annot", "x /*: \"foo\" */: x", "\"foo\" -> \"foo\"";
       "infer_arrow_no_annot_1", "x: x", "? -> ?";
       "infer_arrow_no_annot_2", "x: y: y", "? -> ? -> ?";
+      "gradual_apply", "(x: x) 1", "?";
+      "gradual_apply_2", "let z = z; in z 1", "?";
+      "gradual_apply_3", "let z = z; in z z", "?";
     ] @
   (* ----- Negative tests ----- *)
   List.map (fun (name, expr) -> name >:: test_infer_expr_fail expr)

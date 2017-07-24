@@ -134,10 +134,10 @@ end = struct
            It can't be applied"
           (Types.show t1)
       else
-        let t1arrow = Cduce_lib.Types.Arrow.get t1 in
+        let t1arrow = T.get_arrow t1 in
         let dom = Cduce_lib.Types.Arrow.domain t1arrow in
         check_subtype e2.L.With_loc.location ~inferred:t2 ~expected:dom >>
-        W.pure @@ Cduce_lib.Types.Arrow.apply t1arrow t2
+        W.pure @@ T.arrow_apply t1arrow t2
     | P.Elet (binds, e) ->
       Common.let_binding expr env binds e
       |> W.join
