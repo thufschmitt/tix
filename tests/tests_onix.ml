@@ -58,4 +58,5 @@ let testsuite =
       ("test_assert",
        "assert true; 1",
        "if (true) then 1 else (raise \"assertion failed\")");
+      "test_gradual", "(1 /*: ? */)", "(1 /*: ? */)";
     ]
