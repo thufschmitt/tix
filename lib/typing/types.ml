@@ -124,6 +124,8 @@ end = struct
       "false", B.false_type;
       "?", B.grad;
       "nil", B.nil;
+      "Empty", B.empty;
+      "Any", B.any;
     ]
 
   let default =
