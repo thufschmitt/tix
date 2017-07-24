@@ -37,6 +37,7 @@ end
 
 type _t =
   | Var of string
+  | Gradual
   | Singleton of Singleton.t
   | Infix of Infix_constructors.t * t * t
   | Cons  of t * t
@@ -62,6 +63,7 @@ let rec pp fmt = Location.With_loc.description %> function
         pp t
         pp_bindings binds
     | Singleton s -> Singleton.pp fmt s
+    | Gradual -> Format.pp_print_string fmt "?"
 
 and pp_bindings fmt =
   Format.pp_print_list

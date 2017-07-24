@@ -141,7 +141,10 @@ let typ_string =
   string |>> fun s ->
   Type_annotations.(Singleton (Singleton.String s))
 
-let typ_ident i = i |> add_loc (ident |>> fun t -> Type_annotations.Var t)
+let typ_ident i = i |> add_loc (
+    (ident |>> fun t -> Type_annotations.Var t)
+    <|>
+    (P.char '?' >> space >> P.return Type_annotations.Gradual))
 and typ_singleton i = i |> add_loc @@ any [typ_int; typ_bool; typ_string ]
 
 let rec typ i = i |> (P.expression typ_op
