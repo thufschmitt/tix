@@ -90,8 +90,8 @@ let testsuite =
       "infer_let_1", "let x = 1; in x", "1";
       "infer_let_2", "let x /*:Int*/ = 1; in x", "Int";
       "infer_let_3", "let x /*:Int*/ = 1; y = x; in y", "Int";
-      (* "infer_let_4", "let x = 1; y = x; in y", "?"; *)
-      (* "infer_let_5", "let x = x; in x", "?"; *)
+      "infer_let_4", "let x = 1; y = x; in y", "?";
+      "infer_let_5", "let x = x; in x", "?";
       "infer_let_6", "let x /*: Int -> Int */ = y: y; in x", "Int -> Int";
       ("infer_let_7", "let x /*: Int -> Int -> Int */ = y: y: y; in x",
        "Int -> Int -> Int");
@@ -111,7 +111,12 @@ let testsuite =
       "infer_string_annot", "x /*: \"foo\" */: x", "\"foo\" -> \"foo\"";
       ("infer_record_pattern",
        "{ x /*: Bool */, y ? 1 /*: Int */ }: x",
-       "{ x= Bool; y =? Int } -> Bool";)
+       "{ x= Bool; y =? Int } -> Bool");
+      "infer_arrow_no_annot_1", "x: x", "? -> ?";
+      "infer_arrow_no_annot_2", "x: y: y", "? -> ? -> ?";
+      "gradual_apply", "(x: x) 1", "?";
+      "gradual_apply_2", "let z = z; in z 1", "?";
+      "gradual_apply_3", "let z = z; in z z", "?";
     ] @
   (* ----- Negative tests ----- *)
   List.map (fun (name, expr) -> name >:: test_infer_expr_fail expr)
@@ -128,6 +133,7 @@ let testsuite =
        "let f /*: Int -> Bool */ = x: true; x = 1; \
         in if f x then __add x 1 else __not x");
       "infer_fail_plus_not_int", "1 + true";
+      "infer_fail_false_string", "(\"false\" /*: false*/)";
     ] @
   (* ------ positive check ----- *)
   List.map (fun (name, expr, result) -> name >:: test_check expr result)
@@ -151,6 +157,8 @@ let testsuite =
       "check_add", "1 + 1", "Int";
       "check_minus", "1 - 1", "Int";
       "check_unary_minus", "- (-1)", "1";
+      "check_gradual", "1", "?";
+      "check_gradual_lambda", "x: x", "? -> ?";
     ] @
   List.map (fun (name, expr, result) -> name >:: test_check_fail expr result)
     [
@@ -158,7 +166,7 @@ let testsuite =
       "check_fail_const_int", "1", "Bool";
       "check_fail_unbound_var", "x", "1";
       "check_fail_bad_intersect_arrow", "x: x", "(Int -> Bool) & (Bool -> Int)";
-      "check_fail_inside_let", "let x = y: y; in x", "Int -> Int";
+      "check_fail_inside_let", "let x = y /*: Bool */: y; in x", "Int -> Int";
       "check_fail_ite_not_bool", "if 1 then 1 else 1", "Int";
       "check_fail_cons", "[1]", "[ Bool ]";
       "check_fail_cons_length", "[1]", "[ 1 1 ]";

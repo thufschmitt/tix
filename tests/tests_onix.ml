@@ -79,5 +79,5 @@ let testsuite =
       ("test_record_annot_open",
        "(x /*: { x = Int; ... } */)",
        "(x /*: { x = Int; ... }  */)");
-      "test_gradual", "(x /*: ? */)", "(x /*: ? */)";
+      "test_gradual", "(1 /*: ? */)", "(1 /*: ? */)";
     ]

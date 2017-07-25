@@ -12,11 +12,13 @@ struct
     | Arrow
     | And
     | Or
+    | Diff
 
   let show = function
     | Arrow -> "->"
     | And   -> "&"
     | Or    -> "|"
+    | Diff  -> "\\"
 end
 
 module Singleton =
@@ -39,6 +41,7 @@ end
 
 type _t =
   | Var of string
+  | Gradual
   | Singleton of Singleton.t
   | Infix of Infix_constructors.t * t * t
   | Record of (string * (bool * t)) list * bool
@@ -65,6 +68,7 @@ let rec pp fmt = Location.With_loc.description %> function
         pp t
         pp_bindings binds
     | Singleton s -> Singleton.pp fmt s
+    | Gradual -> Format.pp_print_string fmt "?"
     | Record (fields, is_open) ->
       let open_mark = if is_open then
           if fields = [] then "... "

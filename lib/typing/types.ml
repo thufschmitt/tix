@@ -12,7 +12,85 @@ let show = T.Print.string_of_type
 let node = T.cons
 let typ  = T.descr
 
-let sub   = T.subtype
+let lift (direction : [> `Up | `Down ]) t =
+  let reverse = function `Up -> `Down | `Down -> `Up in
+  let replace_gradual direction =
+    match direction with
+    | `Up -> T.any
+    | `Down -> T.empty
+  in
+  let map_bdd (type a b) (module S : C.Bool.S
+                           with type elem = a
+                            and type t = b) atm =
+    let open T in
+    S.compute ~empty ~full:any ~cup ~cap ~diff ~atom:atm
+  in
+  let map_vartype (type a) (module V : T.VarType with type Atom.t = a)
+      direction atm t =
+    map_bdd (module V) (function
+        | `Var v when C.Var.equal v (C.Var.mk "?") ->
+          replace_gradual direction
+        | `Var _ -> assert false
+        | `Atm a -> atm a)
+      (V.proj t)
+  in
+  let rec replace_gradual (direction : [> `Up | `Down ]) (typ : t) : t =
+    let atoms = map_vartype (module T.VarAtoms) direction T.atom
+    and ints = map_vartype (module T.VarIntervals) direction T.interval
+    and chars = map_vartype (module T.VarChars) direction T.char
+    and times = map_vartype (module T.VarTimes) direction
+        (map_bdd (module T.Pair) @@ fun (n1, n2) ->
+         T.times
+           (replace_gradual_node direction n1)
+           (replace_gradual_node direction n2))
+    (* and xml = Don't care, we don't use xml types *)
+    and arrows = map_vartype (module T.VarArrow) direction
+        (map_bdd (module T.Pair) @@ fun (n1, n2) ->
+         T.arrow
+           (replace_gradual_node (reverse direction) n1)
+           (replace_gradual_node direction n2))
+    and records = map_vartype (module T.VarRec) direction
+        (map_bdd (module T.Rec) @@ fun r ->
+         CCPair.map2 (C.Ident.LabelMap.map
+                        (replace_gradual_node direction)
+                     ) r
+         |> T.record_fields)
+    and abstracts = map_vartype (module T.VarAbstracts) direction T.abstract
+    in
+    List.fold_left T.cup T.empty @@
+    List.map (fun f -> f typ)
+      [arrows; ints; atoms; chars; times; records; abstracts]
+  and replace_gradual_node direction n =
+    T.cons @@ replace_gradual direction (T.descr n)
+  in
+  replace_gradual direction t
+
+let sub t1 t2 =
+  C.Type_tallying.is_squaresubtype C.Var.Set.empty
+    (lift `Down t1)
+    (lift `Up t2)
+
+let applicative_lift t =
+  assert (sub t T.Arrow.any);
+  T.Iter.compute
+    ~default:T.empty
+    ~cup:(List.fold_left T.cup T.empty)
+    ~cap:(List.fold_left T.cap T.any)
+    ~neg:T.neg
+    ~var:(fun v ->
+        if C.Var.equal v (C.Var.mk "?") then
+          T.arrow (T.cons @@ T.any) (T.cons @@ T.var v)
+        else assert false)
+    ~arrow:(fun (n1, n2) ->
+        T.arrow
+          (T.cons @@ (lift `Up (T.descr n1)))
+          n2)
+    t
+
+let get_arrow t = applicative_lift t |> T.Arrow.get
+let arrow_apply arrow arg =
+  T.Arrow.apply arrow (T.cap (T.Arrow.domain arrow) (lift `Up arg))
+
 let equiv = T.equiv
 
 (** Creates a fresh new node *)
@@ -38,6 +116,71 @@ module Node = struct
   type t = T.Node.t
 end
 
+module String = struct
+  module StrSet = CCSet.Make(CCString)
+
+  let str_ns = C.Ns.Uri.mk @@ C.Encodings.Utf8.mk "str"
+
+  let any = T.atom @@ C.Atoms.any_in_ns str_ns
+
+  let singleton s =
+    T.atom @@ C.Atoms.atom (C.Atoms.V.mk (str_ns, C.Encodings.Utf8.mk s))
+
+  (** [get t] returns either [`Finite l] where [l] is the list of the strings
+      that the type [t] contains or [`Infinite].
+      No check is done to ensure that [t] is a subtype of [string] *)
+  let get t : [> `Finite of StrSet.t | `Infinite ] =
+    let atoms = T.Atom.get t in
+    let cup x1 x2 = match (x1, x2) with
+      | `Finite l1, `Finite l2 -> `Finite (StrSet.union l1 l2)
+      | `Cofinite l1, `Cofinite l2 -> `Cofinite (StrSet.inter l1 l2)
+      | `Cofinite l1, `Finite l2 -> `Cofinite (StrSet.diff l1 l2)
+      | `Finite l1, `Cofinite l2 -> `Cofinite (StrSet.diff l2 l1)
+      | `Variable, _
+      | _, `Variable -> `Variable
+    and neg = function
+      | `Finite l -> `Cofinite l
+      | `Cofinite l -> `Finite l
+      | `Variable -> `Variable
+    in
+    let cap x1 x2 = neg @@ cup (neg x1) (neg x2) in
+    let diff x1 x2 = cap x1 (neg x2) in
+    let get_from_atom atm =
+      let get_name atom_elt =
+        let (_, unicode_name) = C.Atoms.V.value atom_elt in
+        C.Encodings.Utf8.get_str unicode_name
+      in
+      let (direction, sub_atoms) =
+        match C.Atoms.extract atm with
+        | `Finite s -> (`Finite, s)
+        | `Cofinite s -> (`Cofinite, s)
+      in
+      let string_atoms = CCList.find_map
+          (fun (ns, atms) ->
+             if C.Ns.Uri.equal str_ns ns then Some atms else None)
+          sub_atoms
+                         |> CCOpt.get_or ~default:(`Finite [])
+      in
+      begin match string_atoms with
+        | `Finite elts -> `Finite (StrSet.of_list (List.map get_name elts))
+        | `Cofinite elts -> `Cofinite (StrSet.of_list (List.map get_name elts))
+      end
+      |> (fun s -> if direction = `Cofinite then neg s else s)
+    in
+    match
+      T.VarAtoms.compute atoms
+        ~atom:(function `Var _ -> `Variable | `Atm a -> get_from_atom a)
+        ~empty:(`Finite StrSet.empty)
+        ~full:(`Cofinite StrSet.empty)
+        ~cup
+        ~cap
+        ~diff
+    with
+    | `Cofinite _ -> `Infinite
+    | `Variable -> `Infinite
+    | `Finite l -> `Finite l
+end
+
 (** Builtin types *)
 module Builtins : sig
   val true_type : t (* [true] is a keyword in OCaml *)
@@ -59,6 +202,7 @@ module Builtins : sig
   val arrow : Node.t -> Node.t -> t
   val cup   : t -> t -> t
   val cap   : t -> t -> t
+  val diff  : t -> t -> t
   val neg   : t -> t
   val record : bool -> Node.t Simple.Record.t -> t
 end
@@ -67,12 +211,15 @@ end
 
   let empty = T.empty
 
-  (* TODO: find a cleaner way to define this *)
-  let grad = T.atom (C.Atoms.(atom @@ V.mk_ascii "?"))
+  let grad = T.var (C.Var.mk "?")
 
   let undef = T.atom (C.Atoms.(atom @@ V.mk_ascii "%%undef"))
 
   let interval = C.Types.interval
+
+  (* We don't use CDuce's strings because these are lists of chars (which isn't
+     the case in Nix) *)
+  let string = String.any
 
   let arrow = C.Types.arrow
 
@@ -80,6 +227,7 @@ end
 
   let cup = C.Types.cup
   let cap = C.Types.cap
+  let diff = C.Types.diff
   let neg = C.Types.neg
 
   let record is_open fields =
@@ -102,15 +250,7 @@ module Singleton = struct
     | true -> C.Builtin_defs.true_type
     | false -> C.Builtin_defs.false_type
 
-  let string s =
-    (* Cduce strings are lists of chars, we can keep it the same *)
-    CCString.fold
-      (fun accu char -> Builtins.cons
-          (node @@ Cduce_lib.Types.char
-             (Cduce_lib.Chars.(atom @@ V.mk_char char)))
-          (node accu))
-      Builtins.nil
-      (CCString.rev s)
+  let string = String.singleton
 end
 
 module Environment : sig
@@ -132,7 +272,7 @@ module Environment : sig
    * *)
   val add : string -> T.t -> t -> t
 end = struct
-  module M = CCMap.Make(String)
+  module M = CCMap.Make(CCString)
   type t = T.t M.t
 
   let empty = M.empty
@@ -149,6 +289,8 @@ end = struct
       "?", B.grad;
       "nil", B.nil;
       "%%undef", B.undef;
+      "Empty", B.empty;
+      "Any", B.any;
     ]
 
   let default =

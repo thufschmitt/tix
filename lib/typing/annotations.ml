@@ -15,14 +15,7 @@ let singleton =
   function
   | S.Bool b -> W.pure @@ T.Singleton.bool b
   | S.Int  i -> W.pure @@ T.Singleton.int  i
-  | S.String s -> W.pure @@
-    CCString.fold
-      (fun accu char -> T.Builtins.cons
-          (T.node @@ Cduce_lib.Types.char
-             (Cduce_lib.Chars.(atom @@ V.mk_char char)))
-          (T.node accu))
-      T.Builtins.nil
-      (CCString.rev s)
+  | S.String s -> W.pure @@ T.Singleton.string s
 
 (* When typing recursive type-annotations, we need to keep an environment to
  * trace the local and yet undefined type variables.
@@ -83,6 +76,12 @@ let rec to_node (nodes_env : Nodes_env.t) env (annot: A.t)
       (to_type nodes_env env t1)
       (to_type nodes_env env t2)
     >|= T.node
+  | A.Infix (A.Infix_constructors.Diff, t1, t2) ->
+    W.map2
+      T.Builtins.diff
+      (to_type nodes_env env t1)
+      (to_type nodes_env env t2)
+    >|= T.node
   | A.Singleton s -> singleton s >|= T.node
   | A.TyBind (binds, t) ->
     let new_nodes_env, defs =
@@ -129,6 +128,7 @@ let rec to_node (nodes_env : Nodes_env.t) env (annot: A.t)
     in
     real_fields >|= fun f ->
     T.node @@ T.Builtins.record is_open (Simple.Record.of_list_uniq f)
+  | A.Gradual -> W.pure @@ T.node T.Builtins.grad
 
 and to_type nodes_env env p = to_node nodes_env env p >|= T.typ
 
