@@ -64,7 +64,7 @@ and closed_flag =
   | Closed
   | Open
 
-and record = (field with_loc) list
+and record = field list
 
 and field = expr * expr
 

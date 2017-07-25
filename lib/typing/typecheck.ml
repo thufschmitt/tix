@@ -141,8 +141,9 @@ end = struct
       let env = Common.pragma env pragma in
       expr env e
     | P.Eimport e -> Common.import expr default_typ env e
+    | P.Erecord fields ->
+      record env fields
     | P.EaccessPath _
-    | P.Erecord _
     | P.Ewith (_,_) -> assert false
 
   and operator env loc op args = match op, args with
@@ -215,6 +216,76 @@ end = struct
         | None -> type_default ()
       end
     | _ -> type_default ()
+
+  and record env fields =
+    let typed_fields = W.map_l (field env) fields in
+    let typed_labels = W.map (fun l -> fst @@ CCList.split l) typed_fields in
+    let typed_fields = snd @@ CCList.split (W.value typed_fields) in
+    check_empty_intersection typed_labels >>
+    let label_choices =
+      W.map (List.map (fun t -> match T.String.get (WL.description t) with
+            `Finite s -> s
+          | `Infinite -> assert false (* TODO *)))
+        typed_labels
+    in
+    let possible_combinations =
+      W.map (CCList.fold_left
+               (fun accu labels_n ->
+                  CCList.flat_map (fun label ->
+                      CCList.map
+                        (fun partial_sequence -> label :: partial_sequence)
+                        accu)
+                    labels_n)
+               [[]])
+        label_choices
+      |> W.map (List.map List.rev)
+    in
+    W.map (CCList.fold_left (fun partial_typ combination ->
+        let new_typ =
+          T.Builtins.record false @@
+          Simple.Record.of_list @@
+          CCList.map2 (fun label_str field_type ->
+              (label_str, T.node @@ WL.description field_type))
+            combination
+            typed_fields
+        in
+        T.Builtins.cup
+          partial_typ
+          new_typ)
+        T.Builtins.empty)
+      possible_combinations
+
+  and field (env : Environment.t)
+    : (P.expr * P.expr) -> (T.t WL.t * T.t WL.t) W.t =
+    let expr_keeping_loc env e = W.map (WL.mk (WL.loc e)) (expr env e) in
+    W.map_pair (expr_keeping_loc env) (expr_keeping_loc env)
+
+  and check_empty_intersection :
+    Types.t WL.t list W.t -> unit W.t
+    =
+    let distinct_from typ =
+      W.iter_l @@ fun typ' ->
+      if Cduce_lib.Types.disjoint
+          (WL.description typ)
+          (WL.description typ')
+      then
+        W.pure ()
+      else
+        W.pure () |>
+        W.append [
+          Format.kasprintf
+            (Warning.make ~kind:Warning.Error (WL.loc typ))
+            "This label and the one at %a may be the same"
+            Parse.Location.pp (WL.loc typ')
+        ]
+    in
+    let rec aux =
+      function
+      | [] -> W.pure ()
+      | located_typ::tl ->
+        distinct_from located_typ tl >>
+        aux tl
+    in W.bind aux
 end
 
 and Check : sig

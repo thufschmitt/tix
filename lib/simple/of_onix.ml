@@ -111,7 +111,7 @@ and record r =
       fields
   in
   assert (inherit_fields = []); (* Not handled now *)
-  let rec aux (fields : (O.access_path * O.expr) W.t list) : N.field W.t list =
+  let rec aux (fields : (O.access_path * O.expr) W.t list) : N.field list =
     (* Invariant: all the access paths are non-empty *)
     let partitionned_by_first_element = partition_binop
         (CCFun.compose_binop (fun f ->
@@ -123,8 +123,8 @@ and record r =
       (function
         | { W.description = ([], _); _ } :: _
         | [] -> assert false
-        | [ { W.description = ([ident],e); location = loc } ] ->
-          W.mk loc (expr @@ W.map apf_to_expr ident, expr e)
+        | [ { W.description = ([ident],e); location = _ } ] ->
+          (expr @@ W.map apf_to_expr ident, expr e)
         | { W.description = (ident::_, _); location = loc } :: _ as fields ->
           let sub_fields =
             List.map
@@ -136,9 +136,8 @@ and record r =
                           Format.flush_str_formatter ()))
               fields
           in
-          W.mk loc
-            (expr @@ W.map apf_to_expr ident,
-             W.mk loc @@ N.Erecord (aux sub_fields)))
+          (expr @@ W.map apf_to_expr ident,
+           W.mk loc @@ N.Erecord (aux sub_fields)))
       partitionned_by_first_element
   in aux non_inherit_fields
 

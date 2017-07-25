@@ -129,7 +129,7 @@ module String = struct
   (** [get t] returns either [`Finite l] where [l] is the list of the strings
       that the type [t] contains or [`Infinite].
       No check is done to ensure that [t] is a subtype of [string] *)
-  let get t : [> `Finite of StrSet.t | `Infinite ] =
+  let get t : [> `Finite of string list | `Infinite ] =
     let atoms = T.Atom.get t in
     let cup x1 x2 = match (x1, x2) with
       | `Finite l1, `Finite l2 -> `Finite (StrSet.union l1 l2)
@@ -178,7 +178,7 @@ module String = struct
     with
     | `Cofinite _ -> `Infinite
     | `Variable -> `Infinite
-    | `Finite l -> `Finite l
+    | `Finite l -> `Finite (StrSet.to_list l)
 end
 
 (** Builtin types *)

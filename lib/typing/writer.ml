@@ -31,6 +31,8 @@ module type S = sig
   val map_l  : ('a -> 'b t) -> 'a list -> 'b list t
   val iter_l : ('a -> unit t) -> 'a list -> unit t
 
+  val map_pair : ('a -> 'b t) -> ('c -> 'd t) -> ('a * 'c) -> ('b * 'd) t
+
   module Infix : sig
     val (<$>) : ('a -> 'b) -> 'a t -> 'b t
     val (>|=) : 'a t -> ('a -> 'b) -> 'b t
@@ -80,6 +82,12 @@ struct
 
   let iter_l f l =
     map (fun _ -> ()) (map_l f l)
+
+  let map_pair f_x f_y (x, y) =
+    let (x', log_x) = f_x x
+    and (y', log_y) = f_y y
+    in
+    ((x', y'), M.append log_x log_y)
 
   module Infix = struct
     let (<$>) = map
