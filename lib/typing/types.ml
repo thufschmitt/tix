@@ -147,6 +147,10 @@ end
 
   let interval = C.Types.interval
 
+  (* We don't use CDuce's strings because these are lists of chars (which isn't
+     the case in Nix) *)
+  let string = T.Atom.any
+
   let arrow = C.Types.arrow
 
   let cons  = C.Types.times

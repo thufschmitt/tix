@@ -14,13 +14,7 @@ let singleton =
   | S.Bool b -> W.pure @@ T.Singleton.bool b
   | S.Int  i -> W.pure @@ T.Singleton.int  i
   | S.String s -> W.pure @@
-    CCString.fold
-      (fun accu char -> T.Builtins.cons
-          (T.node @@ Cduce_lib.Types.char
-             (Cduce_lib.Chars.(atom @@ V.mk_char char)))
-          (T.node accu))
-      T.Builtins.nil
-      (CCString.rev s)
+    Cduce_lib.(Types.atom (Atoms.atom @@ Atoms.V.mk_ascii s))
 
 (* When typing recursive type-annotations, we need to keep an environment to
  * trace the local and yet undefined type variables.
