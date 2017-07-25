@@ -116,6 +116,7 @@ let typ_op =
   [
     [ infix "&" I.And P.Assoc_left ];
     [ infix "|" I.Or P.Assoc_left ];
+    [ infix "\\" I.Diff P.Assoc_left ];
     [ infix "->" I.Arrow P.Assoc_right ];
   ]
 

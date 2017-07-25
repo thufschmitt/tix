@@ -10,11 +10,13 @@ struct
     | Arrow
     | And
     | Or
+    | Diff
 
   let show = function
     | Arrow -> "->"
     | And   -> "&"
     | Or    -> "|"
+    | Diff  -> "\\"
 end
 
 module Singleton =

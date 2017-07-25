@@ -145,6 +145,7 @@ module Builtins : sig
   val arrow : Node.t -> Node.t -> t
   val cup   : t -> t -> t
   val cap   : t -> t -> t
+  val diff  : t -> t -> t
   val neg   : t -> t
 end
 = struct

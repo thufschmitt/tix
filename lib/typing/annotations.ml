@@ -75,6 +75,12 @@ let rec to_node (nodes_env : Nodes_env.t) env (annot: A.t)
       (to_type nodes_env env t1)
       (to_type nodes_env env t2)
     >|= T.node
+  | A.Infix (A.Infix_constructors.Diff, t1, t2) ->
+    W.map2
+      T.Builtins.diff
+      (to_type nodes_env env t1)
+      (to_type nodes_env env t2)
+    >|= T.node
   | A.Singleton s -> singleton s >|= T.node
   | A.TyBind (binds, t) ->
     let new_nodes_env, defs =
