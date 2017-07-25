@@ -171,19 +171,8 @@ end = struct
         ~inferred:t
         ~expected:Types.Builtins.int >>
       let ivl = Cduce_lib.Types.Int.get t in
-      let negated_ivl =
-        Cduce_lib.Types.VarIntervals.compute
-          ~empty:Cduce_lib.Intervals.empty
-          ~full:Cduce_lib.Intervals.full
-          ~cup:Cduce_lib.Intervals.cup
-          ~cap:Cduce_lib.Intervals.cap
-          ~diff:Cduce_lib.Intervals.diff
-          ~atom:(function
-              | `Atm i -> Cduce_lib.Intervals.negat i
-              | `Var _ -> assert false (* XXX: What are those vars ? *))
-          ivl
-      in
-      W.pure @@ Cduce_lib.Types.interval negated_ivl
+      let negated_ivl = Common.negate_interval ivl in
+      W.pure @@ negated_ivl
     | P.Oplus, [e1; e2]
     | P.Ominus, [e1; e2]
       ->
@@ -271,7 +260,6 @@ end = struct
     | P.Elambda (pat, e) ->
       (check_subtype loc ~inferred:expected ~expected:Cduce_lib.Types.Arrow.any
        >>
-       (* XXX: destruct [expected] with the A(t) function from the paper *)
        let expected_arrow = Cduce_lib.Types.Arrow.get expected in
        W.iter_l (fun (dom, codom) ->
            Pattern.infer ~t_constr:dom env.E.types pat
@@ -332,19 +320,8 @@ end = struct
         ~expected:Types.Builtins.int >>
       (* We just check that [e] has type [-expected] *)
       let ivl = Cduce_lib.Types.Int.get expected in
-      let negated_ivl =
-        Cduce_lib.Types.VarIntervals.compute
-          ~empty:Cduce_lib.Intervals.empty
-          ~full:Cduce_lib.Intervals.full
-          ~cup:Cduce_lib.Intervals.cup
-          ~cap:Cduce_lib.Intervals.cap
-          ~diff:Cduce_lib.Intervals.diff
-          ~atom:(function
-              | `Atm i -> Cduce_lib.Intervals.negat i
-              | `Var _ -> assert false (* XXX: What are those vars ? *))
-          ivl
-      in
-      expr env e (Cduce_lib.Types.interval negated_ivl)
+      let negated_ivl = Common.negate_interval ivl in
+      expr env e negated_ivl
     | P.Oplus, [e1; e2]
     | P.Ominus, [e1; e2] ->
       check_subtype
@@ -401,6 +378,7 @@ and Common : sig
     -> 'a W.t
   val pragma : E.t -> Parse.Pragma.t -> E.t
   val import : (E.t -> P.expr -> 'a W.t) -> 'a -> E.t -> P.expr -> 'a W.t
+  val negate_interval : Cduce_lib.Types.VarIntervals.t -> T.t
 end = struct
 
   let let_binding expr env binds e =
@@ -455,4 +433,17 @@ end = struct
           typeError e.WL.location "Unable to read file %s" f_name
       end
     | _ -> typeError e.WL.location "Not a litteral string"
+
+  let negate_interval =
+    let module B = T.Builtins in
+    Cduce_lib.Types.VarIntervals.compute
+      ~empty:B.empty
+      ~full:Cduce_lib.Types.Int.any
+      ~cup:B.cup
+      ~cap:B.cap
+      ~diff:(fun t1 t2 -> B.cap t1 (B.neg t2))
+      ~atom:(function
+          | `Atm i ->
+            Cduce_lib.Types.interval @@ Cduce_lib.Intervals.negat i
+          | `Var v -> Cduce_lib.Types.var v)
 end
