@@ -72,7 +72,7 @@ let typeof_const = function
     Types.Builtins.interval
       (Types.Intervals.singleton_of_int i)
   | P.Cstring s ->
-    Cduce_lib.(Types.atom (Atoms.atom @@ Atoms.V.mk_ascii s))
+    Types.Singleton.string s
 
 let () = ()
 (* For some reason, ocp-indent don't work correctly if we don't put this here *)

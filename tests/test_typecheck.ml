@@ -130,6 +130,7 @@ let testsuite =
        "let f /*: Int -> Bool */ = x: true; x = 1; \
         in if f x then __add x 1 else __not x");
       "infer_fail_plus_not_int", "1 + true";
+      "infer_fail_false_string", "(\"false\" /*: false*/)";
     ] @
   (* ------ positive check ----- *)
   List.map (fun (name, expr, result) -> name >:: test_check expr result)

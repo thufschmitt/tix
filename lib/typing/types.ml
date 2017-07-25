@@ -116,6 +116,15 @@ module Node = struct
   type t = T.Node.t
 end
 
+module String = struct
+  let str_ns = C.Ns.Uri.mk @@ C.Encodings.Utf8.mk "str"
+
+  let any = T.atom @@ C.Atoms.any_in_ns str_ns
+
+  let singleton s =
+    T.atom @@ C.Atoms.atom (C.Atoms.V.mk (str_ns, C.Encodings.Utf8.mk s))
+end
+
 (** Builtin types *)
 module Builtins : sig
   val true_type : t (* [true] is a keyword in OCaml *)
@@ -149,7 +158,7 @@ end
 
   (* We don't use CDuce's strings because these are lists of chars (which isn't
      the case in Nix) *)
-  let string = T.Atom.any
+  let string = String.any
 
   let arrow = C.Types.arrow
 
@@ -168,6 +177,8 @@ module Singleton = struct
   let bool = function
     | true -> C.Builtin_defs.true_type
     | false -> C.Builtin_defs.false_type
+
+  let string = String.singleton
 end
 
 module Environment : sig
@@ -189,7 +200,7 @@ module Environment : sig
    * *)
   val add : string -> T.t -> t -> t
 end = struct
-  module M = CCMap.Make(String)
+  module M = CCMap.Make(CCString)
   type t = T.t M.t
 
   let empty = M.empty

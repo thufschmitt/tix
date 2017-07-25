@@ -13,8 +13,7 @@ let singleton =
   function
   | S.Bool b -> W.pure @@ T.Singleton.bool b
   | S.Int  i -> W.pure @@ T.Singleton.int  i
-  | S.String s -> W.pure @@
-    Cduce_lib.(Types.atom (Atoms.atom @@ Atoms.V.mk_ascii s))
+  | S.String s -> W.pure @@ T.Singleton.string s
 
 (* When typing recursive type-annotations, we need to keep an environment to
  * trace the local and yet undefined type variables.
