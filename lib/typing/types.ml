@@ -126,10 +126,10 @@ module String = struct
   let singleton s =
     T.atom @@ C.Atoms.atom (C.Atoms.V.mk (str_ns, C.Encodings.Utf8.mk s))
 
-  (** [get t] returns either [`Finite l] where [l] is the list of the strings
-      that the type [t] contains or [`Infinite].
+  (** [get t] returns either [List_or_infinite.Finite l] where [l] is the list
+      of the strings that the type [t] contains or [List_or_infinite.Infinite].
       No check is done to ensure that [t] is a subtype of [string] *)
-  let get t : [> `Finite of string list | `Infinite ] =
+  let get t : string List_or_infinite.t =
     let atoms = T.Atom.get t in
     let cup x1 x2 = match (x1, x2) with
       | `Finite l1, `Finite l2 -> `Finite (StrSet.union l1 l2)
@@ -176,9 +176,9 @@ module String = struct
         ~cap
         ~diff
     with
-    | `Cofinite _ -> `Infinite
-    | `Variable -> `Infinite
-    | `Finite l -> `Finite (StrSet.to_list l)
+    | `Cofinite _ -> List_or_infinite.Infinite
+    | `Variable -> List_or_infinite.Infinite
+    | `Finite l -> List_or_infinite.Finite (StrSet.to_list l)
 end
 
 (** Builtin types *)

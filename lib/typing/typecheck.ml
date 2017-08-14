@@ -1,6 +1,7 @@
 module P = Simple.Ast
 module E = Environment
 module L = Parse.Location
+module Loi = List_or_infinite
 module T = Types
 module TE = T.Environment
 module VE = Typing_env
@@ -223,24 +224,22 @@ end = struct
     let typed_fields = snd @@ CCList.split (W.value typed_fields) in
     check_empty_intersection typed_labels >>
     let label_choices =
-      W.map (List.map (fun t -> match T.String.get (WL.description t) with
-            `Finite s -> s
-          | `Infinite -> assert false (* TODO *)))
+      W.map (List.map (fun t -> T.String.get (WL.description t)))
         typed_labels
     in
     let possible_combinations =
       W.map (CCList.fold_left
                (fun accu labels_n ->
-                  CCList.flat_map (fun label ->
-                      CCList.map
+                  Loi.flat_map (fun label ->
+                      Loi.map
                         (fun partial_sequence -> label :: partial_sequence)
                         accu)
                     labels_n)
-               [[]])
+               (Loi.finite [[]]))
         label_choices
-      |> W.map (List.map List.rev)
+      |> W.map (Loi.map List.rev)
     in
-    W.map (CCList.fold_left (fun partial_typ combination ->
+    W.map (Loi.fold (fun partial_typ combination ->
         let new_typ =
           T.Builtins.record false @@
           Simple.Record.of_list @@
@@ -252,7 +251,8 @@ end = struct
         T.Builtins.cup
           partial_typ
           new_typ)
-        T.Builtins.empty)
+        ~init:T.Builtins.empty
+        ~full:T.Builtins.any)
       possible_combinations
 
   and field (env : Environment.t)
