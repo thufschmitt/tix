@@ -117,6 +117,7 @@ let testsuite =
       "gradual_apply", "(x: x) 1", "?";
       "gradual_apply_2", "let z = z; in z 1", "?";
       "gradual_apply_3", "let z = z; in z z", "?";
+      "infer_record_1", "{ x = 1; y = 2; }", "{ x = 1; y = 2; }";
     ] @
   (* ----- Negative tests ----- *)
   List.map (fun (name, expr) -> name >:: test_infer_expr_fail expr)
