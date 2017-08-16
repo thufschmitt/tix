@@ -1,8 +1,8 @@
 module P = Simple.Ast
-module L = Parse.Location.With_loc
+module L = Common.Location.With_loc
 module TE = Typing_env
 
-module W = Writer.Make(Warning.List)
+module W = Common.Writer.Make(Common.Warning.List)
 
 open W.Infix
 

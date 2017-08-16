@@ -1,15 +1,16 @@
 module P = Simple.Ast
 module E = Environment
-module L = Parse.Location
+module L = Common.Location
 module Loi = List_or_infinite
 module T = Types
 module TE = T.Environment
 module VE = Typing_env
 module WL = L.With_loc
+module Warning = Common.Warning
 
 module Pattern = Typecheck_pat
 
-module W = Writer.Make(Warning.List)
+module W = Common.Writer.Make(Common.Warning.List)
 
 open W.Infix
 let (>>) e1 e2 = e1 >>= (fun _ -> e2)
@@ -290,7 +291,7 @@ end = struct
           Format.kasprintf
             (Warning.make ~kind:Warning.Error (WL.loc typ))
             "This label and the one at %a may be the same"
-            Parse.Location.pp (WL.loc typ')
+            L.pp (WL.loc typ')
         ]
     in
     let rec aux =

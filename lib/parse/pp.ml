@@ -3,10 +3,10 @@
 *)
 
 module P = Ast
-module T = Type_annotations
+module T = Common.Type_annotations
 module F = Format
 
-let drop_loc = Location.With_loc.description
+let drop_loc = Common.Location.With_loc.description
 let (%>) f g x = g (f x)
 
 let pp_ident = F.pp_print_string

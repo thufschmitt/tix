@@ -1,5 +1,5 @@
 open OUnit2
-module TA = Parse.Type_annotations
+module TA = Common.Type_annotations
 module T  = Typing.Types
 
 exception ParseError of string
@@ -55,7 +55,7 @@ let test_var _ =
 
 let test_fail typefun _ =
   let result = typefun () in
-  if Typing.Typecheck.W.log result = Typing.Warning.List.empty then
+  if Typing.Typecheck.W.log result = Common.Warning.List.empty then
     assert_failure "type error not detected"
 
 let test_infer_expr_fail input =

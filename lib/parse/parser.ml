@@ -1,6 +1,8 @@
+module Location = Common.Location
+
 module A = Ast
 module P = MParser
-module T = Type_annotations
+module T = Common.Type_annotations
 module W = Location.With_loc
 
 module StrHash = CCHashSet.Make(CCString)
@@ -133,20 +135,20 @@ let typ_regex_postfix_op =
 
 let typ_int =
   int |>> fun nb ->
-  Type_annotations.(Singleton (Singleton.Int nb))
+  T.(Singleton (Singleton.Int nb))
 
 let typ_bool =
   bool |>> fun b ->
-  Type_annotations.(Singleton (Singleton.Bool b))
+  T.(Singleton (Singleton.Bool b))
 
 let typ_string =
   string |>> fun s ->
-  Type_annotations.(Singleton (Singleton.String s))
+  T.(Singleton (Singleton.String s))
 
 let typ_ident i = i |> add_loc (
-    (ident |>> fun t -> Type_annotations.Var t)
+    (ident |>> fun t -> T.Var t)
     <|>
-    (P.char '?' >> space >> P.return Type_annotations.Gradual))
+    (P.char '?' >> space >> P.return T.Gradual))
 and typ_singleton i = i |> add_loc @@ any [typ_int; typ_bool; typ_string ]
 
 let rec typ i = i |> (P.expression typ_op

@@ -3,5 +3,5 @@
 (library
   ((name "parse")
    (public_name "parse")
-   (libraries (mparser containers containers.data))))
+   (libraries (mparser containers common containers.data))))
 

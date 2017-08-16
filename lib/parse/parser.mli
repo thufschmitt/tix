@@ -13,7 +13,7 @@ type 'a return = ('a, string * MParser.error) result
 val expr : Ast.expr t
 
 (** Parser for a type *)
-val typ  : Type_annotations.t t
+val typ  : Common.Type_annotations.t t
 
 
 val parse_string : 'a t -> string -> 'a return

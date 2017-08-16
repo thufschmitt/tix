@@ -2,7 +2,9 @@
    Parsetree for the nix language
 *)
 
-type 'a with_loc = 'a Location.With_loc.t
+module Type_annotations = Common.Type_annotations
+
+type 'a with_loc = 'a Common.Location.With_loc.t
 
 type operator =
   | Ocons

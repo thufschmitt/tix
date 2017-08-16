@@ -2,7 +2,10 @@
    AST for nix-light, a simplified version of the nix language
    @see <https://github.com/regnat/tix-papers> for a description of the language
 *)
-type 'a with_loc = 'a Parse.Location.With_loc.t
+
+module Type_annotations = Common.Type_annotations
+
+type 'a with_loc = 'a Common.Location.With_loc.t
 
 type operator =
   | Ocons
@@ -30,7 +33,7 @@ and expr_desc =
   | Ewith of expr * expr
   (* with e; e *)
   | Elet of binding list * expr
-  | EtyAnnot of expr * Parse.Type_annotations.t
+  | EtyAnnot of expr * Type_annotations.t
   | Epragma of Parse.Pragma.t * expr
   | Eimport of expr
 
@@ -53,12 +56,12 @@ and pattern_desc =
   | Pnontrivial of nontrivial_pattern * string option
 
 and nontrivial_pattern =
-  | NPrecord of (bool * Parse.Type_annotations.t option) Record.t * closed_flag
+  | NPrecord of (bool * Type_annotations.t option) Record.t * closed_flag
   (** fields * '...'
    * For each field, the boolean indicates whether the field is optional
    * *)
 
-and pattern_var = string * Parse.Type_annotations.t option
+and pattern_var = string * Type_annotations.t option
 
 and closed_flag =
   | Closed
@@ -66,7 +69,7 @@ and closed_flag =
 
 and record = field list
 
-and field = expr * Parse.Type_annotations.t option * expr
+and field = expr * Type_annotations.t option * expr
 
 and binding = pattern_var * expr
 

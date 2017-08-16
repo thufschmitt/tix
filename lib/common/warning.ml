@@ -7,7 +7,7 @@ let show_kind = function
 let pp_kind fmt k = Format.pp_print_string fmt (show_kind k)
 
 type t = {
-  location : Parse.Location.t;
+  location : Location.t;
   kind: kind;
   error: string;
 }
@@ -21,7 +21,7 @@ let pp fmt t =
     "%a: %s at %a"
     pp_kind t.kind
     t.error
-    Parse.Location.pp t.location
+    Location.pp t.location
 
 let show t =
   pp Format.str_formatter t;

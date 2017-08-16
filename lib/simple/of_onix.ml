@@ -1,11 +1,11 @@
 (**
    Conversion between [Parse.Ast.t] and [Ast.t]
 *)
-module A = Parse.Type_annotations
+module A = Common.Type_annotations
 module O = Parse.Ast
 module N = Ast
 
-module Loc = Parse.Location
+module Loc = Common.Location
 module W = Loc.With_loc
 
 let map_loc = W.map
@@ -194,7 +194,7 @@ and lambda pat e =
              (fun a ->
                 let loc = W.loc a in
                 W.mk loc
-                  Parse.Type_annotations.(Infix (
+                  A.(Infix (
                       Infix_constructors.Or, W.mk loc (Var "%%undef"), a)))
              annot
          in

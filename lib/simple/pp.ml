@@ -4,7 +4,7 @@
 module P = Ast
 module F = Format
 
-let drop_loc { Parse.Location.With_loc.description = it; _ } = it
+let drop_loc { Common.Location.With_loc.description = it; _ } = it
 let (%>) f g x = g (f x)
 
 let pp_ident = F.pp_print_string
@@ -131,7 +131,7 @@ and pp_pat_record_field_args fmt (optional, type_annot) =
 
 and pp_type_annot fmt = F.fprintf fmt "/*: %a */" pp_typ
 
-and pp_typ fmt = Parse.Type_annotations.pp fmt
+and pp_typ fmt = Common.Type_annotations.pp fmt
 
 and pp_op_args fmt = function
   | [] -> ()

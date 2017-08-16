@@ -2,11 +2,11 @@
    Conversion of type annotations into actual types
 *)
 
-module A = Parse.Type_annotations
-module L = Parse.Location
+module A = Common.Type_annotations
+module L = Common.Location
 module T = Types
 
-module W = Writer.Make (Warning.List)
+module W = Common.Writer.Make (Common.Warning.List)
 
 open W.Infix
 
@@ -43,8 +43,8 @@ let (%>) = CCFun.(%>)
 
 let rec to_node (nodes_env : Nodes_env.t) env (annot: A.t)
   : Cduce_lib.Types.Node.t W.t =
-  let loc = Parse.Location.With_loc.loc annot in
-  Parse.Location.With_loc.description annot |>
+  let loc = L.With_loc.loc annot in
+  L.With_loc.description annot |>
   function
   | A.Var v ->
     begin
@@ -55,7 +55,7 @@ let rec to_node (nodes_env : Nodes_env.t) env (annot: A.t)
       | Some t -> W.pure t
       | None ->
         W.append
-          [Warning.make loc ("Unbound type variable " ^ v)]
+          [Common.Warning.make loc ("Unbound type variable " ^ v)]
           (W.pure @@ T.node T.Builtins.grad)
     end
   | A.Infix (A.Infix_constructors.Arrow, t1, t2) ->

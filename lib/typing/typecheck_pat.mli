@@ -9,4 +9,4 @@
 val infer : ?t_constr:Types.t
   -> Types.Environment.t
   -> Simple.Ast.pattern
-  -> ((Typing_env.t * Types.t) * Warning.t list)
+  -> ((Typing_env.t * Types.t) * Common.Warning.t list)

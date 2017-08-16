@@ -1,7 +1,7 @@
 let (%>) f g x = g (f x)
 
-module L = Location.With_loc
-module T = Type_annotations
+module L = Common.Location.With_loc
+module T = Common.Type_annotations
 
 module Counter = functor () -> struct
   let counter = ref 0

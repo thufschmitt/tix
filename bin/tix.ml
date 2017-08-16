@@ -27,7 +27,7 @@ let process_file is_parse_only is_convert_only f_name =
       and value = Typing.Typecheck.W.value typed
       in
       CCList.iter (fun t ->
-          Typing.Warning.pp Format.err_formatter t;
+          Common.Warning.pp Format.err_formatter t;
           Format.pp_print_newline Format.err_formatter ())
         (CCList.rev log);
       Format.fprintf Format.std_formatter "%a\n" Typing.Types.pp value
