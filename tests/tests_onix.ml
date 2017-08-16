@@ -79,5 +79,7 @@ let testsuite =
       ("test_record_annot_open",
        "(x /*: { x = Int; ... } */)",
        "(x /*: { x = Int; ... }  */)");
-      "test_gradual", "(1 /*: ? */)", "(1 /*: ? */)";
+      ("test_multiple_let",
+       "let x = 1; y = 2; in x",
+       "let x = 1; y = 2; in x");
     ]
