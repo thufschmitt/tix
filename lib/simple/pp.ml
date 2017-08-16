@@ -83,9 +83,10 @@ and pp_ap fmt e ap =
 and pp_fields fmt =
   F.pp_print_list pp_field fmt
 
-and pp_field fmt = function (e1, e2) ->
-  F.fprintf fmt "%a = %a; "
+and pp_field fmt = function (e1, maybe_annot, e2) ->
+  F.fprintf fmt "%a%a = %a; "
     pp_expr e1
+    (pp_option pp_type_annot) maybe_annot
     pp_expr e2
 
 and pp_pattern fmt = drop_loc %> function

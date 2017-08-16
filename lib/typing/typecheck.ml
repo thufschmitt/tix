@@ -255,10 +255,24 @@ end = struct
         ~full:T.Builtins.any)
       possible_combinations
 
-  and field (env : Environment.t)
-    : (P.expr * P.expr) -> (T.t WL.t * T.t WL.t) W.t =
-    let expr_keeping_loc env e = W.map (WL.mk (WL.loc e)) (expr env e) in
-    W.map_pair (expr_keeping_loc env) (expr_keeping_loc env)
+  and field
+      (env : Environment.t)
+      ((label, maybe_annot, e) : (P.expr * 'a * P.expr))
+    : (T.t WL.t * T.t WL.t) W.t =
+    let infer_keeping_loc env e = W.map (WL.mk (WL.loc e)) (expr env e)
+    and check_keeping_loc env expected e =
+      W.map (WL.mk (WL.loc e)) (Check.expr env e expected) >|=
+      WL.map (CCFun.const expected)
+    in
+    match maybe_annot with
+    | None ->
+      W.map_pair (infer_keeping_loc env) (infer_keeping_loc env) (label, e)
+    | Some annot ->
+      Annotations.to_type env.Environment.types annot >>= fun expected ->
+      W.map_pair
+        (infer_keeping_loc env)
+        (check_keeping_loc env expected)
+        (label, e)
 
   and check_empty_intersection :
     Types.t WL.t list W.t -> unit W.t

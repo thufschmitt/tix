@@ -91,6 +91,13 @@ and pp_pattern_var fmt = function
       pp_ident v
       pp_type_annot   t
 
+and pp_pattern_ap fmt = function
+  | (v, None) -> pp_ap fmt v
+  | (v, Some t) ->
+    F.fprintf fmt "%a %a"
+      pp_ap v
+      pp_type_annot   t
+
 and pp_nontrivial_pattern fmt = function
   | P.NPrecord ([], P.Open) ->
     F.pp_print_string fmt "{ ... }"
@@ -135,9 +142,9 @@ and pp_record fmt { P.recursive; fields } =
     (fun fmt -> List.iter (pp_record_field fmt)) fields
 
 and pp_record_field fmt = drop_loc %> function
-    | P.Fdef (name, value) ->
+    | P.Fdef (ap, value) ->
       F.fprintf fmt "%a = %a;@ "
-        pp_ap name
+        pp_pattern_ap ap
         pp_expr value
     | _ -> failwith "TODO"
 
@@ -147,9 +154,4 @@ and pp_bindings fmt =
     pp_binding
     fmt
 
-and pp_binding fmt = function
-  | P.BstaticDef (pat, e) ->
-    Format.fprintf fmt "%a = %a"
-      pp_pattern_var pat
-      pp_expr e
-  | _ -> assert false
+and pp_binding fmt = pp_record_field fmt

@@ -22,6 +22,7 @@ let keywords = StrHash.of_list [
     "true"; "false";
     "import"; (* This isn't a keyword in Nix, but a regular function. *)
     "assert";
+    "rec";
   ]
 
 let get_loc =
@@ -324,17 +325,23 @@ and expr_atom i =
         ]
   )
 
-and expr_record i =
-  i |> add_loc (
+and expr_record i = 
+  i|> add_loc (
+    P.option @@ keyword "rec" >>= fun maybe_isrec ->
+    let recursive = CCOpt.is_some maybe_isrec in
+    expr_record_nonrec |>> fun fields ->
+    A.(Erecord { recursive; fields }))
+
+and expr_record_nonrec i =
+  i |> (
     P.char '{' >> space >>
-    P.many expr_record_field >>= fun fields ->
-    P.char '}' >> space >>
-    P.return A.(Erecord { recursive = false; fields; })
+    P.many expr_record_field
+    << P.char '}' << space
   )
 
 and expr_record_field i =
   i |> add_loc ((
-      ap >>= fun ap ->
+      ap_pattern >>= fun ap ->
       P.char '=' >> space >>
       expr << P.char ';' << space |>> fun value ->
       A.Fdef (ap, value))
@@ -382,11 +389,11 @@ and expr_let i =
         <?> "let binding")
 
 and binding i =
-  i |>
-  (pattern_var >>= fun (id, annot) ->
+  i |> add_loc
+  (ap_pattern >>= fun access_path ->
    P.char '=' >> space >>
    expr << P.char ';' << space |>> fun e ->
-   A.BstaticDef ((id, annot), e))
+   A.Fdef (access_path, e))
 
 and pattern i = i |> (any [pattern_ident; pattern_complex] <?> "pattern")
 
@@ -445,6 +452,12 @@ and expr_select i =
         expr_atom)
 
 and ap i = i |> P.sep_by1 ap_field (P.char '.' >> space)
+
+and ap_pattern i =
+  i |> (
+    ap >>= fun access_path ->
+    P.option (P.attempt type_annot) |>> fun annot ->
+    (access_path, annot))
 
 and ap_field i =
   i |> add_loc (

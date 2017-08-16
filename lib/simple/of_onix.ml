@@ -1,6 +1,7 @@
 (**
    Conversion between [Parse.Ast.t] and [Ast.t]
 *)
+module A = Parse.Type_annotations
 module O = Parse.Ast
 module N = Ast
 
@@ -15,6 +16,57 @@ let rec partition_binop op = function
     let (partition_elt, rest) =
       CCList.partition (op hd) l
     in partition_elt :: partition_binop op rest
+
+let filter_inherit fields =
+    CCList.partition_map
+      (function
+        | { W.description = O.Finherit _; _ } as f -> `Right f
+        | { W.description = O.Fdef (ap, value); location} ->
+          `Left { W.description = (ap, value); location; })
+      fields
+
+let rec flatten (fields : ((O.access_path * A.t option) * O.expr) W.t list) :
+  ((O.ap_field * A.t option) * O.expr) W.t list =
+  let flattened_record fields =
+    O.(Erecord {
+        recursive = false;
+        fields =
+          List.map
+            (W.map
+               (fun ((apf, annot), expr) ->
+                  Fdef (([apf], annot), expr))) fields;
+      })
+  in
+  (* Invariant: all the access paths are non-empty *)
+  let partitionned_by_first_element = partition_binop
+      (CCFun.compose_binop (fun f ->
+           (CCList.hd @@ fst @@ fst f.W.description).W.description)
+          (=))
+      fields
+  in
+  List.map
+    (function
+      | { W.description = (([], _), _); _ } :: _
+      | [] -> assert false (* A record must have at least one field *)
+      | [ { W.description = (([ident], annot),e); location = _ } as field ] ->
+        { field with W.description = ((ident, annot), e) }
+      | { W.description = ((ident::_, _), _); location = loc } :: _
+        as fields ->
+        let sub_fields =
+          List.map
+            (W.map @@ function
+              | ((_::(_::_ as tl), annot), e) -> ((tl, annot), e)
+              | _ -> Format.ksprintf failwith
+                       "The field %s is defined several times"
+                       (Parse.Pp.pp_ap_field Format.str_formatter ident;
+                        Format.flush_str_formatter ()))
+            fields
+        in
+        {W.description = ((ident, None),
+                          W.mk loc @@ flattened_record (flatten sub_fields));
+         location = loc;
+        })
+    partitionned_by_first_element
 
 let operator : O.operator -> N.operator = function
   | O.Ocons -> N.Ocons
@@ -48,11 +100,18 @@ and apf_to_expr = function
 
 and ap_field f = expr @@ map_loc apf_to_expr f
 
-and bindings b = List.map binding b
+and bindings b =
+  let non_inherit_fields, _ = filter_inherit b in
+  let b = flatten non_inherit_fields in
+  List.map binding b
 
-and binding = function
-  | O.BstaticDef (var, value) -> (var, expr value)
-  | _ -> assert false
+and binding b =
+  let ((apf, annot), e) = W.description b in
+  match W.description apf with
+  | O.AFidentifier s ->
+    ((s, annot), expr e)
+  | O.AFexpr _ ->
+    failwith "Dynamic let-bindings are not allowed"
 
 and expr e = map_loc expr_desc e
 
@@ -100,46 +159,15 @@ and constant = function
 
 and record r =
   (* Don't handle recursive records now for the sake of simplicity *)
-  assert (not r.O.recursive);
-  let fields = r.O.fields in
-  let non_inherit_fields, inherit_fields =
-    CCList.partition_map
-      (function
-        | { W.description = O.Finherit _; _ } as f -> `Right f
-        | { W.description = O.Fdef (ap, value); location} ->
-          `Left { W.description = (ap, value); location; })
-      fields
+  let { O.fields; recursive } = r in
+  assert (recursive = false);
+  let non_inherit_fields, inherit_fields = filter_inherit fields
   in
   assert (inherit_fields = []); (* Not handled now *)
-  let rec aux (fields : (O.access_path * O.expr) W.t list) : N.field list =
-    (* Invariant: all the access paths are non-empty *)
-    let partitionned_by_first_element = partition_binop
-        (CCFun.compose_binop (fun f ->
-             (CCList.hd @@ fst f.W.description).W.description)
-            (=))
-        fields
-    in
-    List.map
-      (function
-        | { W.description = ([], _); _ } :: _
-        | [] -> assert false
-        | [ { W.description = ([ident],e); location = _ } ] ->
-          (expr @@ W.map apf_to_expr ident, expr e)
-        | { W.description = (ident::_, _); location = loc } :: _ as fields ->
-          let sub_fields =
-            List.map
-              (W.map @@ function
-                | (_::(_::_ as tl), e) -> (tl, e)
-                | _ -> Format.ksprintf failwith
-                         "The field %s is defined several times"
-                         (Parse.Pp.pp_ap_field Format.str_formatter ident;
-                          Format.flush_str_formatter ()))
-              fields
-          in
-          (expr @@ W.map apf_to_expr ident,
-           W.mk loc @@ N.Erecord (aux sub_fields)))
-      partitionned_by_first_element
-  in aux non_inherit_fields
+  List.map
+    (fun { W.description = ((apf, annot), e); location  } ->
+       (expr @@ W.mk location @@ apf_to_expr (W.description apf), annot,  expr e))
+    (flatten non_inherit_fields)
 
 and lambda pat e =
   let new_pat, default_values = pattern pat

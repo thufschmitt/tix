@@ -66,7 +66,7 @@ and closed_flag =
 
 and record = field list
 
-and field = expr * expr
+and field = expr * Parse.Type_annotations.t option * expr
 
 and binding = pattern_var * expr
 

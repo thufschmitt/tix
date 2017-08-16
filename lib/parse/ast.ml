@@ -68,27 +68,27 @@ and pattern_record_field = {
 
 and pattern_var = string * Type_annotations.t option
 
+and pattern_access_path = access_path * Type_annotations.t option
+
 and closed_flag =
   | Closed
   | Open
 
 and record = {
   recursive : bool;
-  fields : (field with_loc) list;
+  fields : field list;
 }
 
-and field =
-  | Fdef of access_path * expr
+and field_desc =
+  | Fdef of pattern_access_path * expr
   | Finherit of inherit_
   (** inherit x y z...;
       inherit (e) x y z...;
   *)
 
-and binding =
-  | Bdef of access_path * expr
-  (* FIXME: the first element can not be an arbitrary expr *)
-  | BstaticDef of pattern_var * expr
-  | Binherit of inherit_
+and field = field_desc with_loc
+
+and binding = field
 
 and inherit_ = expr option * (string with_loc) list
 
