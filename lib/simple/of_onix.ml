@@ -6,9 +6,9 @@ module O = Parse.Ast
 module N = Ast
 
 module Loc = Common.Location
-module W = Loc.With_loc
+module WL = Loc.With_loc
 
-let map_loc = W.map
+let map_loc = WL.map
 
 let rec partition_binop op = function
   | [] -> []
@@ -20,19 +20,19 @@ let rec partition_binop op = function
 let filter_inherit fields =
     CCList.partition_map
       (function
-        | { W.description = O.Finherit _; _ } as f -> `Right f
-        | { W.description = O.Fdef (ap, value); location} ->
-          `Left { W.description = (ap, value); location; })
+        | { WL.description = O.Finherit _; _ } as f -> `Right f
+        | { WL.description = O.Fdef (ap, value); location} ->
+          `Left { WL.description = (ap, value); location; })
       fields
 
-let rec flatten (fields : ((O.access_path * A.t option) * O.expr) W.t list) :
-  ((O.ap_field * A.t option) * O.expr) W.t list =
+let rec flatten (fields : ((O.access_path * A.t option) * O.expr) WL.t list) :
+  ((O.ap_field * A.t option) * O.expr) WL.t list =
   let flattened_record fields =
     O.(Erecord {
         recursive = false;
         fields =
           List.map
-            (W.map
+            (WL.map
                (fun ((apf, annot), expr) ->
                   Fdef (([apf], annot), expr))) fields;
       })
@@ -40,21 +40,21 @@ let rec flatten (fields : ((O.access_path * A.t option) * O.expr) W.t list) :
   (* Invariant: all the access paths are non-empty *)
   let partitionned_by_first_element = partition_binop
       (CCFun.compose_binop (fun f ->
-           (CCList.hd @@ fst @@ fst f.W.description).W.description)
+           (CCList.hd @@ fst @@ fst f.WL.description).WL.description)
           (=))
       fields
   in
   List.map
     (function
-      | { W.description = (([], _), _); _ } :: _
+      | { WL.description = (([], _), _); _ } :: _
       | [] -> assert false (* A record must have at least one field *)
-      | [ { W.description = (([ident], annot),e); location = _ } as field ] ->
-        { field with W.description = ((ident, annot), e) }
-      | { W.description = ((ident::_, _), _); location = loc } :: _
+      | [ { WL.description = (([ident], annot),e); location = _ } as field ] ->
+        { field with WL.description = ((ident, annot), e) }
+      | { WL.description = ((ident::_, _), _); location = loc } :: _
         as fields ->
         let sub_fields =
           List.map
-            (W.map @@ function
+            (WL.map @@ function
               | ((_::(_::_ as tl), annot), e) -> ((tl, annot), e)
               | _ -> Format.ksprintf failwith
                        "The field %s is defined several times"
@@ -62,8 +62,8 @@ let rec flatten (fields : ((O.access_path * A.t option) * O.expr) W.t list) :
                         Format.flush_str_formatter ()))
             fields
         in
-        {W.description = ((ident, None),
-                          W.mk loc @@ flattened_record (flatten sub_fields));
+        {WL.description = ((ident, None),
+                          WL.mk loc @@ flattened_record (flatten sub_fields));
          location = loc;
         })
     partitionned_by_first_element
@@ -95,7 +95,7 @@ let rec expr_desc : O.expr_desc -> N.expr_desc = function
 and access_path ap = List.map ap_field ap
 
 and apf_to_expr = function
-  | O.AFexpr e -> e.W.description
+  | O.AFexpr e -> e.WL.description
   | O.AFidentifier s -> O.Econstant (O.Cstring s)
 
 and ap_field f = expr @@ map_loc apf_to_expr f
@@ -106,8 +106,8 @@ and bindings b =
   List.map binding b
 
 and binding b =
-  let ((apf, annot), e) = W.description b in
-  match W.description apf with
+  let ((apf, annot), e) = WL.description b in
+  match WL.description apf with
   | O.AFidentifier s ->
     ((s, annot), expr e)
   | O.AFexpr _ ->
@@ -148,9 +148,9 @@ and pattern_desc : O.pattern_desc -> N.pattern_desc * N.binding list
       N.Pnontrivial (sub_pat, alias), default_values
 
 and pattern p =
-  let loc = W.loc p in
-  let new_pat, default_values = pattern_desc @@ W.description p in
-  (W.mk loc new_pat, default_values)
+  let loc = WL.loc p in
+  let new_pat, default_values = pattern_desc @@ WL.description p in
+  (WL.mk loc new_pat, default_values)
 
 and constant = function
   | O.Cint i -> N.Cint i
@@ -161,30 +161,30 @@ and record r =
   let { O.fields; recursive } = r in
   if recursive then
     let loc = List.hd fields
-            |> W.loc
+            |> WL.loc
     in
     let created_bindings = bindings fields in
     let new_record =
-      N.Erecord (List.map (fun ((var, annot), { W.location = loc; _}) ->
-          (W.mk loc @@ N.Econstant (N.Cstring var),
+      N.Erecord (List.map (fun ((var, annot), { WL.location = loc; _}) ->
+          (WL.mk loc @@ N.Econstant (N.Cstring var),
            annot,
-           W.mk loc @@ N.Evar var))
+           WL.mk loc @@ N.Evar var))
           created_bindings)
     in
-    N.Elet (bindings fields, W.mk loc new_record)
+    N.Elet (bindings fields, WL.mk loc new_record)
   else
     let non_inherit_fields, inherit_fields = filter_inherit fields
     in
     assert (inherit_fields = []); (* Not handled now *)
     let new_record = List.map
-        (fun { W.description = ((apf, annot), e); location  } ->
-           (expr @@ W.mk location @@ apf_to_expr (W.description apf), annot,  expr e))
+        (fun { WL.description = ((apf, annot), e); location  } ->
+           (expr @@ WL.mk location @@ apf_to_expr (WL.description apf), annot,  expr e))
         (flatten non_inherit_fields)
     in N.Erecord new_record
 
 and lambda pat e =
   let new_pat, default_values = pattern pat
-  and loc = W.loc e in
+  and loc = WL.loc e in
   let mangle_name = (^) "%%" in
   let mangled_values_def =
     List.map
@@ -192,21 +192,21 @@ and lambda pat e =
       (fun ((var, annot), e) ->
          let annot = CCOpt.map
              (fun a ->
-                let loc = W.loc a in
-                W.mk loc
+                let loc = WL.loc a in
+                WL.mk loc
                   A.(Infix (
-                      Infix_constructors.Or, W.mk loc (Var "%%undef"), a)))
+                      Infix_constructors.Or, WL.mk loc (Var "%%undef"), a)))
              annot
          in
          ((mangle_name var, annot),
-          W.mk (W.loc e) @@ N.Evar var))
+          WL.mk (WL.loc e) @@ N.Evar var))
       default_values
   in
   let substitute_values =
     List.map
       (fun ((var, annot), e) ->
-         let loc = W.loc e in
-         let al = W.mk loc in
+         let loc = WL.loc e in
+         let al = WL.mk loc in
          let new_expr =
            (* [if isUndef [%e %%var] then [%e e] else [%e %%var]] *)
            al @@ N.Eite
@@ -221,9 +221,9 @@ and lambda pat e =
 
   let body =
     if default_values = [] then expr e else
-      W.mk loc
+      WL.mk loc
         (N.Elet (mangled_values_def,
-                 (W.mk loc
+                 (WL.mk loc
                     (N.Elet (substitute_values, expr e)))))
   in
   N.Elambda (new_pat, body)
