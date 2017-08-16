@@ -16,6 +16,6 @@ clean:
 	rm -rf _build
 
 test:
-	jbuilder runtest
+	jbuilder runtest --dev
 
 .PHONY: default install uninstall reinstall clean test
