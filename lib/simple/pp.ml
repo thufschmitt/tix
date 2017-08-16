@@ -51,7 +51,7 @@ let rec pp_expr fmt = drop_loc %> function
         pp_fields r
     | P.EaccessPath (e, ap, None) -> pp_ap fmt e ap
     | P.Elet (bindings, e) ->
-      F.fprintf fmt "@[let %a@ in@;%a@]"
+      F.fprintf fmt "@[let %ain@;%a@]"
         pp_bindings bindings
         pp_expr e
     | P.Eite (eif, ethen, eelse) ->
@@ -63,13 +63,13 @@ let rec pp_expr fmt = drop_loc %> function
 
 and pp_bindings fmt =
   Format.pp_print_list
-    ~pp_sep:(fun fmt () -> Format.fprintf fmt "@;and@ ")
+    ~pp_sep:(fun _ () -> ())
     pp_binding
     fmt
 
 and pp_binding fmt = function
     (pat, e) ->
-    Format.fprintf fmt "%a = %a"
+    Format.fprintf fmt "%a = %a; "
       pp_pattern_var pat
       pp_expr e
 

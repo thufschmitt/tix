@@ -65,8 +65,8 @@ let testsuite =
       "test_pattern_record", "{}:x", "({  }: x)";
       "test_pattern_record_alias", "{}@x:x", "({  }@x: x)";
       ("test_pattern_record_default", "{ x ? 1 }: x",
-       "({ x? }: let %%x = x in let x = if (%%isUndef %%x) \
-        then 1 else %%x in x)");
+       "({ x? }: let %%x = x; in let x = if (%%isUndef %%x) \
+        then 1 else %%x; in x)");
     ] @
   List.map (fun (name, input) ->
       name >:: test_parse_pp_str_fail input)
