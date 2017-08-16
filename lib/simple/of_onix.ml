@@ -87,7 +87,7 @@ let rec expr_desc : O.expr_desc -> N.expr_desc = function
   (* TODO: smarter compilation of some form of if-then-else *)
   | O.Epragma (p, e) -> N.Epragma (p, expr e)
   | O.Eimport e -> N.Eimport (expr e)
-  | O.Erecord r -> N.Erecord (record r)
+  | O.Erecord r -> record r
   | O.Eaccess (e, ap, default) ->
     N.EaccessPath (expr e, access_path ap, CCOpt.map expr default)
   | _ -> failwith "Not implemented"
@@ -158,16 +158,29 @@ and constant = function
   | O.Cstring s -> N.Cstring s
 
 and record r =
-  (* Don't handle recursive records now for the sake of simplicity *)
   let { O.fields; recursive } = r in
-  assert (recursive = false);
-  let non_inherit_fields, inherit_fields = filter_inherit fields
-  in
-  assert (inherit_fields = []); (* Not handled now *)
-  List.map
-    (fun { W.description = ((apf, annot), e); location  } ->
-       (expr @@ W.mk location @@ apf_to_expr (W.description apf), annot,  expr e))
-    (flatten non_inherit_fields)
+  if recursive then
+    let loc = List.hd fields
+            |> W.loc
+    in
+    let created_bindings = bindings fields in
+    let new_record =
+      N.Erecord (List.map (fun ((var, annot), { W.location = loc; _}) ->
+          (W.mk loc @@ N.Econstant (N.Cstring var),
+           annot,
+           W.mk loc @@ N.Evar var))
+          created_bindings)
+    in
+    N.Elet (bindings fields, W.mk loc new_record)
+  else
+    let non_inherit_fields, inherit_fields = filter_inherit fields
+    in
+    assert (inherit_fields = []); (* Not handled now *)
+    let new_record = List.map
+        (fun { W.description = ((apf, annot), e); location  } ->
+           (expr @@ W.mk location @@ apf_to_expr (W.description apf), annot,  expr e))
+        (flatten non_inherit_fields)
+    in N.Erecord new_record
 
 and lambda pat e =
   let new_pat, default_values = pattern pat
