@@ -6,7 +6,10 @@ module O = Parse.Ast
 module N = Ast
 
 module Loc = Common.Location
+module W = Common.Writer.Make (Common.Warning.List)
 module WL = Loc.With_loc
+
+open W.Infix
 
 let map_loc = WL.map
 
@@ -26,7 +29,7 @@ let filter_inherit fields =
       fields
 
 let rec flatten (fields : ((O.access_path * A.t option) * O.expr) WL.t list) :
-  ((O.ap_field * A.t option) * O.expr) WL.t list =
+  ((O.ap_field * A.t option) * O.expr) WL.t list W.t =
   let flattened_record fields =
     O.(Erecord {
         recursive = false;
@@ -44,28 +47,54 @@ let rec flatten (fields : ((O.access_path * A.t option) * O.expr) WL.t list) :
           (=))
       fields
   in
-  List.map
+  W.map_l
     (function
-      | { WL.description = (([], _), _); _ } :: _
+      | { WL.description = (([], _), _); _ } :: _ -> assert false
+        (* The access-path can't be empty *)
       | [] -> assert false (* A record must have at least one field *)
       | [ { WL.description = (([ident], annot),e); location = _ } as field ] ->
-        { field with WL.description = ((ident, annot), e) }
-      | { WL.description = ((ident::_, _), _); location = loc } :: _
+        W.return { field with WL.description = ((ident, annot), e) }
+      | { WL.description = ((ident::_, annot), _); location = loc } :: _
         as fields ->
-        let sub_fields =
-          List.map
-            (WL.map @@ function
-              | ((_::(_::_ as tl), annot), e) -> ((tl, annot), e)
-              | _ -> Format.ksprintf failwith
-                       "The field %s is defined several times"
-                       (Parse.Pp.pp_ap_field Format.str_formatter ident;
-                        Format.flush_str_formatter ()))
-            fields
-        in
-        {WL.description = ((ident, None),
-                          WL.mk loc @@ flattened_record (flatten sub_fields));
-         location = loc;
-        })
+        let module E = struct
+          exception MultipleField of Common.Location.t * O.expr
+        end in
+        begin try
+            let sub_fields =
+              W.map_l
+                (fun { WL.description; location } ->
+                   let description = match description with
+                     | ((_::(_::_ as tl), annot), e) ->
+                       W.return ((tl, annot), e)
+                     | ((_::_, _), e) ->
+                       raise (E.MultipleField (location, e))
+                     | (([],_),_) -> assert false (* This shouldn't happen *)
+                   in
+                   W.append
+                     (W.log description)
+                     (W.return
+                        { WL.description = W.value description; location; }))
+
+                fields
+            in
+            sub_fields >>= fun sub_fields ->
+            flatten sub_fields >|= fun flattened ->
+            {WL.description = ((ident, None),
+                               WL.mk loc @@ flattened_record flattened);
+             location = loc;
+            }
+          with
+            E.MultipleField (loc, e) ->
+            W.append
+              [ Common.Warning.make loc @@
+                Format.sprintf
+                  "The field %s is defined several times"
+                  (Parse.Pp.pp_ap_field Format.str_formatter ident;
+                   Format.flush_str_formatter ())]
+          (W.return
+             { WL.description = ((ident, annot), e); location = loc })
+        end
+    )
     partitionned_by_first_element
 
 let operator : O.operator -> N.operator = function
@@ -75,24 +104,39 @@ let operator : O.operator -> N.operator = function
   | O.Oplus -> N.Oplus
   | O.Ominus-> N.Ominus
 
-let rec expr_desc : O.expr_desc -> N.expr_desc = function
-  | O.Evar s -> N.Evar s
-  | O.Econstant c -> N.Econstant (constant c)
+let rec expr_desc : O.expr_desc -> N.expr_desc W.t = function
+  | O.Evar s -> W.return @@ N.Evar s
+  | O.Econstant c -> W.return @@ N.Econstant (constant c)
   | O.Elambda (pat, e) -> lambda pat e
-  | O.EfunApp (e1, e2) -> N.EfunApp (expr e1, expr e2)
-  | O.EtyAnnot (e, t)  -> N.EtyAnnot (expr e, t)
-  | O.EopApp (o, args) -> N.EopApp (operator o, List.map expr args)
-  | O.Elet (binds, e) -> N.Elet (bindings binds, expr e)
-  | O.Eite (e0, e1, e2) -> N.Eite (expr e0, expr e1, expr e2)
+  | O.EfunApp (e1, e2) ->
+    expr e1 >>= fun e1 ->
+    expr e2 >|= fun e2 ->
+    N.EfunApp (e1, e2)
+  | O.EtyAnnot (e, t)  -> expr e >|= fun e -> N.EtyAnnot (e, t)
+  | O.EopApp (o, args) ->
+    W.map_l expr args >|= fun args ->
+    N.EopApp (operator o, args)
+  | O.Elet (binds, e) ->
+    bindings binds >>= fun binds ->
+    expr e >|= fun e ->
+    N.Elet (binds, e)
+  | O.Eite (e0, e1, e2) ->
+    expr e0 >>= fun e0 ->
+    expr e1 >>= fun e1 ->
+    expr e2 >|= fun e2 ->
+    N.Eite (e0, e1, e2)
   (* TODO: smarter compilation of some form of if-then-else *)
-  | O.Epragma (p, e) -> N.Epragma (p, expr e)
-  | O.Eimport e -> N.Eimport (expr e)
+  | O.Epragma (p, e) -> expr e >|= fun e -> N.Epragma (p, e)
+  | O.Eimport e -> expr e >|= fun e -> N.Eimport e
   | O.Erecord r -> record r
   | O.Eaccess (e, ap, default) ->
-    N.EaccessPath (expr e, access_path ap, CCOpt.map expr default)
+    expr e >>= fun e ->
+    access_path ap >>= fun ap ->
+    W.map_opt expr default >|= fun default ->
+    N.EaccessPath (e, ap, default)
   | _ -> failwith "Not implemented"
 
-and access_path ap = List.map ap_field ap
+and access_path ap = W.map_l ap_field ap
 
 and apf_to_expr = function
   | O.AFexpr e -> e.WL.description
@@ -102,18 +146,25 @@ and ap_field f = expr @@ map_loc apf_to_expr f
 
 and bindings b =
   let non_inherit_fields, _ = filter_inherit b in
-  let b = flatten non_inherit_fields in
-  List.map binding b
+  flatten non_inherit_fields >>= fun b ->
+  W.map_l binding b
 
 and binding b =
   let ((apf, annot), e) = WL.description b in
+  expr e >>= fun e ->
   match WL.description apf with
   | O.AFidentifier s ->
-    ((s, annot), expr e)
-  | O.AFexpr _ ->
-    failwith "Dynamic let-bindings are not allowed"
+    W.return ((s, annot), e)
+  | O.AFexpr e' ->
+    W.append [Common.Warning.make
+                ~kind:Common.Warning.Error
+                (WL.loc e')
+                "Dynamic let-bindings are not allowed"] @@
+    W.return (("%%INVALID_LHS%%", annot), e)
 
-and expr e = map_loc expr_desc e
+and expr e =
+  expr_desc (WL.description e) >|= fun description ->
+  { e with WL.description }
 
 
 and open_flag = function
@@ -121,35 +172,42 @@ and open_flag = function
   | O.Closed -> N.Closed
 
 and pattern_record_field { O.field_name; default_value; type_annot } =
-  ((field_name, (CCOpt.is_some default_value, type_annot)),
-   CCOpt.map (fun e -> (field_name, type_annot), expr e)default_value)
+  W.map_opt (fun e ->
+      expr e >|= fun e ->
+      (field_name, type_annot), e)
+    default_value
+  >|= fun value ->
+  ((field_name, (CCOpt.is_some default_value, type_annot)), value)
 
 
-and nontrivial_pattern :
-  O.nontrivial_pattern -> N.nontrivial_pattern * N.binding list
+and nontrivial_pattern loc :
+  O.nontrivial_pattern -> (N.nontrivial_pattern * N.binding list) W.t
   = function
     | O.NPrecord (fields, flag) ->
-      let new_fields, default_values =
-        List.map pattern_record_field fields
-        |> List.split
-      in
+      W.map_l pattern_record_field fields >|=
+      List.split >>= fun (new_fields, default_values) ->
       let default_values = CCList.flat_map CCOpt.to_list default_values
-      and fields =
-        try Record.of_list_uniq new_fields
-        with Invalid_argument _ -> failwith "Duplicate element in pattern"
       in
+      begin
+        try W.return @@ Record.of_list_uniq new_fields
+        with Invalid_argument _ ->
+          W.append
+            [Common.Warning.make loc "Duplicate element in pattern"]
+            (W.return Record.empty)
+      end
+      >|= fun fields ->
       N.NPrecord (fields, open_flag flag), default_values
 
-and pattern_desc : O.pattern_desc -> N.pattern_desc * N.binding list
+and pattern_desc loc : O.pattern_desc -> (N.pattern_desc * N.binding list) W.t
   = function
-    | O.Pvar (s, mt) -> N.Pvar (s, mt), []
+    | O.Pvar (s, mt) -> W.return (N.Pvar (s, mt), [])
     | O.Pnontrivial (sub_pat, alias) ->
-      let sub_pat, default_values = nontrivial_pattern sub_pat in
+      nontrivial_pattern loc sub_pat >|= fun (sub_pat, default_values) ->
       N.Pnontrivial (sub_pat, alias), default_values
 
 and pattern p =
   let loc = WL.loc p in
-  let new_pat, default_values = pattern_desc @@ WL.description p in
+  pattern_desc loc @@ WL.description p >|= fun (new_pat, default_values) ->
   (WL.mk loc new_pat, default_values)
 
 and constant = function
@@ -161,9 +219,9 @@ and record r =
   let { O.fields; recursive } = r in
   if recursive then
     let loc = List.hd fields
-            |> WL.loc
+              |> WL.loc
     in
-    let created_bindings = bindings fields in
+    bindings fields >|= fun created_bindings ->
     let new_record =
       N.Erecord (List.map (fun ((var, annot), { WL.location = loc; _}) ->
           (WL.mk loc @@ N.Econstant (N.Cstring var),
@@ -171,20 +229,27 @@ and record r =
            WL.mk loc @@ N.Evar var))
           created_bindings)
     in
-    N.Elet (bindings fields, WL.mk loc new_record)
+    N.Elet (created_bindings, WL.mk loc new_record)
   else
     let non_inherit_fields, inherit_fields = filter_inherit fields
     in
     assert (inherit_fields = []); (* Not handled now *)
-    let new_record = List.map
-        (fun { WL.description = ((apf, annot), e); location  } ->
-           (expr @@ WL.mk location @@ apf_to_expr (WL.description apf), annot,  expr e))
-        (flatten non_inherit_fields)
-    in N.Erecord new_record
+    flatten non_inherit_fields >>= fun flattened ->
+    W.map_l
+      (fun { WL.description = ((apf, annot), e); location  } ->
+         apf_to_expr (WL.description apf)
+         |> WL.mk location
+         |> expr
+         >>= fun label_expr ->
+         expr e >|= fun rhs_expr ->
+         (label_expr, annot,  rhs_expr))
+      flattened
+    >|= fun new_record ->
+    N.Erecord new_record
 
 and lambda pat e =
-  let new_pat, default_values = pattern pat
-  and loc = WL.loc e in
+  pattern pat >>= fun (new_pat, default_values) ->
+  let loc = WL.loc e in
   let mangle_name = (^) "%%" in
   let mangled_values_def =
     List.map
@@ -218,12 +283,12 @@ and lambda pat e =
          ((var, annot), new_expr))
       default_values
   in
-
+  expr e >|= fun body ->
   let body =
-    if default_values = [] then expr e else
+    if default_values = [] then body else
       WL.mk loc
         (N.Elet (mangled_values_def,
                  (WL.mk loc
-                    (N.Elet (substitute_values, expr e)))))
+                    (N.Elet (substitute_values, body)))))
   in
   N.Elambda (new_pat, body)

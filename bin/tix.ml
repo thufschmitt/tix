@@ -20,9 +20,18 @@ let process_file is_parse_only is_convert_only f_name =
   else
     let converted = Simple.Of_onix.expr ast in
     if is_convert_only then
-      Simple.Pp.pp_expr Format.std_formatter converted
+      begin
+        CCFormat.list
+          ~sep:CCFormat.newline
+          Common.Warning.pp
+          Format.err_formatter
+          (Typing.Typecheck.W.log converted);
+        Simple.Pp.pp_expr Format.std_formatter
+          (Typing.Typecheck.W.value converted)
+      end
     else
-      let typed = typecheck converted in
+      let open Typing.Typecheck.W.Infix in
+      let typed = converted >>= fun converted -> typecheck converted in
       let log = Typing.Typecheck.W.log typed
       and value = Typing.Typecheck.W.value typed
       in

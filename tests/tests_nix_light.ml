@@ -1,5 +1,8 @@
 open OUnit2
 
+module W = Typing.Typecheck.W
+(* open W.Infix *)
+
 exception ParseError
 
 
@@ -9,8 +12,11 @@ let test_parse_pp_str ?(isTodo=false) input expected_output _ =
     begin
       match Parse.Parser.parse_string Parse.Parser.expr input with
       | Ok x ->
-        Simple.Of_onix.expr x
-        |> fun s -> Simple.Pp.pp_expr Format.str_formatter s
+        let simple = Simple.Of_onix.expr x in
+        if W.log simple = [] then
+          Simple.Pp.pp_expr Format.str_formatter (W.value simple)
+        else
+          ()
       | Error _ -> raise ParseError
     end;
     Format.flush_str_formatter ()
@@ -27,8 +33,10 @@ let test_parse_pp_str_fail ?(isTodo=false) input _ =
     | Ok x ->
       begin
         try
-          ignore @@ Simple.Of_onix.expr x;
-          assert_failure "Translation error not raised"
+          let s = Simple.Of_onix.expr x in
+          if W.log s = [] then
+            assert_failure "Translation error not raised"
+          else ()
         with
           Failure _ -> ()
       end

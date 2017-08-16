@@ -504,9 +504,8 @@ end = struct
           CCIO.with_in f_name (fun chan ->
               match MParser.parse_channel Parse.Parser.expr chan f_name with
               | MParser.Success e ->
-                expr
-                  Environment.default
-                  (Simple.Of_onix.expr e)
+                Simple.Of_onix.expr e >>= fun e ->
+                expr Environment.default e
               | MParser.Failed (_, _) ->
                 typeError e.WL.location "Parse error in %s" f_name)
         with Sys_error _ ->

@@ -2,6 +2,10 @@ open OUnit2
 module TA = Common.Type_annotations
 module T  = Typing.Types
 
+module W = Typing.Typecheck.W
+
+open W.Infix
+
 exception ParseError of string
 
 let parse str =
@@ -16,11 +20,12 @@ let typ str =
   | Error (msg, _) -> raise (ParseError msg)
 
 let infer env tokens =
-  parse tokens
-  |> Typing.(Typecheck.Infer.expr env)
+  parse tokens >>=
+  Typing.(Typecheck.Infer.expr env)
 
 let check env tokens expected_type =
-  Typing.(Typecheck.Check.expr env (parse tokens) expected_type)
+  parse tokens >>= fun ast ->
+  Typing.(Typecheck.Check.expr env ast expected_type)
 
 let test_infer_expr input expected_type _ =
   let expected_type = typ expected_type in

@@ -33,6 +33,8 @@ module type S = sig
 
   val map_pair : ('a -> 'b t) -> ('c -> 'd t) -> ('a * 'c) -> ('b * 'd) t
 
+  val map_opt : ('a -> 'b t) -> 'a option -> 'b option t
+
   module Infix : sig
     val (<$>) : ('a -> 'b) -> 'a t -> 'b t
     val (>|=) : 'a t -> ('a -> 'b) -> 'b t
@@ -76,6 +78,7 @@ struct
 
   let map_l f l =
     CCList.map f l
+    |> CCList.rev
     |> List.fold_left (fun accu (elt, log) ->
         bind (fun partial_list -> (elt :: partial_list, log)) accu)
       (pure [])
@@ -88,6 +91,11 @@ struct
     and (y', log_y) = f_y y
     in
     ((x', y'), M.append log_x log_y)
+
+  let map_opt f opt =
+    match CCOpt.map f opt with
+    | Some (x, log) -> (Some x), log
+    | None -> None, M.empty
 
   module Infix = struct
     let (<$>) = map
