@@ -103,11 +103,12 @@ end = struct
 
   let rec expr (env : Environment.t) (e : P.expr) : Types.t W.t =
     let { Environment.types = tenv; values = venv; _ } = env in
+    let loc = e.L.With_loc.location in
     L.With_loc.description e |> function
     | P.Econstant c -> W.pure @@ typeof_const c
     | P.Evar v ->
       CCOpt.map_or
-        ~default:(typeError e.L.With_loc.location "Unbound variable %s" v)
+        ~default:(typeError loc "Unbound variable %s" v)
         W.pure
         (VE.lookup venv v)
     | P.Elambda (pat, e) ->
@@ -119,7 +120,7 @@ end = struct
       expr env e2 >>= fun t2 ->
       if not @@ Types.sub t1 Types.(Builtins.(arrow (node empty) (node any)))
       then
-        typeError e.L.With_loc.location
+        typeError loc
           "This expression has type %s which is not an arrow type. \
            It can't be applied"
           (Types.show t1)
@@ -132,7 +133,7 @@ end = struct
       Common.let_binding expr env binds e
       |> W.join
     | P.EopApp (op, args) ->
-      operator env e.L.With_loc.location op args
+      operator env loc op args
     | P.Eite (e0, e1, e2) ->
       if_then_else env e0 e1 e2
     | P.EtyAnnot (sub_e, annot) ->
@@ -146,8 +147,10 @@ end = struct
     | P.Eimport e -> Common.import expr default_typ env e
     | P.Erecord fields ->
       record env fields
-    | P.EaccessPath _
-    | P.Ewith (_,_) -> assert false
+    | P.Ewith _ ->
+      typeError loc "With constructs are not allowed"
+    | P.EaccessPath _ ->
+      typeError loc "Access paths are not implemented yet"
 
   and operator env loc op args = match op, args with
     | P.Ocons, [e1; e2] ->
