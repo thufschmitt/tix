@@ -74,6 +74,10 @@ let rec pp_expr fmt = drop_loc %> function
       F.fprintf fmt "%a ? %a"
         pp_expr e
         pp_ap ap
+    | P.Ewith (e1, e2) ->
+      F.fprintf fmt "with %a; %a"
+        pp_expr e1
+        pp_expr e2
     | _ -> failwith "TODO"
 
 and pp_ap fmt = F.pp_print_list

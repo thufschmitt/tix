@@ -79,6 +79,7 @@ let testsuite =
        "rec { x = 1; y = x; }",
        "let x = 1; y = x; in { \"x\" = x; \"y\" = y; }");
       "test_path", "./foo", "./foo";
+      "test_with", "with e1; e2", "with e1; e2";
     ] @
   List.map (fun (name, input) ->
       name >:: test_parse_pp_str_fail input)

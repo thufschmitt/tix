@@ -25,6 +25,7 @@ let keywords = StrHash.of_list [
     "import"; (* This isn't a keyword in Nix, but a regular function. *)
     "assert";
     "rec";
+    "with";
   ]
 
 let get_loc =
@@ -298,7 +299,7 @@ let rec expr i =
   i |> (
     any [
       expr_pragma; expr_lambda; expr_let; expr_if; expr_infix;
-      expr_assert; expr_import; expr_apply; expr_apply_or_member
+      expr_assert; expr_import; expr_with; expr_apply; expr_apply_or_member
     ]
   )
 
@@ -326,6 +327,13 @@ and expr_import i =
     keyword "import" >>
     expr_atom |>> fun e ->
     A.Eimport e)
+
+and expr_with i =
+  i |> add_loc (
+    keyword "with" >>
+    expr << P.char ';' << space >>= fun e1 ->
+    expr |>> fun e2 ->
+    A.Ewith (e1, e2))
 
 and expr_assert i =
   i |> add_loc (

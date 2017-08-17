@@ -148,7 +148,10 @@ let rec expr_desc : O.expr_desc -> N.expr_desc W.t = function
     >|= fun ap ->
     N.EopApp (N.OrecordMember, [e; List.hd ap])
     (* FIXME: don't drop the tail of the access_path *)
-  | _ -> failwith "Not implemented"
+  | O.Ewith (e1, e2) ->
+    expr e1 >>= fun e1 ->
+    expr e2 >|= fun e2 ->
+    N.Ewith (e1, e2)
 
 and access_path ap = W.map_l ap_field ap
 
