@@ -152,6 +152,18 @@ module Bool = struct
     else raise (Invalid_argument "Types.Bool.tand")
 end
 
+module Record = struct
+  let any = T.rec_of_list true []
+
+  let of_list is_open fields =
+    T.rec_of_list
+      is_open
+      (CCList.map (fun (is_optional, key, value) ->
+           (is_optional, Cduce_lib.Ns.Label.mk_ascii key, value))
+          fields
+      )
+end
+
 module String = struct
   module StrSet = CCSet.Make(CCString)
 

@@ -106,6 +106,7 @@ let operator : O.operator -> N.operator = function
   | O.Onot-> N.Onot
   | O.Oand-> N.Oand
   | O.Oor-> N.Oor
+  | O.OrecordMember -> N.OrecordMember
 
 let rec expr_desc : O.expr_desc -> N.expr_desc W.t = function
   | O.Evar s -> W.return @@ N.Evar s

@@ -15,6 +15,7 @@ type operator =
   | Onot
   | Oand
   | Oor
+  | OrecordMember
 
 type expr = expr_desc with_loc
 

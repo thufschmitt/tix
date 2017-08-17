@@ -105,10 +105,13 @@ let infix_ops =
       P.return (fun e -> W.mk loc (f e)))
   in
   [
-    [ infix "+" (fun e1 e2 -> A.EopApp (A.Oplus, [e1; e2])) P.Assoc_left;
+    [
+      infix "==" (fun e1 e2 -> A.EopApp (A.Oeq, [e1; e2])) P.Assoc_left;
+      infix "+" (fun e1 e2 -> A.EopApp (A.Oplus, [e1; e2])) P.Assoc_left;
       infix "-" (fun e1 e2 -> A.EopApp (A.Ominus, [e1; e2])) P.Assoc_left;
       infix "&&" (fun e1 e2 -> A.EopApp (A.Oand, [e1; e2])) P.Assoc_left;
       infix "||" (fun e1 e2 -> A.EopApp (A.Oor, [e1; e2])) P.Assoc_left;
+      infix "?" (fun e1 e2 -> A.EopApp (A.OrecordMember, [e2; e1])) P.Assoc_left;
     ];
     [ prefix "-" (fun e -> A.EopApp (A.Oneg, [e]));
       prefix "!" (fun e -> A.EopApp (A.Onot, [e]));

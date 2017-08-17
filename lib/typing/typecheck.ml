@@ -197,6 +197,28 @@ end = struct
           W.pure @@ op t1 t2
         with Invalid_argument _ -> W.pure T.Bool.all
       end
+    | P.OrecordMember, [fname_expr; record] ->
+      expr env fname_expr >>= fun t1 ->
+      expr env record >>= fun t_record ->
+      check_subtype loc ~inferred:t1 ~expected:T.Builtins.string >>
+      check_subtype loc ~inferred:t_record ~expected:T.Record.any >>
+      begin match T.String.get t1 with
+        | Infinite -> W.pure @@ T.Bool.all
+        | Finite strings ->
+          let memberships = CCList.map
+              (fun s ->
+                 T.sub t_record
+                   (T.Record.of_list true [ (false, s, T.Builtins.any) ]))
+              strings
+          in
+          if CCList.for_all ((=) true) memberships
+          then
+            W.pure @@ T.Bool.true_type
+          else if CCList.for_all ((=) false) memberships then
+            W.pure @@ T.Bool.false_type
+          else W.pure @@ T.Bool.all
+      end
+    | P.OrecordMember, _
     | P.Oplus, _
     | P.Ominus, _
     | P.Ocons, _
@@ -462,6 +484,37 @@ end = struct
       else
         expr env e1 T.Bool.all >>
         expr env e2 T.Bool.all
+    | P.OrecordMember, [fname_expr; record] ->
+      Infer.expr env fname_expr >>= fun t1 ->
+      check_subtype loc ~inferred:t1 ~expected:T.Builtins.string >>
+      let bool_part = T.Builtins.cap expected T.Builtins.bool in
+      let is_true = T.sub bool_part T.Bool.true_type
+      and is_false = T.sub bool_part T.Bool.false_type
+      in
+      if is_true || is_false then
+        begin match T.String.get t1 with
+          | Infinite ->
+            typeError loc
+              (if is_true then
+                 "Can't prove that this field is a member of this record"
+               else
+                 "Can't prove that this field isn't a member of this record"
+              )
+          | Finite strings ->
+            let atomic_record f_name =
+              let singleton_record =
+                T.Record.of_list true [ (false, f_name, T.Builtins.any) ]
+              in
+              if is_true
+              then singleton_record
+              else T.Builtins.neg singleton_record
+            in
+            (W.map_l (fun s ->
+                 expr env record (atomic_record s))
+                strings) >> W.return ()
+        end
+      else expr env record T.Record.any
+    | P.OrecordMember, _
     | P.Onot, _
     | P.Oand, _
     | P.Oor, _
