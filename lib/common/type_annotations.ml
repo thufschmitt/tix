@@ -27,16 +27,19 @@ struct
     | Int of int
     | Bool of bool
     | String of string
+    | Path of string
 
   let pp fmt = function
     | Int i -> Format.pp_print_int fmt i
     | Bool b -> Format.pp_print_bool fmt b
     | String s -> Format.fprintf fmt "\"%s\"" s
+    | Path s -> CCFormat.string fmt s
 
   let show = function
     | Int i -> string_of_int i
     | Bool b -> string_of_bool b
     | String s -> "\"" ^ s ^ "\""
+    | Path s -> s
 end
 
 type _t =

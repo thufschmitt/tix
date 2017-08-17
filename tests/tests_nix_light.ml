@@ -75,7 +75,10 @@ let testsuite =
       ("test_pattern_record_default", "{ x ? 1 }: x",
        "({ x? }: let %%x = x; in let x = if (%%isUndef %%x) \
         then 1 else %%x; in x)");
-      "test_recursive_record", "rec { x = 1; y = x; }", "let x = 1; y = x; in { \"x\" = x; \"y\" = y; }"
+      ("test_recursive_record",
+       "rec { x = 1; y = x; }",
+       "let x = 1; y = x; in { \"x\" = x; \"y\" = y; }");
+      "test_path", "./foo", "./foo";
     ] @
   List.map (fun (name, input) ->
       name >:: test_parse_pp_str_fail input)

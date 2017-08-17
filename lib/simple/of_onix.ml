@@ -214,6 +214,7 @@ and constant = function
   | O.Cint i -> N.Cint i
   | O.Cbool b -> N.Cbool b
   | O.Cstring s -> N.Cstring s
+  | O.Cpath s -> N.Cpath s
 
 and record r =
   let { O.fields; recursive } = r in

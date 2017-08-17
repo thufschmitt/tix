@@ -86,6 +86,12 @@ let string = P.char '"' >>
   << space
   <?> "litteral string"
 
+let path =
+  (P.string "./" >>
+   P.many_chars (any [ P.alphanum; P.any_of "-/_." ]) << space |>> fun path ->
+   "./" ^ path)
+  <?> "Path"
+
 let infix_ops =
   let infix sym f assoc = P.Infix (
       (get_loc >>= fun loc ->
@@ -145,11 +151,16 @@ let typ_string =
   string |>> fun s ->
   T.(Singleton (Singleton.String s))
 
+let typ_path =
+  path |>> fun s ->
+  T.(Singleton (Singleton.Path s))
+
 let typ_ident i = i |> add_loc (
     (ident |>> fun t -> T.Var t)
     <|>
     (P.char '?' >> space >> P.return T.Gradual))
-and typ_singleton i = i |> add_loc @@ any [typ_int; typ_bool; typ_string ]
+and typ_singleton i = i |> add_loc
+  @@ any [typ_int; typ_bool; typ_string; typ_path ]
 
 let rec typ i = i |> (P.expression typ_op
                         (any [typ_atom; typ_list; typ_record])
@@ -243,6 +254,11 @@ let expr_string = add_loc (
     A.Econstant (A.Cstring s)
   )
 
+let expr_path = add_loc (
+    path |>> fun s ->
+    A.Econstant (A.Cpath s)
+  )
+
 let expr_ident = add_loc (
     ident |>> fun id ->
     A.Evar id
@@ -258,7 +274,8 @@ let pattern_ident = add_loc (
     A.Pvar (id, annot)
   )
 
-and expr_const = (any [expr_int; expr_bool; expr_string]) <?> "constant"
+and expr_const = (any [expr_int; expr_bool; expr_string; expr_path])
+                 <?> "constant"
 
 let rec expr i =
   i |> (

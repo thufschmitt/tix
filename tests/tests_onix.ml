@@ -87,4 +87,5 @@ let testsuite =
       ("test_multiple_let",
        "let x = 1; y = 2; in x",
        "let x = 1; y = 2; in x");
+      "test_path", "./foo.nix", "./foo";
     ]

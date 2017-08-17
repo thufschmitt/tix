@@ -45,6 +45,7 @@ and constant =
   | Cint of int
   | Cbool of bool
   | Cstring of string
+  | Cpath of string
   | Cundef (* Used for pattern-matching against records with optinal fields *)
 
 and lambda = pattern * expr

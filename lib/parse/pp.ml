@@ -18,6 +18,7 @@ let const fmt = function
   | P.Cbool b -> F.pp_print_bool fmt b
   | P.Cint i-> F.pp_print_int  fmt i
   | P.Cstring s -> F.fprintf fmt "\"%s\"" s
+  | P.Cpath s -> CCFormat.string fmt s
 
 let pp_op fmt = function
   | P.Ocons -> F.pp_print_string fmt "Cons"

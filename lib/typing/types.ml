@@ -181,6 +181,15 @@ module String = struct
     | `Finite l -> List_or_infinite.Finite (StrSet.to_list l)
 end
 
+module Path = struct
+  let path_ns = C.Ns.Uri.mk @@ C.Encodings.Utf8.mk "path"
+
+  let any = T.atom @@ C.Atoms.any_in_ns path_ns
+
+  let singleton s =
+    T.atom @@ C.Atoms.atom (C.Atoms.V.mk (path_ns, C.Encodings.Utf8.mk s))
+end
+
 (** Builtin types *)
 module Builtins : sig
   val true_type : t (* [true] is a keyword in OCaml *)
@@ -251,6 +260,8 @@ module Singleton = struct
     | false -> C.Builtin_defs.false_type
 
   let string = String.singleton
+
+  let path = Path.singleton
 end
 
 module Environment : sig

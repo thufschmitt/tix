@@ -16,6 +16,7 @@ let singleton =
   | S.Bool b -> W.pure @@ T.Singleton.bool b
   | S.Int  i -> W.pure @@ T.Singleton.int  i
   | S.String s -> W.pure @@ T.Singleton.string s
+  | S.Path s -> W.pure @@ T.Singleton.path s
 
 (* When typing recursive type-annotations, we need to keep an environment to
  * trace the local and yet undefined type variables.

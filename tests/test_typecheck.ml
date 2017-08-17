@@ -125,7 +125,8 @@ let testsuite =
       "infer_record_1", "{ x = 1; y = 2; }", "{ x = 1; y = 2; }";
       ("infer_recursive_record",
        "rec { x = 1; y = x; z /*: Int */ = x; }",
-       "{ x = 1; y = ?; z = Int; }")
+       "{ x = 1; y = ?; z = Int; }");
+      "infer_path", "./foo", "./foo";
     ] @
   (* ----- Negative tests ----- *)
   List.map (fun (name, expr) -> name >:: test_infer_expr_fail expr)
