@@ -610,6 +610,7 @@ end = struct
         (fun s -> W.append [Warning.make loc s] (W.pure default_value)) e
     in
     match e.WL.description with
+    | P.Econstant (P.Cpath f_name)
     | P.Econstant (P.Cstring f_name) ->
       begin try
           CCIO.with_in f_name (fun chan ->
@@ -622,7 +623,7 @@ end = struct
         with Sys_error _ ->
           typeError e.WL.location "Unable to read file %s" f_name
       end
-    | _ -> typeError e.WL.location "Not a litteral string"
+    | _ -> typeError e.WL.location "Not a litteral string or path"
 
   let negate_interval =
     let module B = T.Builtins in
