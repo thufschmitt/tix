@@ -78,13 +78,23 @@ let bool = any
            << space
            <?> "boolean"
 
-let string = P.char '"' >>
+let simple_string = P.char '"' >>
   P.many_chars_until
     P.any_char
     (P.satisfy (fun c -> c = '"')
      << P.prev_char_satisfies (fun c -> c <> '\\'))
   << space
-  <?> "litteral string"
+  <?> "simple string"
+
+let multiline_string = P.string "''" >>
+  P.many_chars_until
+    P.any_char
+    (P.char '\'' <<
+     P.followed_by (P.char '\'') "EOS") << P.skip_any_char
+  << space
+  <?> "multiline string"
+
+let string = any [simple_string; multiline_string]
 
 let path =
   (P.string "./" >>
