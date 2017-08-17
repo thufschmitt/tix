@@ -200,7 +200,7 @@ end = struct
           W.pure @@ op t1 t2
         with Invalid_argument _ -> W.pure T.Bool.all
       end
-    | P.OrecordMember, [fname_expr; record] ->
+    | P.OrecordMember, [record; fname_expr] ->
       expr env fname_expr >>= fun t1 ->
       expr env record >>= fun t_record ->
       check_subtype loc ~inferred:t1 ~expected:T.Builtins.string >>
@@ -487,7 +487,7 @@ end = struct
       else
         expr env e1 T.Bool.all >>
         expr env e2 T.Bool.all
-    | P.OrecordMember, [fname_expr; record] ->
+    | P.OrecordMember, [ record; fname_expr] ->
       Infer.expr env fname_expr >>= fun t1 ->
       check_subtype loc ~inferred:t1 ~expected:T.Builtins.string >>
       let bool_part = T.Builtins.cap expected T.Builtins.bool in

@@ -121,7 +121,6 @@ let infix_ops =
       infix "-" (fun e1 e2 -> A.EopApp (A.Ominus, [e1; e2])) P.Assoc_left;
       infix "&&" (fun e1 e2 -> A.EopApp (A.Oand, [e1; e2])) P.Assoc_left;
       infix "||" (fun e1 e2 -> A.EopApp (A.Oor, [e1; e2])) P.Assoc_left;
-      infix "?" (fun e1 e2 -> A.EopApp (A.OrecordMember, [e2; e1])) P.Assoc_left;
     ];
     [ prefix "-" (fun e -> A.EopApp (A.Oneg, [e]));
       prefix "!" (fun e -> A.EopApp (A.Onot, [e]));
@@ -299,7 +298,7 @@ let rec expr i =
   i |> (
     any [
       expr_pragma; expr_lambda; expr_let; expr_if; expr_infix;
-      expr_assert; expr_import; expr_apply
+      expr_assert; expr_import; expr_apply; expr_apply_or_member
     ]
   )
 
@@ -340,7 +339,21 @@ and expr_assert i =
         W.mk loc (A.Econstant (A.Cstring "assertion failed")))))
 
 and expr_infix i =
-  i |> (P.expression infix_ops expr_apply)
+  i |> (
+    P.expression infix_ops expr_apply_or_member)
+
+and expr_infix_member i =
+  i |> add_loc (
+    expr_apply >>= fun e ->
+    P.char '?' >> space >>
+    ap |>> fun ap ->
+    A.EtestMember (e, ap)
+  )
+
+and expr_apply_or_member i =
+  i |> (
+    P.attempt expr_infix_member
+    <|> expr_apply)
 
 and expr_if i =
   i |> (add_loc

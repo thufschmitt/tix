@@ -15,7 +15,6 @@ type operator =
   | Onot
   | Oand
   | Oor
-  | OrecordMember
 
 type expr = expr_desc with_loc
 
@@ -40,6 +39,7 @@ and expr_desc =
   | EtyAnnot of expr * Type_annotations.t
   | Epragma of Pragma.t * expr
   | Eimport of expr
+  | EtestMember of expr * access_path
 
 and access_path = ap_field list
 

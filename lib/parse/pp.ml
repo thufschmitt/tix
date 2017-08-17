@@ -29,7 +29,6 @@ let pp_op fmt = function
   | P.Onot   -> F.pp_print_string fmt "!"
   | P.Oand   -> F.pp_print_string fmt "&"
   | P.Oor    -> F.pp_print_string fmt "|"
-  | P.OrecordMember -> F.pp_print_string fmt "?"
 
 let rec pp_expr fmt = drop_loc %> function
     | P.Evar v ->
@@ -69,6 +68,10 @@ let rec pp_expr fmt = drop_loc %> function
         pp_expr eelse
     | P.Eaccess (e, ap, None) ->
       F.fprintf fmt "%a.%a"
+        pp_expr e
+        pp_ap ap
+    | P.EtestMember (e, ap) ->
+      F.fprintf fmt "%a ? %a"
         pp_expr e
         pp_ap ap
     | _ -> failwith "TODO"

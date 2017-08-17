@@ -106,7 +106,6 @@ let operator : O.operator -> N.operator = function
   | O.Onot-> N.Onot
   | O.Oand-> N.Oand
   | O.Oor-> N.Oor
-  | O.OrecordMember -> N.OrecordMember
 
 let rec expr_desc : O.expr_desc -> N.expr_desc W.t = function
   | O.Evar s -> W.return @@ N.Evar s
@@ -138,6 +137,17 @@ let rec expr_desc : O.expr_desc -> N.expr_desc W.t = function
     access_path ap >>= fun ap ->
     W.map_opt expr default >|= fun default ->
     N.EaccessPath (e, ap, default)
+  | O.EtestMember (e, ap) ->
+    expr e >>= fun e ->
+    (access_path ap
+     |> if List.length ap > 1 then
+       W.append
+         [Common.Warning.(make ~kind:Warning (WL.loc (CCList.hd ap))
+                            "The tail of this access_path has been dropped")]
+     else fun x -> x)
+    >|= fun ap ->
+    N.EopApp (N.OrecordMember, [e; List.hd ap])
+    (* FIXME: don't drop the tail of the access_path *)
   | _ -> failwith "Not implemented"
 
 and access_path ap = W.map_l ap_field ap
