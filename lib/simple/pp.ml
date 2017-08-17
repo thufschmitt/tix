@@ -18,6 +18,9 @@ let pp_op fmt = function
   | P.Oneg  -> F.pp_print_string fmt "-"
   | P.Oplus  -> F.pp_print_string fmt "+"
   | P.Ominus -> F.pp_print_string fmt "-"
+  | P.Onot   -> F.pp_print_string fmt "!"
+  | P.Oand   -> F.pp_print_string fmt "&"
+  | P.Oor    -> F.pp_print_string fmt "|"
 
 let const fmt = function
   | P.Cbool b -> F.pp_print_bool fmt b

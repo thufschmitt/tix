@@ -27,6 +27,8 @@ let show t =
   pp Format.str_formatter t;
   Format.flush_str_formatter ()
 
+let get_kind t = t.kind
+
 module List = struct
   type nonrec t = t list
 

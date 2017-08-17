@@ -13,6 +13,7 @@ type operator =
   | Oneg
   | Oplus
   | Ominus
+  | Onot | Oand | Oor
 
 type expr = expr_desc with_loc
 

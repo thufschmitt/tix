@@ -103,6 +103,9 @@ let operator : O.operator -> N.operator = function
   | O.Oneg  -> N.Oneg
   | O.Oplus -> N.Oplus
   | O.Ominus-> N.Ominus
+  | O.Onot-> N.Onot
+  | O.Oand-> N.Oand
+  | O.Oor-> N.Oor
 
 let rec expr_desc : O.expr_desc -> N.expr_desc W.t = function
   | O.Evar s -> W.return @@ N.Evar s

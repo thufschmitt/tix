@@ -179,11 +179,32 @@ end = struct
       check_subtype loc ~inferred:t1 ~expected:T.Builtins.int >>
       check_subtype loc ~inferred:t2 ~expected:T.Builtins.int >>
       W.pure @@ T.Builtins.int
+    | P.Onot, [e] ->
+      expr env e >>= fun t ->
+      check_subtype loc ~inferred:t ~expected:T.Builtins.bool >>
+      begin try
+          W.pure @@ T.Bool.tnot t
+        with Invalid_argument _ -> W.pure T.Bool.all
+      end
+    | P.Oor, [e1; e2]
+    | P.Oand, [e1; e2] ->
+      expr env e1 >>= fun t1 ->
+      expr env e2 >>= fun t2 ->
+      check_subtype loc ~inferred:t1 ~expected:T.Builtins.bool >>
+      check_subtype loc ~inferred:t2 ~expected:T.Builtins.bool >>
+      let op = if op = P.Oand then T.Bool.tand else T.Bool.tor in
+      begin try
+          W.pure @@ op t1 t2
+        with Invalid_argument _ -> W.pure T.Bool.all
+      end
     | P.Oplus, _
     | P.Ominus, _
     | P.Ocons, _
     | P.Oeq, _
     | P.Oneg, _
+    | P.Onot, _
+    | P.Oand, _
+    | P.Oor, _
       -> assert false (* This isn't supposed to happend *)
 
   and if_then_else env e0 e1 e2 =
@@ -395,6 +416,7 @@ end = struct
         Infer.expr env e1 >>
         Infer.expr env e2 >> W.pure ()
     | P.Oneg, [e] ->
+      (* FIXME: Isn't this check absurd? *)
       check_subtype
         loc
         ~inferred:expected
@@ -411,6 +433,38 @@ end = struct
         ~expected:T.Builtins.int >>
       W.pure @@
       ignore @@ List.map (fun e -> expr env e T.Builtins.int) [e1; e2]
+    | P.Onot, [e] ->
+      let bool_part = T.Builtins.cap expected T.Builtins.bool in
+      expr env e (T.Bool.tnot bool_part)
+    | P.Oor, [e1; e2]
+    | P.Oand, [e1; e2] ->
+      (* The [and] and [or] operators work the same way, but with the roles of
+         [true] and [false] inverted *)
+      let (top, bottom) = if op = P.Oand
+        then T.Builtins.(true_type, false_type)
+        else T.Builtins.(false_type, true_type)
+      in
+      let bool_part = T.Builtins.cap expected T.Builtins.bool in
+      if T.sub bool_part top then
+        expr env e1 top >>
+        expr env e2 top
+      else if T.sub bool_part bottom then
+        (* We first try to check that the first operant has type [bottom].
+           If it fails, we try to check that the second has type [bottom] and
+           the first has type [Bool] *)
+        let first_try = expr env e1 bottom in
+        let first_log = W.log first_try in
+        if CCList.exists (fun w -> Warning.(get_kind w = Error)) first_log then
+          expr env e1 T.Bool.all >>
+          expr env e2 bottom
+        else
+          expr env e2 T.Bool.all
+      else
+        expr env e1 T.Bool.all >>
+        expr env e2 T.Bool.all
+    | P.Onot, _
+    | P.Oand, _
+    | P.Oor, _
     | P.Oplus, _
     | P.Ominus, _
     | P.Oneg, _

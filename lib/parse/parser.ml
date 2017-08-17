@@ -106,8 +106,13 @@ let infix_ops =
   in
   [
     [ infix "+" (fun e1 e2 -> A.EopApp (A.Oplus, [e1; e2])) P.Assoc_left;
-      infix "-" (fun e1 e2 -> A.EopApp (A.Ominus, [e1; e2])) P.Assoc_left; ];
-    [ prefix "-" (fun e -> A.EopApp (A.Oneg, [e])); ];
+      infix "-" (fun e1 e2 -> A.EopApp (A.Ominus, [e1; e2])) P.Assoc_left;
+      infix "&&" (fun e1 e2 -> A.EopApp (A.Oand, [e1; e2])) P.Assoc_left;
+      infix "||" (fun e1 e2 -> A.EopApp (A.Oor, [e1; e2])) P.Assoc_left;
+    ];
+    [ prefix "-" (fun e -> A.EopApp (A.Oneg, [e]));
+      prefix "!" (fun e -> A.EopApp (A.Onot, [e]));
+    ];
   ]
 
 (** {2 Begining of the parser } *)

@@ -116,6 +116,42 @@ module Node = struct
   type t = T.Node.t
 end
 
+module Bool = struct
+  let all = C.Builtin_defs.bool
+  let true_type = C.Builtin_defs.true_type
+  let false_type = C.Builtin_defs.false_type
+
+  (** [tnot t] returns the negation of the boolean type [t].
+      Raise [Invalid_argument] if [t] is not a boolean type (a subtype of
+      [Bool]) *)
+  let tnot t =
+    if sub t true_type then
+      false_type
+    else if sub t false_type then
+      true_type
+    else raise (Invalid_argument "Types.Bool.tnot")
+
+  (** See [lnot]
+     Raise [Invalid_argument] if one of both arguments is not a subtype of
+     [Bool]. *)
+  let tand t1 t2 =
+    if sub t1 all && sub t2 all then
+      if sub t1 true_type && sub t2 true_type then
+          true_type
+      else false_type
+    else raise (Invalid_argument "Types.Bool.tand")
+
+  (** See [lnot]
+     Raise [Invalid_argument] if one of both arguments is not a subtype of
+     [Bool]. *)
+  let tor t1 t2 =
+    if sub t1 all && sub t2 all then
+      if sub t1 true_type || sub t2 true_type then
+          true_type
+      else false_type
+    else raise (Invalid_argument "Types.Bool.tand")
+end
+
 module String = struct
   module StrSet = CCSet.Make(CCString)
 
