@@ -162,6 +162,11 @@ module Record = struct
            (is_optional, Cduce_lib.Ns.Label.mk_ascii key, value))
           fields
       )
+
+  let get_field f_name =
+    T.Record.pi (C.Ident.Label.mk_ascii f_name)
+
+  let absent = T.Record.absent
 end
 
 module String = struct

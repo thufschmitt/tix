@@ -127,6 +127,9 @@ let testsuite =
        "rec { x = 1; y = x; z /*: Int */ = x; }",
        "{ x = 1; y = ?; z = Int; }");
       "infer_path", "./foo", "./foo";
+      "infer_record_access1", "{ x = 1; }.x", "1";
+      "infer_record_access2", "{ x.y = 1; }.x.y", "1";
+      "infer_record_access_dynamic", "{ x = 1; }.${\"x\"}", "1";
     ] @
   (* ----- Negative tests ----- *)
   List.map (fun (name, expr) -> name >:: test_infer_expr_fail expr)
@@ -144,6 +147,8 @@ let testsuite =
         in if f x then __add x 1 else __not x");
       "infer_fail_plus_not_int", "1 + true";
       "infer_fail_false_string", "(\"false\" /*: false*/)";
+      "infer_fail_record_access", "{ x = 1; }.y";
+      "infer_fail_record_access_dynamic", "{ x = 1; }.${(\"x\" /*: String */)}";
     ] @
   (* ------ positive check ----- *)
   List.map (fun (name, expr, result) -> name >:: test_check expr result)

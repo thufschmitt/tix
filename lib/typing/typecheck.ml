@@ -147,10 +147,18 @@ end = struct
     | P.Eimport e -> Common.import expr default_typ env e
     | P.Erecord fields ->
       record env fields
+    | P.EaccessPath (e, ap, default) ->
+      expr env e >>= fun te ->
+      W.map_l (expr env) ap >>= fun tap ->
+      W.map_opt (expr env) default >>= fun default ->
+      let acces_path_singletons = List.map T.String.get tap in
+      let acces_path_locations = List.map WL.loc ap in
+      let access_path_wl =
+        CCList.combine acces_path_singletons acces_path_locations
+      in
+      record_access (CCOpt.is_some default) te access_path_wl
     | P.Ewith _ ->
       typeError loc "With constructs are not allowed"
-    | P.EaccessPath _ ->
-      typeError loc "Access paths are not implemented yet"
 
   and operator env loc op args = match op, args with
     | P.Ocons, [e1; e2] ->
@@ -348,6 +356,42 @@ end = struct
         distinct_from located_typ tl >>
         aux tl
     in W.bind aux
+
+  and record_access is_guarded record_type
+    = function
+    | [] -> W.return record_type
+    | apf::ap ->
+      let loc = snd apf in
+      let has_to_be_record =
+        if is_guarded then
+          (* If the access is guarded, we don't impose the accessed record to
+           * be a record *)
+          W.return ()
+        else
+          check_subtype loc ~inferred:record_type ~expected:T.Record.any
+      in
+      has_to_be_record >>
+      begin match fst apf with
+        | Finite strings ->
+          let possible_accessed =
+            List.map (fun s -> T.Record.get_field s record_type) strings
+          in
+          let process_type t =
+            if is_guarded then
+              W.return @@ T.Builtins.diff t T.Record.absent
+            else
+            if Cduce_lib.Types.Record.has_absent t then
+              typeError loc "This field may be empty"
+            else
+              W.return t
+          in
+          let sub_types = W.map_l process_type possible_accessed in
+          sub_types >>=
+          W.map_l (fun t -> record_access is_guarded t ap) >|= fun types ->
+          CCList.fold_left T.Builtins.cup T.Builtins.empty types
+        | Infinite ->
+            typeError loc "Cannot determine the value of this field"
+      end
 end
 
 and Check : sig
