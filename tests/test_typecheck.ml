@@ -174,6 +174,7 @@ let testsuite =
       "check_unary_minus", "- (-1)", "1";
       "check_gradual", "1", "?";
       "check_gradual_lambda", "x: x", "? -> ?";
+      "check_annotated", "(1 /*: 1 */)", "Int";
     ] @
   List.map (fun (name, expr, result) -> name >:: test_check_fail expr result)
     [
@@ -186,4 +187,6 @@ let testsuite =
       "check_fail_cons", "[1]", "[ Bool ]";
       "check_fail_cons_length", "[1]", "[ 1 1 ]";
       "check_fail_unary_minus", "-1", "1";
+      "check_fail_annot_too_large", "(1 /*: Int */)", "1";
+      "check_fail_annot_too_restrictive", "(1 /*: 2 */)", "Int";
     ]

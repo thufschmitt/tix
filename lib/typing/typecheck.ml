@@ -452,10 +452,14 @@ end = struct
       expr env e expected
     | P.Eimport e ->
       Common.import (fun env e -> expr env e expected) () env e
+    | P.EtyAnnot (e, annot) ->
+      Annotations.to_type env.Environment.types annot >>= fun ty ->
+      check_subtype loc ~inferred:ty ~expected >>
+      expr env e ty
     | P.EaccessPath _
-    | P.Erecord _
-    | P.Ewith (_,_)
-    | P.EtyAnnot (_,_) -> assert false
+    | P.Erecord _ -> assert false
+    | P.Ewith (_,_) ->
+      typeError loc "With constructs are not allowed"
 
   and operator env loc op args expected =
     match op, args with
