@@ -16,6 +16,49 @@ module W = Common.Writer.Make(Common.Warning.List)
 open W.Infix
 let (>>) e1 e2 = e1 >>= (fun _ -> e2)
 
+module Flagged =
+struct
+  (** The boolean flag is false by default, and may be marked true *)
+  type 'a t = 'a * bool
+
+  let pure x = (x, false)
+
+  let flagged x = (x, true)
+end
+module FlaggedWriter =
+struct
+  type 'a t = 'a Flagged.t W.t
+
+  let pure x = W.pure @@ Flagged.pure x
+  let bind (f : 'a -> 'b t) : 'a t -> 'b t =
+    W.bind (fun (x, flag) ->
+        W.map
+          (fun (x', flag') -> (x', flag || flag'))
+          (f x))
+  let map f = bind (fun x -> pure @@ f x)
+
+  (* let lift x = W.map Flagged.pure x *)
+  let lift_flagged x = W.map Flagged.flagged x
+
+  let map_l f l =
+    let rec lift_list_option = function
+      | [] -> ([], false)
+      | hd::tl ->
+        let (hd_elt, hd_flg) = hd
+        and (tl_elt, tl_flg) = lift_list_option tl in
+        (hd_elt::tl_elt, hd_flg || tl_flg)
+    in
+    W.map_l f l >|=
+    lift_list_option
+
+  module Infix =
+  struct
+    let (>>=) x f = bind f x
+    let (>|=) x f = map  f x
+    let (>>) e1 e2 = e1 >>= fun _ -> e2
+  end
+end
+
 let default_typ = T.Builtins.grad
 let log_only l =
   W.append l @@ W.pure default_typ
@@ -157,7 +200,21 @@ end = struct
       let access_path_wl =
         CCList.combine acces_path_singletons acces_path_locations
       in
-      record_access (CCOpt.is_some default) te access_path_wl
+      let unguarded_typing =
+        record_access (CCOpt.is_some default) te access_path_wl
+      in
+      let final_type =
+        begin match (default, W.value unguarded_typing) with
+          | None, (_, true) ->
+            typeError loc "Couldn't select this field"
+          | _, (t, false) ->
+            W.return t
+          | Some tdef, (t, true) ->
+            W.return @@ T.Builtins.cup t tdef
+        end
+      in W.append
+        (W.log unguarded_typing)
+        final_type
     | P.Ewith _ ->
       typeError loc "With constructs are not allowed"
 
@@ -359,17 +416,28 @@ end = struct
     in W.bind aux
 
   and record_access is_guarded record_type
-    = function
-    | [] -> W.return record_type
+      : (string List_or_infinite.t * L.t) list -> T.t FlaggedWriter.t
+    = let module M = FlaggedWriter in
+    let open M.Infix in
+    let typeErrorIfUnguarded loc fmt_str =
+      Format.ksprintf
+        (fun s ->
+           if is_guarded then
+             M.lift_flagged (W.pure default_typ)
+           else
+             M.lift_flagged @@ typeError loc "%s" s)
+        fmt_str
+    in
+    function
+    | [] -> M.pure record_type
     | apf::ap ->
       let loc = snd apf in
       let has_to_be_record =
-        if is_guarded then
-          (* If the access is guarded, we don't impose the accessed record to
-           * be a record *)
-          W.return ()
+        if T.sub record_type T.Record.any then
+          M.pure ()
         else
-          check_subtype loc ~inferred:record_type ~expected:T.Record.any
+          typeErrorIfUnguarded loc "This should be a record" >>
+          M.pure ()
       in
       has_to_be_record >>
       begin match fst apf with
@@ -378,20 +446,24 @@ end = struct
             List.map (fun s -> T.Record.get_field s record_type) strings
           in
           let process_type t =
-            if is_guarded then
-              W.return @@ T.Builtins.diff t T.Record.absent
+            if is_guarded then begin
+              if Cduce_lib.Types.Record.has_absent t then
+                M.lift_flagged (W.return @@ T.Builtins.diff t T.Record.absent)
+              else
+                M.pure @@ T.Builtins.diff t T.Record.absent
+            end
             else
             if Cduce_lib.Types.Record.has_absent t then
-              typeError loc "This field may be empty"
+              typeErrorIfUnguarded loc "This field may be empty"
             else
-              W.return t
+              M.pure t
           in
-          let sub_types = W.map_l process_type possible_accessed in
+          let sub_types = M.map_l process_type possible_accessed in
           sub_types >>=
-          W.map_l (fun t -> record_access is_guarded t ap) >|= fun types ->
+          M.map_l (fun t -> record_access is_guarded t ap) >|= fun types ->
           CCList.fold_left T.Builtins.cup T.Builtins.empty types
         | Infinite ->
-            typeError loc "Cannot determine the value of this field"
+            typeErrorIfUnguarded loc "Cannot determine the value of this field"
       end
 end
 

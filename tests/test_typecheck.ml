@@ -130,6 +130,12 @@ let testsuite =
       "infer_record_access1", "{ x = 1; }.x", "1";
       "infer_record_access2", "{ x.y = 1; }.x.y", "1";
       "infer_record_access_dynamic", "{ x = 1; }.${\"x\"}", "1";
+      "infer_record_access_guarded", "{ x = 1; }.y or 2", "2";
+      ("infer_record_access_guarded_optional",
+       "({ x = 1; } /*: { x =? 1; } */).x or 2",
+       "1|2");
+      "infer_record_access_guarded_useless", "{ x = 1; }.x or 2", "1";
+      "infer_record_access_guarded_norecord", "1.x or 2", "2";
     ] @
   (* ----- Negative tests ----- *)
   List.map (fun (name, expr) -> name >:: test_infer_expr_fail expr)
