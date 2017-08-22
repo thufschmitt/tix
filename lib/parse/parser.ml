@@ -26,6 +26,7 @@ let keywords = StrHash.of_list [
     "assert";
     "rec";
     "with";
+    "or";
   ]
 
 let get_loc =
@@ -503,13 +504,16 @@ and expr_select i =
         add_loc (
           expr_atom >>= fun e ->
           P.char '.' >> space >>
-          ap |>> fun a ->
-          A.Eaccess (e, a, None)
+          ap >>= fun a ->
+          P.option (P.attempt expr_select_guard) |>> fun guard ->
+          A.Eaccess (e, a, guard)
         )
         <|>
         expr_atom)
 
 and ap i = i |> P.sep_by1 ap_field (P.char '.' >> space)
+
+and expr_select_guard i = i |> ( keyword "or" >> expr)
 
 and ap_pattern i =
   i |> (

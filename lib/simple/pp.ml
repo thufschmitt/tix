@@ -55,6 +55,9 @@ let rec pp_expr fmt = drop_loc %> function
       F.fprintf fmt "@[{@;%a}@]"
         pp_fields r
     | P.EaccessPath (e, ap, None) -> pp_ap fmt e ap
+    | P.EaccessPath (e, ap, Some guard) ->
+      pp_ap fmt e ap;
+      F.fprintf fmt " or %a" pp_expr guard
     | P.Elet (bindings, e) ->
       F.fprintf fmt "@[let %ain@;%a@]"
         pp_bindings bindings

@@ -66,10 +66,11 @@ let rec pp_expr fmt = drop_loc %> function
         pp_expr eif
         pp_expr ethen
         pp_expr eelse
-    | P.Eaccess (e, ap, None) ->
-      F.fprintf fmt "%a.%a"
+    | P.Eaccess (e, ap, default) ->
+      F.fprintf fmt "%a.%a%a"
         pp_expr e
         pp_ap ap
+        pp_access_guard default
     | P.EtestMember (e, ap) ->
       F.fprintf fmt "%a ? %a"
         pp_expr e
@@ -167,3 +168,7 @@ and pp_bindings fmt =
     fmt
 
 and pp_binding fmt = pp_record_field fmt
+
+and pp_access_guard fmt = function
+  | Some guard -> CCFormat.fprintf fmt " or %a" pp_expr guard
+  | None -> CCFormat.silent fmt ()
