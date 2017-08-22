@@ -166,6 +166,11 @@ module Record = struct
   let get_field f_name =
     T.Record.pi (C.Ident.Label.mk_ascii f_name)
 
+  let labels r : string list =
+    T.Record.all_labels r
+    |> C.Ident.LabelSet.get
+    |> List.map C.Ident.Label.get_ascii
+
   let absent = T.Record.absent
 end
 

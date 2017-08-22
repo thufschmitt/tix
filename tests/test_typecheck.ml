@@ -175,6 +175,9 @@ let testsuite =
       "check_gradual", "1", "?";
       "check_gradual_lambda", "x: x", "? -> ?";
       "check_annotated", "(1 /*: 1 */)", "Int";
+      "check_record1", "{ x = 1; }", "{ x = 1 }";
+      "check_record2", "{ x = 1; y = 2; }", "{ x = 1; y = 2 }";
+      "check_record3", "{ x = 1; y = 2; }", "{ x = 1; ... }";
     ] @
   List.map (fun (name, expr, result) -> name >:: test_check_fail expr result)
     [
@@ -189,4 +192,8 @@ let testsuite =
       "check_fail_unary_minus", "-1", "1";
       "check_fail_annot_too_large", "(1 /*: Int */)", "1";
       "check_fail_annot_too_restrictive", "(1 /*: 2 */)", "Int";
+      "check_fail_record_bad_label", "{ x = 1; }", "{ y = 1 }";
+      "check_fail_record_bad_field_value", "{ x = 1; }", "{ x = 2; }";
+      "check_fail_record_too_many_fields", "{ x = 1; }", "{}";
+      "check_fail_record_too_fiew_fields", "{ }", "{ x = 1 }";
     ]

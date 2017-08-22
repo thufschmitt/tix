@@ -1,3 +1,4 @@
+module C = Common
 module P = Simple.Ast
 module E = Environment
 module L = Common.Location
@@ -398,7 +399,7 @@ and Check : sig
   val expr : E.t -> P.expr -> Types.t -> unit W.t
 end = struct
 
-  let typeError loc e = Format.ksprintf
+  let typeError loc e = Format.kasprintf
       (fun s -> W.append [Warning.make loc s] (W.pure ())) e
 
 
@@ -456,8 +457,9 @@ end = struct
       Annotations.to_type env.Environment.types annot >>= fun ty ->
       check_subtype loc ~inferred:ty ~expected >>
       expr env e ty
-    | P.EaccessPath _
-    | P.Erecord _ -> assert false
+    | P.Erecord fields ->
+      record env fields loc expected
+    | P.EaccessPath _ -> assert false
     | P.Ewith (_,_) ->
       typeError loc "With constructs are not allowed"
 
@@ -607,6 +609,57 @@ end = struct
         | None -> default ()
       end
     | _ -> default ()
+
+  and record env fields loc expected =
+    let to_assoc = List.map
+        (fun (x1, x2, x3) -> (x1, (x2, x3)))
+    in
+    let assoc_fields = to_assoc fields in
+    let (labels, annotated_values) = List.split assoc_fields in
+    let annotated_values = Array.of_list annotated_values in
+    let expr_keeping_loc env e  =
+      Infer.expr env e  >|= fun t -> (t, WL.loc e)
+    in
+    W.map_l (fun e -> (expr_keeping_loc env e)) labels >>= fun labels_ty ->
+    let to_singleton (x, loc) = match T.String.get x with
+      | Finite [s] -> W.return (s, loc)
+      | Finite _ | Infinite ->
+        typeError loc "Can only check records with static labels" (* TODO *) >>
+        W.return ("", loc)
+    in
+    W.map_l to_singleton labels_ty >>= fun labels ->
+    let labelMap_wl = CCList.fold_left
+        (fun map_wl (lbl, loc) ->
+           let map = W.value map_wl in
+           match C.StrMap.add_or lbl loc map with
+           | Ok map -> W.return map
+           | Error (_, _, loc2) ->
+             typeError loc
+               "This label and the one defined at %a are the same" L.pp loc2 >>
+             W.return map)
+        (W.return C.StrMap.empty)
+        labels
+    in
+    labelMap_wl >>= fun labelMap ->
+    W.iter_l (fun lbl ->
+        if C.StrMap.mem lbl labelMap then
+          W.return ()
+        else
+          typeError loc "Missing field %s" lbl)
+      (T.Record.labels expected) >>
+    let result_list = CCList.mapi (fun idx (label, loc) ->
+        let (annot, e) = annotated_values.(idx) in
+        let expected_field_type = T.Record.get_field label expected in
+        let real_expr = match annot with
+          | None   -> e
+          | Some a -> WL.mk loc (P.EtyAnnot (e, a))
+        in
+        expr env real_expr expected_field_type
+      )
+        labels
+    in W.map_l (CCFun.id) result_list >>
+    W.return ()
+
 end
 
 and Common : sig
