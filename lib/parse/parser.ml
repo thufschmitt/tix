@@ -124,16 +124,16 @@ let infix_ops =
   in
   [
     [
-      infix "&&" (fun e1 e2 -> A.Ebinop (A.Oand, e1, e2)) P.Assoc_left;
-      infix "||" (fun e1 e2 -> A.Ebinop (A.Oor, e1, e2)) P.Assoc_left;
-      infix "->" (fun e1 e2 -> A.Ebinop (A.Oimplies, e1, e2)) P.Assoc_left;
-    ];
-    [
       infix "==" (fun e1 e2 -> A.Ebinop (A.Oeq, e1, e2)) P.Assoc_left;
       infix "!=" (fun e1 e2 -> A.Ebinop (A.OnonEq, e1, e2)) P.Assoc_left;
       infix "+" (fun e1 e2 -> A.Ebinop (A.Oplus, e1, e2)) P.Assoc_left;
       infix "-" (fun e1 e2 -> A.Ebinop (A.Ominus, e1, e2)) P.Assoc_left;
       infix "//" (fun e1 e2 -> A.Ebinop (A.Omerge, e1, e2)) P.Assoc_left;
+    ];
+    [
+      infix "&&" (fun e1 e2 -> A.Ebinop (A.Oand, e1, e2)) P.Assoc_left;
+      infix "||" (fun e1 e2 -> A.Ebinop (A.Oor, e1, e2)) P.Assoc_left;
+      infix "->" (fun e1 e2 -> A.Ebinop (A.Oimplies, e1, e2)) P.Assoc_left;
     ];
     [ prefix "-" (fun e -> A.Emonop (A.Oneg, e));
       prefix "!" (fun e -> A.Emonop (A.Onot, e));
