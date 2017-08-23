@@ -97,18 +97,20 @@ let rec flatten (fields : ((O.access_path * A.t option) * O.expr) WL.t list) :
     )
     partitionned_by_first_element
 
-let operator : O.operator -> N.operator = function
+let binop : O.binop -> N.binop = function
   | O.Ocons -> N.Ocons
   | O.Oeq   -> N.Oeq
-  | O.Oneg  -> N.Oneg
   | O.Oplus -> N.Oplus
   | O.Ominus-> N.Ominus
-  | O.Onot-> N.Onot
   | O.Oand-> N.Oand
   | O.Oor-> N.Oor
   | O.Omerge -> N.Omerge
   | O.OnonEq
   | O.Oimplies -> assert false (* treated separately *)
+
+let monop : O.monop -> N.monop = function
+  | O.Onot-> N.Onot
+  | O.Oneg  -> N.Oneg
 
 let rec expr_desc : O.expr_desc -> N.expr_desc W.t = function
   | O.Evar s -> W.return @@ N.Evar s
@@ -117,20 +119,24 @@ let rec expr_desc : O.expr_desc -> N.expr_desc W.t = function
   | O.EfunApp (e1, e2) ->
     funApp e1 e2
   | O.EtyAnnot (e, t)  -> expr e >|= fun e -> N.EtyAnnot (e, t)
-  | O.EopApp (O.OnonEq, [e1; e2]) ->
+  | O.Ebinop (O.OnonEq, e1, e2) ->
     expr e1 >>= fun e1 ->
     expr e2 >|= fun e2 ->
-    N.EopApp (N.Onot, [WL.mk
+    N.Emonop (N.Onot, WL.mk
                          (WL.loc e1)
-                         (N.EopApp (N.Oeq, [e1; e2]))])
-  | O.EopApp (O.Oimplies, [e1; e2]) ->
+                         (N.Ebinop (N.Oeq, e1, e2)))
+  | O.Ebinop (O.Oimplies, e1, e2) ->
     let e1_loc = WL.loc e1 in
     expr e1 >>= fun e1 ->
     expr e2 >|= fun e2 ->
-    N.EopApp (N.Oor, [e2; WL.mk e1_loc (N.EopApp (N.Onot, [e1]))])
-  | O.EopApp (o, args) ->
-    W.map_l expr args >|= fun args ->
-    N.EopApp (operator o, args)
+    N.Ebinop (N.Oor, e2, WL.mk e1_loc (N.Emonop (N.Onot, e1)))
+  | O.Ebinop (o, e1, e2) ->
+    expr e1 >>= fun e1 ->
+    expr e2 >|= fun e2 ->
+    N.Ebinop (binop o, e1, e2)
+  | O.Emonop (o, e) ->
+    expr e >|= fun e ->
+    N.Emonop (monop o, e)
   | O.Elet (binds, e) ->
     bindings binds >>= fun binds ->
     expr e >|= fun e ->
@@ -157,7 +163,7 @@ let rec expr_desc : O.expr_desc -> N.expr_desc W.t = function
                             "The tail of this access_path has been dropped")]
      else fun x -> x)
     >|= fun ap ->
-    N.EopApp (N.OrecordMember, [e; List.hd ap])
+    N.Ebinop (N.OrecordMember, e, List.hd ap)
     (* FIXME: don't drop the tail of the access_path *)
   | O.Ewith (e1, e2) ->
     expr e1 >>= fun e1 ->

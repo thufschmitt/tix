@@ -179,8 +179,10 @@ end = struct
     | P.Elet (binds, e) ->
       Common.let_binding expr env binds e
       |> W.join
-    | P.EopApp (op, args) ->
-      operator env loc op args
+    | P.Ebinop (op, e1, e2) ->
+      binop env loc op e1 e2
+    | P.Emonop (op, e) ->
+      monop env loc  op e
     | P.Eite (e0, e1, e2) ->
       if_then_else env e0 e1 e2
     | P.EtyAnnot (sub_e, annot) ->
@@ -214,8 +216,8 @@ end = struct
     | P.Ewith _ ->
       typeError loc "With constructs are not allowed"
 
-  and operator env loc op args = match op, args with
-    | P.Ocons, [e1; e2] ->
+  and binop env loc op e1 e2 = match op with
+    | P.Ocons ->
       expr env e1 >>= fun t1 ->
       expr env e2 >>= fun t2 ->
       check_subtype
@@ -223,36 +225,20 @@ end = struct
         ~inferred:t2
         ~expected:Types.(Builtins.(cup (cons (node any) (node any)) nil)) >>
       W.pure Types.Builtins.(cons (Types.node t1) (Types.node t2))
-    | P.Oeq, [e1; e2] ->
+    | P.Oeq ->
       expr env e1 >>
       expr env e2 >>
       W.pure Types.Builtins.bool
-    | P.Oneg, [e] ->
-      expr env e >>= fun t ->
-      check_subtype
-        loc
-        ~inferred:t
-        ~expected:Types.Builtins.int >>
-      let ivl = Cduce_lib.Types.Int.get t in
-      let negated_ivl = Common.negate_interval ivl in
-      W.pure @@ negated_ivl
-    | P.Oplus, [e1; e2]
-    | P.Ominus, [e1; e2]
+    | P.Oplus
+    | P.Ominus
       ->
       expr env e1 >>= fun t1 ->
       expr env e2 >>= fun t2 ->
       check_subtype loc ~inferred:t1 ~expected:T.Builtins.int >>
       check_subtype loc ~inferred:t2 ~expected:T.Builtins.int >>
       W.pure @@ T.Builtins.int
-    | P.Onot, [e] ->
-      expr env e >>= fun t ->
-      check_subtype loc ~inferred:t ~expected:T.Builtins.bool >>
-      begin try
-          W.pure @@ T.Bool.tnot t
-        with Invalid_argument _ -> W.pure T.Bool.all
-      end
-    | P.Oor, [e1; e2]
-    | P.Oand, [e1; e2] ->
+    | P.Oor
+    | P.Oand ->
       expr env e1 >>= fun t1 ->
       expr env e2 >>= fun t2 ->
       check_subtype loc ~inferred:t1 ~expected:T.Builtins.bool >>
@@ -262,7 +248,8 @@ end = struct
           W.pure @@ op t1 t2
         with Invalid_argument _ -> W.pure T.Bool.all
       end
-    | P.OrecordMember, [record; fname_expr] ->
+    | P.OrecordMember ->
+      let record = e1 and fname_expr = e2 in
       expr env fname_expr >>= fun t1 ->
       expr env record >>= fun t_record ->
       check_subtype loc ~inferred:t1 ~expected:T.Builtins.string >>
@@ -283,23 +270,30 @@ end = struct
             W.pure @@ T.Bool.false_type
           else W.pure @@ T.Bool.all
       end
-    | P.Omerge, [e1; e2] ->
+    | P.Omerge ->
       expr env e1 >>= fun t1 ->
       expr env e2 >>= fun t2 ->
       check_subtype loc ~inferred:t1 ~expected:T.Record.any >>
       check_subtype loc ~inferred:t2 ~expected:T.Record.any >>
       W.pure @@ T.Record.merge t1 t2
-    | P.Omerge, _
-    | P.OrecordMember, _
-    | P.Oplus, _
-    | P.Ominus, _
-    | P.Ocons, _
-    | P.Oeq, _
-    | P.Oneg, _
-    | P.Onot, _
-    | P.Oand, _
-    | P.Oor, _
-      -> assert false (* This isn't supposed to happen *)
+
+  and monop env loc op e = match op with
+    | P.Oneg ->
+      expr env e >>= fun t ->
+      check_subtype
+        loc
+        ~inferred:t
+        ~expected:Types.Builtins.int >>
+      let ivl = Cduce_lib.Types.Int.get t in
+      let negated_ivl = Common.negate_interval ivl in
+      W.pure @@ negated_ivl
+    | P.Onot ->
+      expr env e >>= fun t ->
+      check_subtype loc ~inferred:t ~expected:T.Builtins.bool >>
+      begin try
+          W.pure @@ T.Bool.tnot t
+        with Invalid_argument _ -> W.pure T.Bool.all
+      end
 
   and if_then_else env e0 e1 e2 =
     (* [type_with_exfalso var typ e] types [e] using current env + the
@@ -470,8 +464,10 @@ end = struct
     | P.EfunApp (e1, e2) ->
       Infer.expr env e2 >>= fun t1 ->
       expr env e1 Types.(Builtins.arrow (node t1) (node expected))
-    | P.EopApp (op, args) ->
-      operator env (L.With_loc.loc e) op args expected
+    | P.Ebinop (op, e1, e2) ->
+      binop env (L.With_loc.loc e) op e1 e2 expected
+    | P.Emonop (op, e) ->
+      monop env (L.With_loc.loc e) op e expected
     | P.Epragma (pragma, e) ->
       let env = Common.pragma env pragma in
       expr env e expected
@@ -503,9 +499,9 @@ end = struct
     | P.Ewith (_,_) ->
       typeError loc "With constructs are not allowed"
 
-  and operator env loc op args expected =
-    match op, args with
-    | P.Ocons, [e1; e2] ->
+  and binop env loc op e1 e2 expected =
+    match op with
+    | P.Ocons ->
       let products = Cduce_lib.Types.Product.get expected in
       if
         CCList.for_all
@@ -518,7 +514,7 @@ end = struct
       then
         typeError loc "This expression should have type %s" @@ T.show expected
       else W.pure ()
-    | P.Oeq, [e1; e2] ->
+    | P.Oeq ->
       check_subtype
         loc
         ~inferred:expected
@@ -530,29 +526,16 @@ end = struct
       else
         Infer.expr env e1 >>
         Infer.expr env e2 >> W.pure ()
-    | P.Oneg, [e] ->
-      (* FIXME: Isn't this check absurd? *)
-      check_subtype
-        loc
-        ~inferred:expected
-        ~expected:Types.Builtins.int >>
-      (* We just check that [e] has type [-expected] *)
-      let ivl = Cduce_lib.Types.Int.get expected in
-      let negated_ivl = Common.negate_interval ivl in
-      expr env e negated_ivl
-    | P.Oplus, [e1; e2]
-    | P.Ominus, [e1; e2] ->
+    | P.Oplus
+    | P.Ominus ->
       check_subtype
         loc
         ~inferred:expected
         ~expected:T.Builtins.int >>
       W.pure @@
       ignore @@ List.map (fun e -> expr env e T.Builtins.int) [e1; e2]
-    | P.Onot, [e] ->
-      let bool_part = T.Builtins.cap expected T.Builtins.bool in
-      expr env e (T.Bool.tnot bool_part)
-    | P.Oor, [e1; e2]
-    | P.Oand, [e1; e2] ->
+    | P.Oor
+    | P.Oand ->
       (* The [and] and [or] operators work the same way, but with the roles of
          [true] and [false] inverted *)
       let (top, bottom) = if op = P.Oand
@@ -577,7 +560,8 @@ end = struct
       else
         expr env e1 T.Bool.all >>
         expr env e2 T.Bool.all
-    | P.OrecordMember, [ record; fname_expr] ->
+    | P.OrecordMember ->
+      let record = e1 and fname_expr = e2 in
       Infer.expr env fname_expr >>= fun t1 ->
       check_subtype loc ~inferred:t1 ~expected:T.Builtins.string >>
       let bool_part = T.Builtins.cap expected T.Builtins.bool in
@@ -607,24 +591,28 @@ end = struct
                 strings) >> W.return ()
         end
       else expr env record T.Record.any
-    | P.Omerge, [e1; e2] ->
+    | P.Omerge ->
       Infer.expr env e1 >>= fun t1 ->
       Infer.expr env e2 >>= fun t2 ->
       check_subtype loc ~inferred:t1 ~expected:T.Record.any >>
       check_subtype loc ~inferred:t2 ~expected:T.Record.any >>
       let result = T.Record.merge t1 t2 in
       check_subtype loc ~inferred:result ~expected
-    | P.Omerge, _
-    | P.OrecordMember, _
-    | P.Onot, _
-    | P.Oand, _
-    | P.Oor, _
-    | P.Oplus, _
-    | P.Ominus, _
-    | P.Oneg, _
-    | P.Oeq, _
-    | P.Ocons, _
-      -> assert false (* This isn't supposed to happen *)
+
+  and monop env loc op e expected = match op with
+    | P.Onot ->
+      let bool_part = T.Builtins.cap expected T.Builtins.bool in
+      expr env e (T.Bool.tnot bool_part)
+    | P.Oneg ->
+      (* FIXME: Isn't this check absurd? *)
+      check_subtype
+        loc
+        ~inferred:expected
+        ~expected:Types.Builtins.int >>
+      (* We just check that [e] has type [-expected] *)
+      let ivl = Cduce_lib.Types.Int.get expected in
+      let negated_ivl = Common.negate_interval ivl in
+      expr env e negated_ivl
 
   and if_then_else env e0 e1 e2 expected =
     (* [check_with_exfalso var typ e expected] checks [e] against the type

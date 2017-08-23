@@ -63,7 +63,7 @@ let testsuite =
       "test_annot", "(x /*: int */)", "(x /*: int */)";
       "test_annot_arrow", "(x /*: int -> int */)", "(x /*: (int) -> int */)";
       "test_string", "\"x\"", "\"x\"";
-      "test_list", "[1 2 3]", "Cons(1, Cons(2, Cons(3, nil)))";
+      "test_list", "[1 2 3]", "(1 :: (2 :: (3 :: nil)))";
       "test_record_1", "{ x = 1; y = 2; }", "{ \"x\" = 1; \"y\" = 2; }";
       "test_record_2", "{ x.y = 1; }", "{ \"x\" = { \"y\" = 1; }; }";
       ("test_record_3",
@@ -82,7 +82,7 @@ let testsuite =
       "test_with", "with e1; e2", "with e1; e2";
       "test_apath_or", "x.y or z", "x.\"y\" or z";
       "test_bracket", "<foo>", "<foo>";
-      "record_merge", "{} // { x = 1; }", "//({ }, { \"x\" = 1; })";
+      "record_merge", "{} // { x = 1; }", "({ } // { \"x\" = 1; })";
       ("test_inherit",
        "{ inherit x; inherit (foo) y; }",
        "{ \"x\" = x; \"y\" = foo.\"y\"; }");

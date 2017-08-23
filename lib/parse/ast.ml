@@ -6,17 +6,16 @@ module Type_annotations = Common.Type_annotations
 
 type 'a with_loc = 'a Common.Location.With_loc.t
 
-type operator =
+type binop =
   | Ocons
   | Oeq | OnonEq
-  | Oneg
-  | Oplus
-  | Ominus
-  | Onot
-  | Oand
-  | Oor
-  | Oimplies
+  | Oplus | Ominus
+  | Oand | Oor | Oimplies
   | Omerge
+
+type monop =
+  | Oneg
+  | Onot
 
 type expr = expr_desc with_loc
 
@@ -31,7 +30,8 @@ and expr_desc =
   | Econstant of constant
   | Elambda of lambda
   | EfunApp of expr * expr
-  | EopApp of operator * expr list
+  | Ebinop of binop * expr * expr
+  | Emonop of monop * expr
   | Eite of expr * expr * expr
   (* if e then e else e *)
   | Erecord of record

@@ -22,18 +22,20 @@ let const fmt = function
   | P.Cbracketed s ->
     CCFormat.fprintf fmt "<%s>" s
 
-let pp_op fmt = function
-  | P.Ocons -> F.pp_print_string fmt "Cons"
+let pp_binop fmt = function
+  | P.Ocons -> F.pp_print_string fmt "::"
   | P.Oeq   -> F.pp_print_string fmt "=="
   | P.OnonEq   -> F.pp_print_string fmt "!="
-  | P.Oneg  -> F.pp_print_string fmt "-"
   | P.Oplus  -> F.pp_print_string fmt "+"
   | P.Ominus -> F.pp_print_string fmt "-"
-  | P.Onot   -> F.pp_print_string fmt "!"
-  | P.Oand   -> F.pp_print_string fmt "&"
-  | P.Oor    -> F.pp_print_string fmt "|"
+  | P.Oand   -> F.pp_print_string fmt "&&"
+  | P.Oor    -> F.pp_print_string fmt "||"
   | P.Oimplies -> F.pp_print_string fmt "->"
   | P.Omerge -> F.pp_print_string fmt "//"
+
+and pp_monop fmt = function
+  | P.Onot   -> F.pp_print_string fmt "!"
+  | P.Oneg  -> F.pp_print_string fmt "-"
 
 let rec pp_expr fmt = drop_loc %> function
     | P.Evar v ->
@@ -52,11 +54,15 @@ let rec pp_expr fmt = drop_loc %> function
       F.fprintf fmt "@[(%a %a)@]"
         pp_expr e
         pp_type_annot ty
-    (* XXX: This is printed in an ugly way and not parsable way *)
-    | P.EopApp (op, args) ->
-      F.fprintf fmt "@[%a(%a)@]"
-        pp_op op
-        pp_op_args args
+    | P.Ebinop (op, e1, e2) ->
+      F.fprintf fmt "@[(%a %a %a)@]"
+        pp_expr e1
+        pp_binop op
+        pp_expr e2
+    | P.Emonop (op, e) ->
+      F.fprintf fmt "@[(%a%a)@]"
+        pp_monop op
+        pp_expr e
     | P.Elet (bindings, e) ->
       F.fprintf fmt "@[let %ain@;%a@]"
         pp_bindings bindings

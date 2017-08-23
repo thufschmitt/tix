@@ -124,19 +124,19 @@ let infix_ops =
   in
   [
     [
-      infix "&&" (fun e1 e2 -> A.EopApp (A.Oand, [e1; e2])) P.Assoc_left;
-      infix "||" (fun e1 e2 -> A.EopApp (A.Oor, [e1; e2])) P.Assoc_left;
-      infix "->" (fun e1 e2 -> A.EopApp (A.Oimplies, [e1; e2])) P.Assoc_left;
+      infix "&&" (fun e1 e2 -> A.Ebinop (A.Oand, e1, e2)) P.Assoc_left;
+      infix "||" (fun e1 e2 -> A.Ebinop (A.Oor, e1, e2)) P.Assoc_left;
+      infix "->" (fun e1 e2 -> A.Ebinop (A.Oimplies, e1, e2)) P.Assoc_left;
     ];
     [
-      infix "==" (fun e1 e2 -> A.EopApp (A.Oeq, [e1; e2])) P.Assoc_left;
-      infix "!=" (fun e1 e2 -> A.EopApp (A.OnonEq, [e1; e2])) P.Assoc_left;
-      infix "+" (fun e1 e2 -> A.EopApp (A.Oplus, [e1; e2])) P.Assoc_left;
-      infix "-" (fun e1 e2 -> A.EopApp (A.Ominus, [e1; e2])) P.Assoc_left;
-      infix "//" (fun e1 e2 -> A.EopApp (A.Omerge, [e1; e2])) P.Assoc_left;
+      infix "==" (fun e1 e2 -> A.Ebinop (A.Oeq, e1, e2)) P.Assoc_left;
+      infix "!=" (fun e1 e2 -> A.Ebinop (A.OnonEq, e1, e2)) P.Assoc_left;
+      infix "+" (fun e1 e2 -> A.Ebinop (A.Oplus, e1, e2)) P.Assoc_left;
+      infix "-" (fun e1 e2 -> A.Ebinop (A.Ominus, e1, e2)) P.Assoc_left;
+      infix "//" (fun e1 e2 -> A.Ebinop (A.Omerge, e1, e2)) P.Assoc_left;
     ];
-    [ prefix "-" (fun e -> A.EopApp (A.Oneg, [e]));
-      prefix "!" (fun e -> A.EopApp (A.Onot, [e]));
+    [ prefix "-" (fun e -> A.Emonop (A.Oneg, e));
+      prefix "!" (fun e -> A.Emonop (A.Onot, e));
     ];
   ]
 
@@ -432,7 +432,7 @@ and expr_list i =
     get_loc >>= fun loc ->
     P.char '[' >> space >>
     P.many_rev_fold_left
-      (fun accu elt -> W.mk loc (A.EopApp (A.Ocons, [elt; accu])))
+      (fun accu elt -> W.mk loc (A.Ebinop (A.Ocons, elt, accu)))
       (W.mk loc @@ A.Evar "nil")
       expr_atom
     << P.char ']' << space

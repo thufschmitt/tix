@@ -40,7 +40,7 @@ let testsuite =
       "test_Y_comb", "(x: x x) (x: x x)", "((x: (x x)) (x: (x x)))";
       "test_annot", "(x /*: int */)", "(x /*: int */)";
       "test_annot_arrow", "(x /*: int -> int */)", "(x /*: (int) -> int */)";
-      "test_arith", "x + y - z + (- a)", "+(-(+(x, y), z), -(a))";
+      "test_arith", "x + y - z + (- a)", "(((x + y) - z) + (-a))";
       "test_string", "\"x\"", "\"x\"";
       "test_comment", "1 /* 12?3 */ /* /* 1 */", "1";
       ("test_list_annot_1", "(x /*: [ Int ] */)",
@@ -52,7 +52,7 @@ let testsuite =
       "test_annot_singleton_int", "x /*: 1 */: x", "(x /*: 1 */: x)";
       "test_annot_singleton_true", "x /*: true */: x", "(x /*: true */: x)";
       "test_annot_singleton_false", "x /*: false */: x", "(x /*: false */: x)";
-      "test_list", "[1 2 3]", "Cons(1, Cons(2, Cons(3, nil)))";
+      "test_list", "[1 2 3]", "(1 :: (2 :: (3 :: nil)))";
       "test_line_comment", "x: #fooooo \n x", "(x: x)";
       "test_ite", "if e0 then e1 else e2", "if (e0) then e1 else e2";
       ("test_assert",
@@ -91,5 +91,5 @@ let testsuite =
       "test_with", "with e1; e2", "with e1; e2";
       "test_or", "x.y or z", "x.y or z";
       "test_bracket", "<foo>", "<foo>";
-      "record_merge", "{} // { x = 1; }", "//({ }, { x = 1; })";
+      "record_merge", "{} // { x = 1; }", "({ } // { x = 1; })";
     ]

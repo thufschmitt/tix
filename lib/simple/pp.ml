@@ -12,17 +12,19 @@ let kwd   = F.pp_print_string
 
 let pp_option printer (fmt : F.formatter) = CCOpt.iter (fun x -> printer fmt x)
 
-let pp_op fmt = function
-  | P.Ocons -> F.pp_print_string fmt "Cons"
+let pp_binop fmt = function
+  | P.Ocons -> F.pp_print_string fmt "::"
   | P.Oeq   -> F.pp_print_string fmt "=="
-  | P.Oneg  -> F.pp_print_string fmt "-"
   | P.Oplus  -> F.pp_print_string fmt "+"
   | P.Ominus -> F.pp_print_string fmt "-"
-  | P.Onot   -> F.pp_print_string fmt "!"
-  | P.Oand   -> F.pp_print_string fmt "&"
-  | P.Oor    -> F.pp_print_string fmt "|"
+  | P.Oand   -> F.pp_print_string fmt "&&"
+  | P.Oor    -> F.pp_print_string fmt "||"
   | P.Omerge -> F.pp_print_string fmt "//"
   | P.OrecordMember -> F.pp_print_string fmt "?"
+
+and pp_monop fmt = function
+  | P.Onot   -> F.pp_print_string fmt "!"
+  | P.Oneg  -> F.pp_print_string fmt "-"
 
 let const fmt = function
   | P.Cbool b -> F.pp_print_bool fmt b
@@ -49,10 +51,15 @@ let rec pp_expr fmt = drop_loc %> function
       F.fprintf fmt "@[(%a /*:@ %a */)@]"
         pp_expr e
         pp_typ ty
-    | P.EopApp (op, args) ->
-      F.fprintf fmt "@[%a(%a)@]"
-        pp_op op
-        pp_op_args args
+    | P.Ebinop (op, e1, e2) ->
+      F.fprintf fmt "@[(%a %a %a)@]"
+        pp_expr e1
+        pp_binop op
+        pp_expr e2
+    | P.Emonop (op, e) ->
+      F.fprintf fmt "@[(%a%a)]"
+        pp_monop op
+        pp_expr e
     | P.Erecord r ->
       F.fprintf fmt "@[{@;%a}@]"
         pp_fields r
