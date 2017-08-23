@@ -163,7 +163,18 @@ and pp_record_field fmt = drop_loc %> function
       F.fprintf fmt "%a = %a;@ "
         pp_pattern_ap ap
         pp_expr value
-    | _ -> failwith "TODO"
+    | P.Finherit (base_expr, fields) ->
+      F.fprintf fmt "inherit %a%a;@ "
+        (pp_option pp_base_expr) base_expr
+        pp_fields fields
+
+and pp_base_expr fmt = F.fprintf fmt "(%a) " pp_expr
+
+and pp_fields fmt =
+  F.pp_print_list
+    ~pp_sep:F.pp_print_space
+    (fun fmt -> drop_loc %> F.pp_print_string fmt)
+    fmt
 
 and pp_bindings fmt =
   Format.pp_print_list
