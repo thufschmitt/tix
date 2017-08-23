@@ -139,6 +139,8 @@ and get_discriminer typ =
 
 module rec Infer : sig
   val expr : Environment.t -> P.expr -> Types.t W.t
+
+  val typeError : L.t -> ('a, unit, string, Types.t W.t) format4 -> 'a
 end = struct
 
   let typeError loc e = Format.ksprintf
@@ -192,19 +194,10 @@ end = struct
     | P.Erecord fields ->
       record env fields
     | P.EaccessPath (e, ap, default) ->
-      expr env e >>= fun te ->
-      W.map_l (expr env) ap >>= fun tap ->
-      W.map_opt (expr env) default >>= fun default ->
-      let acces_path_singletons = List.map T.String.get tap in
-      let acces_path_locations = List.map WL.loc ap in
-      let access_path_wl =
-        CCList.combine acces_path_singletons acces_path_locations
-      in
-      let unguarded_typing =
-        record_access (CCOpt.is_some default) te access_path_wl
-      in
+      W.map_opt (expr env) default >>= fun default_ty ->
+      let unguarded_typing = Common.record_access env e ap default_ty in
       let final_type =
-        begin match (default, W.value unguarded_typing) with
+        begin match (default_ty, W.value unguarded_typing) with
           | None, (_, true) ->
             typeError loc "Couldn't select this field"
           | _, (t, false) ->
@@ -414,62 +407,6 @@ end = struct
         distinct_from located_typ tl >>
         aux tl
     in W.bind aux
-
-  and record_access is_guarded record_type
-      : (string List_or_infinite.t * L.t) list -> T.t FlaggedWriter.t
-    = let module M = FlaggedWriter in
-    let open M.Infix in
-    let typeErrorIfUnguarded loc fmt_str =
-      Format.ksprintf
-        (fun s ->
-           if is_guarded then
-             M.lift_flagged (W.pure default_typ)
-           else
-             M.lift_flagged @@ typeError loc "%s" s)
-        fmt_str
-    in
-    function
-    | [] -> M.pure record_type
-    | apf::ap ->
-      let loc = snd apf in
-      let has_to_be_record =
-        if T.sub record_type T.Record.any then
-          M.pure ()
-        else
-          typeErrorIfUnguarded loc "This should be a record" >>
-          M.pure ()
-      in
-      has_to_be_record >>
-      begin match fst apf with
-        | Finite strings ->
-          let possible_accessed =
-            List.map (fun s -> T.Record.get_field s record_type) strings
-          in
-          let process_type t =
-            if is_guarded then begin
-              if Cduce_lib.Types.Record.has_absent t then
-                M.lift_flagged (W.return @@ T.Builtins.diff t T.Record.absent)
-              else
-                M.pure @@ T.Builtins.diff t T.Record.absent
-            end
-            else
-            if Cduce_lib.Types.Record.has_absent t then
-              typeErrorIfUnguarded loc "This field may be empty"
-            else
-              M.pure t
-          in
-          let sub_types = M.map_l process_type possible_accessed in
-          sub_types >>=
-          M.map_l (fun t -> record_access is_guarded t ap) >|= fun types ->
-          CCList.fold_left T.Builtins.cup T.Builtins.empty types
-        | Infinite ->
-          if is_guarded then
-            M.lift_flagged
-            @@ W.pure
-            @@ T.Builtins.diff (T.Record.all_values record_type) T.Record.absent
-          else
-            typeErrorIfUnguarded loc "Cannot determine the value of this field"
-      end
 end
 
 and Check : sig
@@ -736,7 +673,6 @@ end = struct
         labels
     in W.map_l (CCFun.id) result_list >>
     W.return ()
-
 end
 
 and Common : sig
@@ -748,6 +684,7 @@ and Common : sig
   val pragma : E.t -> Parse.Pragma.t -> E.t
   val import : (E.t -> P.expr -> 'a W.t) -> 'a -> E.t -> P.expr -> 'a W.t
   val negate_interval : Cduce_lib.Types.VarIntervals.t -> T.t
+  val record_access : E.t -> P.expr -> P.access_path -> T.t option -> T.t FlaggedWriter.t
 end = struct
 
   let let_binding expr env binds e =
@@ -815,4 +752,68 @@ end = struct
           | `Atm i ->
             Cduce_lib.Types.interval @@ Cduce_lib.Intervals.negat i
           | `Var v -> Cduce_lib.Types.var v)
+
+  let record_access env e ap default_ty : T.t FlaggedWriter.t =
+    Infer.expr env e >>= fun te ->
+    W.map_l (Infer.expr env) ap >>= fun tap ->
+    let acces_path_singletons = List.map T.String.get tap in
+    let acces_path_locations = List.map WL.loc ap in
+    let access_path_wl =
+      CCList.combine acces_path_singletons acces_path_locations
+    in
+    let module M = FlaggedWriter in
+    let open M.Infix in
+    let is_guarded = CCOpt.is_some default_ty in
+    let typeErrorIfUnguarded loc fmt_str =
+      Format.ksprintf
+        (fun s ->
+           if is_guarded then
+             M.lift_flagged (W.pure default_typ)
+           else
+             M.lift_flagged @@ Infer.typeError loc "%s" s)
+        fmt_str
+    in
+    let rec aux record_type = function
+      | [] -> M.pure record_type
+      | apf::ap ->
+        let loc = snd apf in
+        let has_to_be_record =
+          if T.sub record_type T.Record.any then
+            M.pure ()
+          else
+            typeErrorIfUnguarded loc "This should be a record" >>
+            M.pure ()
+        in
+        has_to_be_record >>
+        begin match fst apf with
+          | List_or_infinite.Finite strings ->
+            let possible_accessed =
+              List.map (fun s -> T.Record.get_field s record_type) strings
+            in
+            let process_type t =
+              if is_guarded then begin
+                if Cduce_lib.Types.Record.has_absent t then
+                  M.lift_flagged (W.return @@ T.Builtins.diff t T.Record.absent)
+                else
+                  M.pure @@ T.Builtins.diff t T.Record.absent
+              end
+              else
+              if Cduce_lib.Types.Record.has_absent t then
+                typeErrorIfUnguarded loc "This field may be empty"
+              else
+                M.pure t
+            in
+            let sub_types = M.map_l process_type possible_accessed in
+            sub_types >>=
+            M.map_l (fun t -> aux t ap) >|= fun types ->
+            CCList.fold_left T.Builtins.cup T.Builtins.empty types
+          | Infinite ->
+            if is_guarded then
+              M.lift_flagged
+              @@ W.pure
+              @@ T.Builtins.diff (T.Record.all_values record_type) T.Record.absent
+            else
+              typeErrorIfUnguarded loc "Cannot determine the value of this field"
+        end
+    in aux te access_path_wl
 end
