@@ -116,6 +116,7 @@ let typeof_const = function
   | P.Cint  i -> T.Singleton.int i
   | P.Cstring s -> Types.Singleton.string s
   | P.Cpath s -> Types.Singleton.path s
+  | P.Cbracketed _ -> Types.Path.any
   | P.Cundef -> Types.Builtins.undef
 
 (* [get_discriminer t] returns [Some t1] if [t] is of the form

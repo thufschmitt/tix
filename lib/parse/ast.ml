@@ -55,6 +55,8 @@ and constant =
   | Cbool of bool
   | Cstring of string
   | Cpath of string
+  | Cbracketed of string
+  (* A bracketed path, which will be of type `Path` *)
 
 and lambda = pattern * expr
 

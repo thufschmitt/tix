@@ -28,6 +28,7 @@ let const fmt = function
   | P.Cint i-> F.pp_print_int  fmt i
   | P.Cstring s -> F.fprintf fmt "\"%s\"" s
   | P.Cpath s -> F.pp_print_string fmt s
+  | P.Cbracketed s -> F.fprintf fmt "<%s>" s
   | P.Cundef -> F.pp_print_string fmt "%%undef"
 
 let rec pp_expr fmt = drop_loc %> function

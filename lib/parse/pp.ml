@@ -19,6 +19,8 @@ let const fmt = function
   | P.Cint i-> F.pp_print_int  fmt i
   | P.Cstring s -> F.fprintf fmt "\"%s\"" s
   | P.Cpath s -> CCFormat.string fmt s
+  | P.Cbracketed s ->
+    CCFormat.fprintf fmt "<%s>" s
 
 let pp_op fmt = function
   | P.Ocons -> F.pp_print_string fmt "Cons"

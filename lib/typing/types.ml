@@ -280,6 +280,7 @@ module Builtins : sig
   val bool : t
   val char : t
   val string : t
+  val path : t
   val nil : t
   val any : t
   val empty : t
@@ -310,6 +311,8 @@ end
   (* We don't use CDuce's strings because these are lists of chars (which isn't
      the case in Nix) *)
   let string = String.any
+
+  let path = Path.any
 
   let arrow = C.Types.arrow
 
@@ -376,6 +379,7 @@ end = struct
       "Bool", B.bool;
       "Char", B.char;
       "String", B.string;
+      "Path", B.path;
       "true", B.true_type;
       "false", B.false_type;
       "?", B.grad;

@@ -90,4 +90,5 @@ let testsuite =
       "test_path", "./foo.nix", "./foo.nix";
       "test_with", "with e1; e2", "with e1; e2";
       "test_or", "x.y or z", "x.y or z";
+      "test_bracket", "<foo>", "<foo>";
     ]

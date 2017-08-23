@@ -142,6 +142,7 @@ let testsuite =
       ("infer_record_access_guarded_infinite2",
        "({ x = 1; } /*: { x = 1; ... } */).${(\"y\" /*: String */)} or 2",
        "Any");
+      "infer_bracket", "<foo>", "Path";
     ] @
   (* ----- Negative tests ----- *)
   List.map (fun (name, expr) -> name >:: test_infer_expr_fail expr)

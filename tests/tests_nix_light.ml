@@ -81,6 +81,7 @@ let testsuite =
       "test_path", "./foo", "./foo";
       "test_with", "with e1; e2", "with e1; e2";
       "test_apath_or", "x.y or z", "x.\"y\" or z";
+      "test_bracket", "<foo>", "<foo>";
     ] @
   List.map (fun (name, input) ->
       name >:: test_parse_pp_str_fail input)

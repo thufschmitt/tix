@@ -98,11 +98,18 @@ let multiline_string = P.string "''" >>
 
 let string = any [simple_string; multiline_string]
 
-let path =
+let litteral_path =
   (P.string "./" >>
    P.many_chars (any [ P.alphanum; P.any_of "-/_." ]) << space |>> fun path ->
    "./" ^ path)
   <?> "Path"
+
+let bracketed_path =
+  (P.char '<' >>
+   P.many_chars (any [ P.alphanum; P.any_of "-/_." ]) <<
+   P.char '>' << space |>> fun content ->
+   content)
+  <?> "Bracketed path"
 
 let infix_ops =
   let infix sym f assoc = P.Infix (
@@ -173,7 +180,7 @@ let typ_string =
   T.(Singleton (Singleton.String s))
 
 let typ_path =
-  path |>> fun s ->
+  litteral_path |>> fun s ->
   T.(Singleton (Singleton.Path s))
 
 let typ_ident i = i |> add_loc (
@@ -276,8 +283,13 @@ let expr_string = add_loc (
   )
 
 let expr_path = add_loc (
-    path |>> fun s ->
+    litteral_path |>> fun s ->
     A.Econstant (A.Cpath s)
+  )
+
+let expr_bracket = add_loc (
+    bracketed_path |>> fun brack ->
+    A.Econstant (A.Cbracketed brack)
   )
 
 let expr_ident = add_loc (
@@ -295,8 +307,9 @@ let pattern_ident = add_loc (
     A.Pvar (id, annot)
   )
 
-and expr_const = (any [expr_int; expr_bool; expr_string; expr_path])
-                 <?> "constant"
+and expr_const =
+  (any [expr_int; expr_bool; expr_string; expr_path; expr_bracket])
+  <?> "constant"
 
 let rec expr i =
   i |> (
