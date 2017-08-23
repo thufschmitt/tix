@@ -56,7 +56,7 @@ let space = P.skip_many (P.skip P.space <|> comment <?> "whitespace")
 
 let keyword k = P.string k << P.not_followed_by P.alphanum "" >> space
 
-let alphanum_ = P.alphanum <|> P.char '_'
+let alphanum_ = P.alphanum <|> P.any_of "_-'"
 let letter_ = P.letter <|> P.char '_'
 
 let ident =
