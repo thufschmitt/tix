@@ -291,7 +291,7 @@ end = struct
     | P.Onot, _
     | P.Oand, _
     | P.Oor, _
-      -> assert false (* This isn't supposed to happend *)
+      -> assert false (* This isn't supposed to happen *)
 
   and if_then_else env e0 e1 e2 =
     (* [type_with_exfalso var typ e] types [e] using current env + the
@@ -606,8 +606,9 @@ end = struct
     | P.Oplus, _
     | P.Ominus, _
     | P.Oneg, _
-    | P.Oeq, _ -> assert false
-    | P.Ocons, _ -> assert false
+    | P.Oeq, _
+    | P.Ocons, _
+      -> assert false (* This isn't supposed to happen *)
 
   and if_then_else env e0 e1 e2 expected =
     (* [check_with_exfalso var typ e expected] checks [e] against the type
