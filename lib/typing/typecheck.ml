@@ -463,6 +463,11 @@ end = struct
           M.map_l (fun t -> record_access is_guarded t ap) >|= fun types ->
           CCList.fold_left T.Builtins.cup T.Builtins.empty types
         | Infinite ->
+          if is_guarded then
+            M.lift_flagged
+            @@ W.pure
+            @@ T.Builtins.diff (T.Record.all_values record_type) T.Record.absent
+          else
             typeErrorIfUnguarded loc "Cannot determine the value of this field"
       end
 end

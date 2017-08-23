@@ -136,6 +136,12 @@ let testsuite =
        "1|2");
       "infer_record_access_guarded_useless", "{ x = 1; }.x or 2", "1";
       "infer_record_access_guarded_norecord", "1.x or 2", "2";
+      ("infer_record_access_guarded_infinite",
+       "{ x = 1; }.${(\"y\" /*: String */)} or 2",
+       "1 | 2");
+      ("infer_record_access_guarded_infinite2",
+       "({ x = 1; } /*: { x = 1; ... } */).${(\"y\" /*: String */)} or 2",
+       "Any");
     ] @
   (* ----- Negative tests ----- *)
   List.map (fun (name, expr) -> name >:: test_infer_expr_fail expr)

@@ -172,6 +172,29 @@ module Record = struct
     |> List.map C.Ident.Label.get_ascii
 
   let absent = T.Record.absent
+
+  let is_open r =
+    T.Rec.compute
+      ~empty:false
+      ~full:true
+      ~cup:(||)
+      ~cap:(&&)
+      ~atom:fst
+      ~diff:(fun a b -> a && not b)
+      (T.VarRec.leafconj @@ T.VarRec.proj r)
+
+  let def r =
+    if is_open r then
+      T.cup absent T.any
+    else
+      absent
+
+  let all_values r =
+    CCList.fold_left
+      (fun accu label -> T.cup accu (get_field label r))
+      (def r)
+      (labels r)
+
 end
 
 module String = struct
