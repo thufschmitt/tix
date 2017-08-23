@@ -22,3 +22,7 @@ let merge l1 l2 = match (l1, l2) with
 let flatten l = fold merge ~init:(finite []) ~full:infinite l
 
 let flat_map f l = map f l |> flatten
+
+let concat l1 l2 = match (l1, l2) with
+  | Finite l1, Finite l2 -> Finite (l1 @ l2)
+  | _ -> Infinite

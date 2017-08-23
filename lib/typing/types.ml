@@ -198,79 +198,77 @@ module Record = struct
   let merge = T.Record.merge
 end
 
-module String = struct
-  module StrSet = CCSet.Make(CCString)
+module GeneralizedString = struct
+  module type NS = sig val namespace : string end
+  module Make (NS: NS) = struct
+    module StrSet = CCSet.Make(CCString)
 
-  let str_ns = C.Ns.Uri.mk @@ C.Encodings.Utf8.mk "str"
+    let str_ns = C.Ns.Uri.mk @@ C.Encodings.Utf8.mk NS.namespace
 
-  let any = T.atom @@ C.Atoms.any_in_ns str_ns
+    let any = T.atom @@ C.Atoms.any_in_ns str_ns
 
-  let singleton s =
-    T.atom @@ C.Atoms.atom (C.Atoms.V.mk (str_ns, C.Encodings.Utf8.mk s))
+    let singleton s =
+      T.atom @@ C.Atoms.atom (C.Atoms.V.mk (str_ns, C.Encodings.Utf8.mk s))
 
-  (** [get t] returns either [List_or_infinite.Finite l] where [l] is the list
-      of the strings that the type [t] contains or [List_or_infinite.Infinite].
-      No check is done to ensure that [t] is a subtype of [string] *)
-  let get t : string List_or_infinite.t =
-    let atoms = T.Atom.get t in
-    let cup x1 x2 = match (x1, x2) with
-      | `Finite l1, `Finite l2 -> `Finite (StrSet.union l1 l2)
-      | `Cofinite l1, `Cofinite l2 -> `Cofinite (StrSet.inter l1 l2)
-      | `Cofinite l1, `Finite l2 -> `Cofinite (StrSet.diff l1 l2)
-      | `Finite l1, `Cofinite l2 -> `Cofinite (StrSet.diff l2 l1)
-      | `Variable, _
-      | _, `Variable -> `Variable
-    and neg = function
-      | `Finite l -> `Cofinite l
-      | `Cofinite l -> `Finite l
-      | `Variable -> `Variable
-    in
-    let cap x1 x2 = neg @@ cup (neg x1) (neg x2) in
-    let diff x1 x2 = cap x1 (neg x2) in
-    let get_from_atom atm =
-      let get_name atom_elt =
-        let (_, unicode_name) = C.Atoms.V.value atom_elt in
-        C.Encodings.Utf8.get_str unicode_name
+    (** [get t] returns either [List_or_infinite.Finite l] where [l] is the list
+        of the strings that the type [t] contains or [List_or_infinite.Infinite].
+        No check is done to ensure that [t] is a subtype of [string] *)
+    let get t : string List_or_infinite.t =
+      let atoms = T.Atom.get t in
+      let cup x1 x2 = match (x1, x2) with
+        | `Finite l1, `Finite l2 -> `Finite (StrSet.union l1 l2)
+        | `Cofinite l1, `Cofinite l2 -> `Cofinite (StrSet.inter l1 l2)
+        | `Cofinite l1, `Finite l2 -> `Cofinite (StrSet.diff l1 l2)
+        | `Finite l1, `Cofinite l2 -> `Cofinite (StrSet.diff l2 l1)
+        | `Variable, _
+        | _, `Variable -> `Variable
+      and neg = function
+        | `Finite l -> `Cofinite l
+        | `Cofinite l -> `Finite l
+        | `Variable -> `Variable
       in
-      let (direction, sub_atoms) =
-        match C.Atoms.extract atm with
-        | `Finite s -> (`Finite, s)
-        | `Cofinite s -> (`Cofinite, s)
+      let cap x1 x2 = neg @@ cup (neg x1) (neg x2) in
+      let diff x1 x2 = cap x1 (neg x2) in
+      let get_from_atom atm =
+        let get_name atom_elt =
+          let (_, unicode_name) = C.Atoms.V.value atom_elt in
+          C.Encodings.Utf8.get_str unicode_name
+        in
+        let (direction, sub_atoms) =
+          match C.Atoms.extract atm with
+          | `Finite s -> (`Finite, s)
+          | `Cofinite s -> (`Cofinite, s)
+        in
+        let string_atoms = CCList.find_map
+            (fun (ns, atms) ->
+               if C.Ns.Uri.equal str_ns ns then Some atms else None)
+            sub_atoms
+                           |> CCOpt.get_or ~default:(`Finite [])
+        in
+        begin match string_atoms with
+          | `Finite elts -> `Finite (StrSet.of_list (List.map get_name elts))
+          | `Cofinite elts -> `Cofinite (StrSet.of_list (List.map get_name elts))
+        end
+        |> (fun s -> if direction = `Cofinite then neg s else s)
       in
-      let string_atoms = CCList.find_map
-          (fun (ns, atms) ->
-             if C.Ns.Uri.equal str_ns ns then Some atms else None)
-          sub_atoms
-                         |> CCOpt.get_or ~default:(`Finite [])
-      in
-      begin match string_atoms with
-        | `Finite elts -> `Finite (StrSet.of_list (List.map get_name elts))
-        | `Cofinite elts -> `Cofinite (StrSet.of_list (List.map get_name elts))
-      end
-      |> (fun s -> if direction = `Cofinite then neg s else s)
-    in
-    match
-      T.VarAtoms.compute atoms
-        ~atom:(function `Var _ -> `Variable | `Atm a -> get_from_atom a)
-        ~empty:(`Finite StrSet.empty)
-        ~full:(`Cofinite StrSet.empty)
-        ~cup
-        ~cap
-        ~diff
-    with
-    | `Cofinite _ -> List_or_infinite.Infinite
-    | `Variable -> List_or_infinite.Infinite
-    | `Finite l -> List_or_infinite.Finite (StrSet.to_list l)
+      match
+        T.VarAtoms.compute atoms
+          ~atom:(function `Var _ -> `Variable | `Atm a -> get_from_atom a)
+          ~empty:(`Finite StrSet.empty)
+          ~full:(`Cofinite StrSet.empty)
+          ~cup
+          ~cap
+          ~diff
+      with
+      | `Cofinite _ -> List_or_infinite.Infinite
+      | `Variable -> List_or_infinite.Infinite
+      | `Finite l -> List_or_infinite.Finite (StrSet.to_list l)
+  end
 end
 
-module Path = struct
-  let path_ns = C.Ns.Uri.mk @@ C.Encodings.Utf8.mk "path"
+module String = GeneralizedString.Make(struct let namespace = "str" end)
 
-  let any = T.atom @@ C.Atoms.any_in_ns path_ns
-
-  let singleton s =
-    T.atom @@ C.Atoms.atom (C.Atoms.V.mk (path_ns, C.Encodings.Utf8.mk s))
-end
+module Path = GeneralizedString.Make(struct let namespace = "path" end)
 
 (** Builtin types *)
 module Builtins : sig

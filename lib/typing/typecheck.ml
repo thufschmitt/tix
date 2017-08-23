@@ -755,13 +755,20 @@ end = struct
     | P.Errors warns ->
       E.map_config (fun c -> Config.proceed_errors_annot c warns) env
 
-  let import expr default_value _env e =
+  let import expr default_value env e =
     let typeError loc e = Format.ksprintf
         (fun s -> W.append [Warning.make loc s] (W.pure default_value)) e
     in
-    match e.WL.description with
-    | P.Econstant (P.Cpath f_name)
-    | P.Econstant (P.Cstring f_name) ->
+    let loc = WL.loc e in
+    Infer.expr env e >>= fun t ->
+    check_subtype loc ~inferred:t ~expected:T.Builtins.(cup string path) >>
+    let paths =
+      List_or_infinite.concat
+        (T.String.get t)
+        (T.Path.get t)
+    in
+    match paths with
+    | List_or_infinite.Finite [f_name] ->
       begin try
           CCIO.with_in f_name (fun chan ->
               match MParser.parse_channel Parse.Parser.expr chan f_name with
@@ -773,7 +780,7 @@ end = struct
         with Sys_error _ ->
           typeError e.WL.location "Unable to read file %s" f_name
       end
-    | _ -> typeError e.WL.location "Not a litteral string or path"
+    | _ -> typeError e.WL.location "Not a singleton string or path"
 
   let negate_interval =
     let module B = T.Builtins in
