@@ -760,6 +760,7 @@ end = struct
         (fun s -> W.append [Warning.make loc s] (W.pure default_value)) e
     in
     let loc = WL.loc e in
+    let current_path = Filename.dirname loc.L.file_name in
     Infer.expr env e >>= fun t ->
     check_subtype loc ~inferred:t ~expected:T.Builtins.(cup string path) >>
     let paths =
@@ -769,16 +770,23 @@ end = struct
     in
     match paths with
     | List_or_infinite.Finite [f_name] ->
+      let absolute_f_name =
+        if Filename.is_relative f_name then
+          Filename.concat current_path f_name
+        else f_name
+      in
       begin try
-          CCIO.with_in f_name (fun chan ->
-              match MParser.parse_channel Parse.Parser.expr chan f_name with
+          CCIO.with_in absolute_f_name (fun chan ->
+              match
+                MParser.parse_channel Parse.Parser.expr chan absolute_f_name
+              with
               | MParser.Success e ->
                 Simple.Of_onix.expr e >>= fun e ->
                 expr Environment.default e
               | MParser.Failed (_, _) ->
-                typeError e.WL.location "Parse error in %s" f_name)
+                typeError e.WL.location "Parse error in %s"absolute_f_name )
         with Sys_error _ ->
-          typeError e.WL.location "Unable to read file %s" f_name
+          typeError e.WL.location "Unable to read file %s"absolute_f_name 
       end
     | _ -> typeError e.WL.location "Not a singleton string or path"
 
