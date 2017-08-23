@@ -23,10 +23,12 @@ let lookup map elt =
 
 let initial_values =
   let open Types.Builtins in
+  let node = Types.node in
   let int = Types.node int
   and string = Types.node string
   and true_type = Types.node true_type
   and any = Types.node any
+  and empty = Types.node empty
   and undef = Types.node undef
   and false_type = Types.node false_type in
   [
@@ -42,6 +44,15 @@ let initial_values =
     "%%isUndef", cap
       (arrow undef true_type)
       (arrow (Types.node Types.Builtins.(neg undef)) false_type);
+    "builtins", Types.Builtins.record
+                  false
+                  (Simple.Record.of_list
+                     [
+                       "abort", Types.node @@ arrow string empty;
+                       "compareVersions", node @@ arrow string (node @@ arrow string int);
+                       "currentSystem", string;
+                       "nixVersion", string;
+                     ]);
   ]
 
 let initial = StrMap.of_list initial_values
