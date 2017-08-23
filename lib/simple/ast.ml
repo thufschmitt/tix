@@ -15,6 +15,7 @@ type operator =
   | Ominus
   | Onot | Oand | Oor
   | OrecordMember
+  | Omerge
 
 type expr = expr_desc with_loc
 

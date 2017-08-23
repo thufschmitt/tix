@@ -195,6 +195,7 @@ module Record = struct
       (def r)
       (labels r)
 
+  let merge = T.Record.merge
 end
 
 module String = struct

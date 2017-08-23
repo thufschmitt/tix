@@ -21,6 +21,7 @@ let pp_op fmt = function
   | P.Onot   -> F.pp_print_string fmt "!"
   | P.Oand   -> F.pp_print_string fmt "&"
   | P.Oor    -> F.pp_print_string fmt "|"
+  | P.Omerge -> F.pp_print_string fmt "//"
   | P.OrecordMember -> F.pp_print_string fmt "?"
 
 let const fmt = function

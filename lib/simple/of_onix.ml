@@ -106,6 +106,7 @@ let operator : O.operator -> N.operator = function
   | O.Onot-> N.Onot
   | O.Oand-> N.Oand
   | O.Oor-> N.Oor
+  | O.Omerge -> N.Omerge
   | O.OnonEq
   | O.Oimplies -> assert false (* treated separately *)
 

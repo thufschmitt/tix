@@ -33,6 +33,7 @@ let pp_op fmt = function
   | P.Oand   -> F.pp_print_string fmt "&"
   | P.Oor    -> F.pp_print_string fmt "|"
   | P.Oimplies -> F.pp_print_string fmt "->"
+  | P.Omerge -> F.pp_print_string fmt "//"
 
 let rec pp_expr fmt = drop_loc %> function
     | P.Evar v ->

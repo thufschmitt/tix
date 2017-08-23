@@ -143,6 +143,8 @@ let testsuite =
        "({ x = 1; } /*: { x = 1; ... } */).${(\"y\" /*: String */)} or 2",
        "Any");
       "infer_bracket", "<foo>", "Path";
+      "infer_rmerge", "{ y = 2; } // { x = 1; }", "{ x = 1; y = 2; }";
+      "infer_rmerge_same_field", "{ x = 2; } // { x = 1; }", "{ x = 1; }";
     ] @
   (* ----- Negative tests ----- *)
   List.map (fun (name, expr) -> name >:: test_infer_expr_fail expr)
@@ -198,6 +200,8 @@ let testsuite =
       ("check_record_ap_guarded_optional",
        "({ } /*: { x =? 1; } */).x or 2",
        "1|2");
+      "check_rmerge", "{ y = 2; } // { x = 1; }", "{ x = 1; y = 2; }";
+      "check_rmerge_same_field", "{ x = 2; } // { x = 1; }", "{ x = 1; }";
     ] @
   List.map (fun (name, expr, result) -> name >:: test_check_fail expr result)
     [

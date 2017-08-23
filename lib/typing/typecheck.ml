@@ -283,6 +283,13 @@ end = struct
             W.pure @@ T.Bool.false_type
           else W.pure @@ T.Bool.all
       end
+    | P.Omerge, [e1; e2] ->
+      expr env e1 >>= fun t1 ->
+      expr env e2 >>= fun t2 ->
+      check_subtype loc ~inferred:t1 ~expected:T.Record.any >>
+      check_subtype loc ~inferred:t2 ~expected:T.Record.any >>
+      W.pure @@ T.Record.merge t1 t2
+    | P.Omerge, _
     | P.OrecordMember, _
     | P.Oplus, _
     | P.Ominus, _
@@ -600,6 +607,14 @@ end = struct
                 strings) >> W.return ()
         end
       else expr env record T.Record.any
+    | P.Omerge, [e1; e2] ->
+      Infer.expr env e1 >>= fun t1 ->
+      Infer.expr env e2 >>= fun t2 ->
+      check_subtype loc ~inferred:t1 ~expected:T.Record.any >>
+      check_subtype loc ~inferred:t2 ~expected:T.Record.any >>
+      let result = T.Record.merge t1 t2 in
+      check_subtype loc ~inferred:result ~expected
+    | P.Omerge, _
     | P.OrecordMember, _
     | P.Onot, _
     | P.Oand, _

@@ -16,6 +16,7 @@ type operator =
   | Oand
   | Oor
   | Oimplies
+  | Omerge
 
 type expr = expr_desc with_loc
 

@@ -132,6 +132,7 @@ let infix_ops =
       infix "&&" (fun e1 e2 -> A.EopApp (A.Oand, [e1; e2])) P.Assoc_left;
       infix "||" (fun e1 e2 -> A.EopApp (A.Oor, [e1; e2])) P.Assoc_left;
       infix "->" (fun e1 e2 -> A.EopApp (A.Oimplies, [e1; e2])) P.Assoc_left;
+      infix "//" (fun e1 e2 -> A.EopApp (A.Omerge, [e1; e2])) P.Assoc_left;
     ];
     [ prefix "-" (fun e -> A.EopApp (A.Oneg, [e]));
       prefix "!" (fun e -> A.EopApp (A.Onot, [e]));
