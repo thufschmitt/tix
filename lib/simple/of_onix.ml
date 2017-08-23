@@ -337,7 +337,8 @@ and inherit_to_classic ((base_expr, fields) : O.inherit_)
       | None -> W.return @@ WL.mk loc @@ N.Evar name
       | Some e ->
         expr e >|= fun e ->
-        WL.mk loc @@ N.EaccessPath (e, [WL.mk loc @@ N.Evar name], None)
+        WL.mk loc
+        @@ N.EaccessPath (e, [WL.mk loc @@ N.Econstant (N.Cstring name)], None)
     in
     value >|= fun value ->
     (WL.mk loc @@ N.Econstant (N.Cstring name), None, value)

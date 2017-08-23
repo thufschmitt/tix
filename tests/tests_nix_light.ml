@@ -83,6 +83,9 @@ let testsuite =
       "test_apath_or", "x.y or z", "x.\"y\" or z";
       "test_bracket", "<foo>", "<foo>";
       "record_merge", "{} // { x = 1; }", "//({ }, { \"x\" = 1; })";
+      ("test_inherit",
+       "{ inherit x; inherit (foo) y; }",
+       "{ \"x\" = x; \"y\" = foo.\"y\"; }");
     ] @
   List.map (fun (name, input) ->
       name >:: test_parse_pp_str_fail input)
