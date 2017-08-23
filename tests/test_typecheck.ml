@@ -190,6 +190,13 @@ let testsuite =
       "check_record1", "{ x = 1; }", "{ x = 1 }";
       "check_record2", "{ x = 1; y = 2; }", "{ x = 1; y = 2 }";
       "check_record3", "{ x = 1; y = 2; }", "{ x = 1; ... }";
+      "check_record_ap", "{ x = 1; }.x", "1";
+      "check_record_ap_dynamic", "{ x = 1; }.${\"x\"}", "1";
+      "check_record_ap_guarded", "{ x = 1; }.y or 2", "2";
+      "check_record_ap_guarded_useless", "{ x = 1; }.x or 2", "1";
+      ("check_record_ap_guarded_optional",
+       "({ } /*: { x =? 1; } */).x or 2",
+       "1|2");
     ] @
   List.map (fun (name, expr, result) -> name >:: test_check_fail expr result)
     [

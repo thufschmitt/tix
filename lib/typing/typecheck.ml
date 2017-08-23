@@ -195,7 +195,9 @@ end = struct
       record env fields
     | P.EaccessPath (e, ap, default) ->
       W.map_opt (expr env) default >>= fun default_ty ->
-      let unguarded_typing = Common.record_access env e ap default_ty in
+      let unguarded_typing =
+        Common.record_access env e ap (CCOpt.is_some default_ty)
+      in
       let final_type =
         begin match (default_ty, W.value unguarded_typing) with
           | None, (_, true) ->
@@ -473,7 +475,23 @@ end = struct
       expr env e ty
     | P.Erecord fields ->
       record env fields loc expected
-    | P.EaccessPath _ -> assert false
+    | P.EaccessPath (e, ap, default) ->
+      let unguarded_typing =
+        Common.record_access env e ap (CCOpt.is_some default)
+      in
+      let final_check =
+        begin match (default, W.value unguarded_typing) with
+          | None, (_, true) ->
+            typeError loc "Couldn't select this field"
+          | _, (t, false) ->
+            check_subtype loc ~inferred:t ~expected
+          | Some guard, (t, true) ->
+            check_subtype loc ~inferred:t ~expected >>
+            expr env guard expected
+        end
+      in W.append
+        (W.log unguarded_typing)
+        final_check
     | P.Ewith (_,_) ->
       typeError loc "With constructs are not allowed"
 
@@ -684,7 +702,7 @@ and Common : sig
   val pragma : E.t -> Parse.Pragma.t -> E.t
   val import : (E.t -> P.expr -> 'a W.t) -> 'a -> E.t -> P.expr -> 'a W.t
   val negate_interval : Cduce_lib.Types.VarIntervals.t -> T.t
-  val record_access : E.t -> P.expr -> P.access_path -> T.t option -> T.t FlaggedWriter.t
+  val record_access : E.t -> P.expr -> P.access_path -> bool -> T.t FlaggedWriter.t
 end = struct
 
   let let_binding expr env binds e =
@@ -753,7 +771,7 @@ end = struct
             Cduce_lib.Types.interval @@ Cduce_lib.Intervals.negat i
           | `Var v -> Cduce_lib.Types.var v)
 
-  let record_access env e ap default_ty : T.t FlaggedWriter.t =
+  let record_access env e ap is_guarded : T.t FlaggedWriter.t =
     Infer.expr env e >>= fun te ->
     W.map_l (Infer.expr env) ap >>= fun tap ->
     let acces_path_singletons = List.map T.String.get tap in
@@ -763,7 +781,6 @@ end = struct
     in
     let module M = FlaggedWriter in
     let open M.Infix in
-    let is_guarded = CCOpt.is_some default_ty in
     let typeErrorIfUnguarded loc fmt_str =
       Format.ksprintf
         (fun s ->
