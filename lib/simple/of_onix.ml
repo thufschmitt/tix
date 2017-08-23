@@ -23,7 +23,7 @@ let rec partition_binop op = function
 let filter_inherit fields =
     CCList.partition_map
       (function
-        | { WL.description = O.Finherit _; _ } as f -> `Right f
+        | { WL.description = O.Finherit (e, fields); _ } -> `Right (e, fields)
         | { WL.description = O.Fdef (ap, value); location} ->
           `Left { WL.description = (ap, value); location; })
       fields
@@ -263,7 +263,7 @@ and record r =
   else
     let non_inherit_fields, inherit_fields = filter_inherit fields
     in
-    assert (inherit_fields = []); (* Not handled now *)
+    W.map_l inherit_to_classic inherit_fields >>= fun inherit_fields ->
     flatten non_inherit_fields >>= fun flattened ->
     W.map_l
       (fun { WL.description = ((apf, annot), e); location  } ->
@@ -275,7 +275,7 @@ and record r =
          (label_expr, annot,  rhs_expr))
       flattened
     >|= fun new_record ->
-    N.Erecord new_record
+    N.Erecord (new_record @ CCList.flatten inherit_fields)
 
 and lambda pat e =
   pattern pat >>= fun (new_pat, default_values) ->
@@ -329,4 +329,18 @@ and funApp e1 e2 =
   match WL.description e1 with
   | N.Evar "import" -> N.Eimport e2
   | _ -> N.EfunApp (e1, e2)
+
+and inherit_to_classic ((base_expr, fields) : O.inherit_)
+  : N.field list W.t =
+  let mk_classic { WL.description = name; location = loc } =
+    let value = match base_expr with
+      | None -> W.return @@ WL.mk loc @@ N.Evar name
+      | Some e ->
+        expr e >|= fun e ->
+        WL.mk loc @@ N.EaccessPath (e, [WL.mk loc @@ N.Evar name], None)
+    in
+    value >|= fun value ->
+    (WL.mk loc @@ N.Econstant (N.Cstring name), None, value)
+  in
+  W.map_l mk_classic fields
 

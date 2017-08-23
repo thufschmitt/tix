@@ -403,18 +403,27 @@ and expr_record i =
 and expr_record_nonrec i =
   i |> (
     P.char '{' >> space >>
-    P.many expr_record_field
+    P.many (expr_record_field <|> expr_inherit)
     << P.char '}' << space
   )
 
 and expr_record_field i =
-  i |> add_loc ((
+  i |> add_loc (P.attempt (
       ap_pattern >>= fun ap ->
       P.char '=' >> space >>
       expr << P.char ';' << space |>> fun value ->
       A.Fdef (ap, value))
       <?> "record field"
     )
+
+and expr_inherit i =
+    i |> add_loc (P.attempt (
+    keyword "inherit" >>
+    P.option (P.char '(' >> space >> expr << P.char ')' << space) >>= fun base_def ->
+    P.sep_by1 (add_loc @@ ident) space << P.char ';' << space |>> fun fields ->
+    A.Finherit (base_def, fields)
+  )
+  )
 
 and expr_list i =
   i |> (
