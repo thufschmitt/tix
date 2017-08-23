@@ -84,7 +84,6 @@ let rec pp_expr fmt = drop_loc %> function
       F.fprintf fmt "with %a; %a"
         pp_expr e1
         pp_expr e2
-    | _ -> failwith "TODO"
 
 and pp_ap fmt = F.pp_print_list
     ~pp_sep:(fun fmt () -> F.pp_print_char fmt '.')

@@ -115,9 +115,7 @@ let rec expr_desc : O.expr_desc -> N.expr_desc W.t = function
   | O.Econstant c -> W.return @@ N.Econstant (constant c)
   | O.Elambda (pat, e) -> lambda pat e
   | O.EfunApp (e1, e2) ->
-    expr e1 >>= fun e1 ->
-    expr e2 >|= fun e2 ->
-    N.EfunApp (e1, e2)
+    funApp e1 e2
   | O.EtyAnnot (e, t)  -> expr e >|= fun e -> N.EtyAnnot (e, t)
   | O.EopApp (O.OnonEq, [e1; e2]) ->
     expr e1 >>= fun e1 ->
@@ -144,7 +142,6 @@ let rec expr_desc : O.expr_desc -> N.expr_desc W.t = function
     N.Eite (e0, e1, e2)
   (* TODO: smarter compilation of some form of if-then-else *)
   | O.Epragma (p, e) -> expr e >|= fun e -> N.Epragma (p, e)
-  | O.Eimport e -> expr e >|= fun e -> N.Eimport e
   | O.Erecord r -> record r
   | O.Eaccess (e, ap, default) ->
     expr e >>= fun e ->
@@ -325,3 +322,11 @@ and lambda pat e =
                     (N.Elet (substitute_values, body)))))
   in
   N.Elambda (new_pat, body)
+
+and funApp e1 e2 =
+  expr e1 >>= fun e1 ->
+  expr e2 >|= fun e2 ->
+  match WL.description e1 with
+  | N.Evar "import" -> N.Eimport e2
+  | _ -> N.EfunApp (e1, e2)
+

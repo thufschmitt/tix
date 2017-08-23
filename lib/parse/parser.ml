@@ -22,7 +22,6 @@ let keywords = StrHash.of_list [
     "if"; "then"; "else";
     "let"; "in";
     "true"; "false";
-    "import"; (* This isn't a keyword in Nix, but a regular function. *)
     "assert";
     "rec";
     "with";
@@ -316,7 +315,7 @@ let rec expr i =
   i |> (
     any [
       expr_pragma; expr_lambda; expr_let; expr_if; expr_infix;
-      expr_assert; expr_import; expr_with; expr_apply; expr_apply_or_member
+      expr_assert; expr_with; expr_apply; expr_apply_or_member
     ]
   )
 
@@ -338,12 +337,6 @@ and warning_annot i =
     match Pragma.Warning.read name with
     | Some w -> P.return (sign, w)
     | None -> P.fail "Invalid warning name")
-
-and expr_import i =
-  i |> add_loc (
-    keyword "import" >>
-    expr_atom |>> fun e ->
-    A.Eimport e)
 
 and expr_with i =
   i |> add_loc (
