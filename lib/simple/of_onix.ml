@@ -106,6 +106,8 @@ let operator : O.operator -> N.operator = function
   | O.Onot-> N.Onot
   | O.Oand-> N.Oand
   | O.Oor-> N.Oor
+  | O.OnonEq
+  | O.Oimplies -> assert false (* treated separately *)
 
 let rec expr_desc : O.expr_desc -> N.expr_desc W.t = function
   | O.Evar s -> W.return @@ N.Evar s
@@ -116,6 +118,17 @@ let rec expr_desc : O.expr_desc -> N.expr_desc W.t = function
     expr e2 >|= fun e2 ->
     N.EfunApp (e1, e2)
   | O.EtyAnnot (e, t)  -> expr e >|= fun e -> N.EtyAnnot (e, t)
+  | O.EopApp (O.OnonEq, [e1; e2]) ->
+    expr e1 >>= fun e1 ->
+    expr e2 >|= fun e2 ->
+    N.EopApp (N.Onot, [WL.mk
+                         (WL.loc e1)
+                         (N.EopApp (N.Oeq, [e1; e2]))])
+  | O.EopApp (O.Oimplies, [e1; e2]) ->
+    let e1_loc = WL.loc e1 in
+    expr e1 >>= fun e1 ->
+    expr e2 >|= fun e2 ->
+    N.EopApp (N.Oor, [e2; WL.mk e1_loc (N.EopApp (N.Onot, [e1]))])
   | O.EopApp (o, args) ->
     W.map_l expr args >|= fun args ->
     N.EopApp (operator o, args)

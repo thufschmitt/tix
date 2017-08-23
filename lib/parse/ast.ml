@@ -8,13 +8,14 @@ type 'a with_loc = 'a Common.Location.With_loc.t
 
 type operator =
   | Ocons
-  | Oeq
+  | Oeq | OnonEq
   | Oneg
   | Oplus
   | Ominus
   | Onot
   | Oand
   | Oor
+  | Oimplies
 
 type expr = expr_desc with_loc
 

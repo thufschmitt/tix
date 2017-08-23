@@ -22,13 +22,15 @@ let const fmt = function
 
 let pp_op fmt = function
   | P.Ocons -> F.pp_print_string fmt "Cons"
-  | P.Oeq   -> F.pp_print_string fmt "+"
+  | P.Oeq   -> F.pp_print_string fmt "=="
+  | P.OnonEq   -> F.pp_print_string fmt "!="
   | P.Oneg  -> F.pp_print_string fmt "-"
   | P.Oplus  -> F.pp_print_string fmt "+"
   | P.Ominus -> F.pp_print_string fmt "-"
   | P.Onot   -> F.pp_print_string fmt "!"
   | P.Oand   -> F.pp_print_string fmt "&"
   | P.Oor    -> F.pp_print_string fmt "|"
+  | P.Oimplies -> F.pp_print_string fmt "->"
 
 let rec pp_expr fmt = drop_loc %> function
     | P.Evar v ->
