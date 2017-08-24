@@ -192,7 +192,29 @@ let typ_ident i = i |> add_loc (
 and typ_singleton i = i |> add_loc
   @@ any [typ_int; typ_bool; typ_string; typ_path ]
 
-let rec typ i = i |> (P.expression typ_op
+let rec typ i =
+  i |> (
+    typ_simple >>= fun t ->
+    P.many_fold_left
+      (fun accu_ty -> W.map (fun c -> T.TyBind (c, accu_ty)))
+      t
+      where_clause)
+
+and where_clause i =
+  i |> add_loc (
+    keyword "where" >>
+    P.sep_by typ_binding (keyword "and")
+  )
+
+and typ_binding i =
+  i |> (
+    ident >>= fun name ->
+    P.char '=' >> space >>
+    typ |>> fun t ->
+    (name, t)
+  )
+
+and typ_simple i = i |> (P.expression typ_op
                         (any [typ_atom; typ_list; typ_record])
                       <?> "type")
 
