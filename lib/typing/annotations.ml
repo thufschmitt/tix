@@ -94,21 +94,16 @@ let rec to_node (nodes_env : Nodes_env.t) env (annot: A.t)
         (nodes_env, [])
         binds
     in
-    begin
-      let binds_errors =
-        List.fold_left
-          (fun accu (typ, def) ->
-             let (type_def, errors) = to_type new_nodes_env env def in
-             T.define typ type_def;
-             errors @ accu
-          )
-          []
-          defs
-      in
-      W.append
-        binds_errors
-        (to_node new_nodes_env env t)
-    end
+    let binds_errors =
+      W.iter_l
+        (fun (typ, def) ->
+           to_type new_nodes_env env def >|= fun type_def ->
+           T.define typ type_def
+        )
+        defs
+    in
+    binds_errors >>
+    (to_node new_nodes_env env t)
   | A.Cons (t1, t2) ->
     W.map2
       T.Builtins.cons
