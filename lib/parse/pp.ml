@@ -32,6 +32,7 @@ let pp_binop fmt = function
   | P.Oor    -> F.pp_print_string fmt "||"
   | P.Oimplies -> F.pp_print_string fmt "->"
   | P.Omerge -> F.pp_print_string fmt "//"
+  | P.Oconcat -> F.pp_print_string fmt "++"
 
 and pp_monop fmt = function
   | P.Onot   -> F.pp_print_string fmt "!"

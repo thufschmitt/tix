@@ -20,6 +20,7 @@ let pp_binop fmt = function
   | P.Oand   -> F.pp_print_string fmt "&&"
   | P.Oor    -> F.pp_print_string fmt "||"
   | P.Omerge -> F.pp_print_string fmt "//"
+  | P.Oconcat -> F.pp_print_string fmt "++"
   | P.OrecordMember -> F.pp_print_string fmt "?"
 
 and pp_monop fmt = function

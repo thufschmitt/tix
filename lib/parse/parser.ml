@@ -190,6 +190,7 @@ let infix_ops =
       infix "+" (fun e1 e2 -> A.Ebinop (A.Oplus, e1, e2)) P.Assoc_left;
       infix "-" (fun e1 e2 -> A.Ebinop (A.Ominus, e1, e2)) P.Assoc_left;
       infix "//" (fun e1 e2 -> A.Ebinop (A.Omerge, e1, e2)) P.Assoc_left;
+      infix "++" (fun e1 e2 -> A.Ebinop (A.Oconcat, e1, e2)) P.Assoc_left;
     ];
     [
       infix "&&" (fun e1 e2 -> A.Ebinop (A.Oand, e1, e2)) P.Assoc_left;

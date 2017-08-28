@@ -12,6 +12,7 @@ type binop =
   | Oplus | Ominus
   | Oand | Oor | Oimplies
   | Omerge
+  | Oconcat
 
 type monop =
   | Oneg

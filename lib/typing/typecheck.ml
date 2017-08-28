@@ -276,6 +276,17 @@ end = struct
       check_subtype loc ~inferred:t1 ~expected:T.Record.any >>
       check_subtype loc ~inferred:t2 ~expected:T.Record.any >>
       W.pure @@ T.Record.merge t1 t2
+    | P.Oconcat ->
+      expr env e1 >>= fun t1 ->
+      expr env e2 >>= fun t2 ->
+      let any_list =
+        let any_node = T.node T.Builtins.any in
+        T.Builtins.cons any_node any_node
+      in
+      check_subtype loc ~inferred:t1 ~expected:any_list >>
+      check_subtype loc ~inferred:t2 ~expected:any_list >>
+      W.pure @@ any_list (* TODO *)
+
 
   and monop env loc op e = match op with
     | P.Oneg ->
@@ -598,6 +609,16 @@ end = struct
       check_subtype loc ~inferred:t2 ~expected:T.Record.any >>
       let result = T.Record.merge t1 t2 in
       check_subtype loc ~inferred:result ~expected
+    | P.Oconcat ->
+      Infer.expr env e1 >>= fun t1 ->
+      Infer.expr env e2 >>= fun t2 ->
+      let any_list =
+        let any_node = T.node T.Builtins.any in
+        T.Builtins.cons any_node any_node
+      in
+      check_subtype loc ~inferred:t1 ~expected:any_list >>
+      check_subtype loc ~inferred:t2 ~expected:any_list (* TODO *)
+
 
   and monop env loc op e expected = match op with
     | P.Onot ->

@@ -105,6 +105,7 @@ let binop : O.binop -> N.binop = function
   | O.Oand-> N.Oand
   | O.Oor-> N.Oor
   | O.Omerge -> N.Omerge
+  | O.Oconcat -> N.Oconcat
   | O.OnonEq
   | O.Oimplies -> assert false (* treated separately *)
 

@@ -15,6 +15,7 @@ type binop =
   | Oand | Oor
   | OrecordMember
   | Omerge
+  | Oconcat
 
 type monop =  Oneg| Onot 
 
