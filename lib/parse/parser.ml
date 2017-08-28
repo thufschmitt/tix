@@ -493,7 +493,7 @@ and expr_list i =
     P.many_rev_fold_left
       (fun accu elt -> W.mk loc (A.Ebinop (A.Ocons, elt, accu)))
       (W.mk loc @@ A.Evar "nil")
-      expr_atom
+      expr_select
     << P.char ']' << space
   )
 
