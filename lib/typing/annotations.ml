@@ -115,11 +115,12 @@ let rec to_node (nodes_env : Nodes_env.t) env (annot: A.t)
       W.map_l (
         fun (n, (is_optional, typ)) ->
           to_node nodes_env env typ >|= fun t ->
-          let typ' =
-            if is_optional then
-              Cduce_lib.Types.Record.or_absent (T.typ t)
-            else (T.typ t)
-          in (n, T.node typ'))
+          let _ = if is_optional then
+            Cduce_lib.Types.define
+              t
+              (Cduce_lib.Types.Record.or_absent (T.typ t))
+          in
+          (n, t))
         fields
     in
     real_fields >|= fun f ->
