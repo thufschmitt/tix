@@ -71,10 +71,66 @@ let lift (direction : [> `Up | `Down ]) t =
   in
   replace_gradual direction t
 
+let lazy_preprocess t =
+  let bottom = T.atom (C.Atoms.(atom @@ V.mk_ascii "#")) in
+  let add_bottom = T.cup bottom in
+  let map_bdd (type a b) (module S : C.Bool.S
+                           with type elem = a
+                            and type t = b) atm =
+    let open T in
+    S.compute ~empty ~full:any ~cup ~cap ~diff ~atom:atm
+  in
+  let map_vartype (type a) (module V : T.VarType with type Atom.t = a) atm t =
+    map_bdd (module V) (function
+        | `Var v -> T.var v
+        | `Atm a -> atm a)
+      (V.proj t)
+  in
+  let module IntMap = CCHashtbl.Make (CCInt) in
+  let visited_set = IntMap.create 16 in
+  let rec rewrite_for_lazy (typ : t) : t =
+    let atoms = map_vartype (module T.VarAtoms) T.atom
+    and ints = map_vartype (module T.VarIntervals) T.interval
+    and chars = map_vartype (module T.VarChars) T.char
+    and abstracts = map_vartype (module T.VarAbstracts) T.abstract
+    and times = map_vartype (module T.VarTimes)
+        (map_bdd (module T.Pair) @@ fun (n1, n2) ->
+         T.times
+           (rewrite_for_lazy_node n1)
+           (rewrite_for_lazy_node n2))
+    (* and xml = Don't care, we don't use xml types *)
+    and arrows = map_vartype (module T.VarArrow)
+        (map_bdd (module T.Pair) @@ fun (n1, n2) ->
+         T.arrow
+           (rewrite_for_lazy_node n1)
+           (rewrite_for_lazy_node n2))
+    and records = map_vartype (module T.VarRec)
+        (map_bdd (module T.Rec) @@ fun r ->
+         CCPair.map2 (C.Ident.LabelMap.map
+                        (fun n -> rewrite_for_lazy_node n)
+                     ) r
+         |> T.record_fields)
+    in
+    List.fold_left T.cup T.empty @@
+    List.map (fun f -> f typ)
+      [arrows; ints; atoms; chars; times; records; abstracts]
+  and rewrite_for_lazy_node n =
+    let id = T.id n in
+    begin match IntMap.get visited_set id with
+      | Some node -> node
+      | None ->
+        let new_node = T.make () in
+        IntMap.add visited_set id new_node;
+        T.define new_node @@ add_bottom @@ rewrite_for_lazy (T.descr n);
+        new_node
+    end
+  in
+  rewrite_for_lazy t
+
 let sub t1 t2 =
   C.Type_tallying.is_squaresubtype C.Var.Set.empty
-    (lift `Down t1)
-    (lift `Up t2)
+    (lazy_preprocess @@ lift `Down t1)
+    (lazy_preprocess @@ lift `Up t2)
 
 let applicative_lift t =
   assert (sub t T.Arrow.any);
