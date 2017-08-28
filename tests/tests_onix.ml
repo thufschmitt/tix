@@ -88,6 +88,7 @@ let testsuite =
        "let x = 1; y = 2; in x",
        "let x = 1; y = 2; in x");
       "test_path", "./foo.nix", "./foo.nix";
+      "test_path2", "../foo.nix", "../foo.nix";
       "test_with", "with e1; e2", "with e1; e2";
       "test_or", "x.y or z", "x.y or z";
       "test_bracket", "<foo>", "<foo>";

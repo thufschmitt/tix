@@ -98,9 +98,9 @@ let multiline_string = P.string "''" >>
 let string = any [simple_string; multiline_string]
 
 let litteral_path =
-  (P.string "./" >>
+  ((P.attempt @@ P.string "./" <|> P.string "../") >>= fun prefix ->
    P.many_chars (any [ P.alphanum; P.any_of "-/_." ]) << space |>> fun path ->
-   "./" ^ path)
+   prefix ^ path)
   <?> "Path"
 
 let bracketed_path =
