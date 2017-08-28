@@ -506,7 +506,7 @@ and expr_record_field i =
       P.char '=' >> space >>
       expr << P.char ';' << space |>> fun value ->
       A.Fdef (ap, value))
-      <?> "record field"
+      <?> "record field or binding"
     )
 
 and expr_inherit i =
@@ -551,19 +551,12 @@ and expr_lambda i =
 and expr_let i =
   i |> (add_loc (
       keyword "let" >>
-      P.many1 (P.attempt binding) >>= fun b ->
+      P.many1 (expr_inherit <|> expr_record_field) >>= fun b ->
       keyword "in" >>
       expr |>> fun e ->
       A.Elet (b, e)
     )
         <?> "let binding")
-
-and binding i =
-  i |> add_loc
-  (ap_pattern >>= fun access_path ->
-   P.char '=' >> space >>
-   expr << P.char ';' << space |>> fun e ->
-   A.Fdef (access_path, e))
 
 and pattern i = i |> (P.choice [pattern_ident; pattern_complex] <?> "pattern")
 
