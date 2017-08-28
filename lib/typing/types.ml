@@ -34,6 +34,8 @@ let lift (direction : [> `Up | `Down ]) t =
         | `Atm a -> atm a)
       (V.proj t)
   in
+  let module IntSet = CCHashSet.Make (CCInt) in
+  let visited_set = IntSet.create 16 in
   let rec replace_gradual (direction : [> `Up | `Down ]) (typ : t) : t =
     let atoms = map_vartype (module T.VarAtoms) direction T.atom
     and ints = map_vartype (module T.VarIntervals) direction T.interval
@@ -57,11 +59,15 @@ let lift (direction : [> `Up | `Down ]) t =
          |> T.record_fields)
     and abstracts = map_vartype (module T.VarAbstracts) direction T.abstract
     in
-    List.fold_left T.cup T.empty @@
-    List.map (fun f -> f typ)
+    List.fold_left T.cup T.empty @@ List.map (fun f -> f typ)
       [arrows; ints; atoms; chars; times; records; abstracts]
   and replace_gradual_node direction n =
-    T.cons @@ replace_gradual direction (T.descr n)
+    if IntSet.mem visited_set (T.id n) then
+      n
+    else begin
+      IntSet.insert visited_set (T.id n);
+      T.cons @@ replace_gradual direction (T.descr n)
+    end
   in
   replace_gradual direction t
 
