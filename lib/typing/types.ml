@@ -215,8 +215,6 @@ module Bool = struct
 end
 
 module Record = struct
-  let any = T.rec_of_list true []
-
   let of_list is_open fields =
     T.rec_of_list
       is_open
@@ -224,6 +222,18 @@ module Record = struct
            (is_optional, Cduce_lib.Ns.Label.mk_ascii key, value))
           fields
       )
+
+  let make is_open fields =
+    let label_fields =
+      fields
+      |> Simple.Record.to_list
+      |> List.map (fun (key, value) ->
+          (Cduce_lib.Ns.Label.mk_ascii key, value))
+      |> Cduce_lib.Ident.LabelMap.from_list_disj
+    in
+    Cduce_lib.Types.record_fields (is_open, label_fields)
+
+  let any = of_list true []
 
   let get_field f_name =
     T.Record.pi (C.Ident.Label.mk_ascii f_name)
@@ -384,15 +394,7 @@ end
   let diff = C.Types.diff
   let neg = C.Types.neg
 
-  let record is_open fields =
-    let label_fields =
-      fields
-      |> Simple.Record.to_list
-      |> List.map (fun (key, value) ->
-          (Cduce_lib.Ns.Label.mk_ascii key, value))
-      |> Cduce_lib.Ident.LabelMap.from_list_disj
-    in
-    Cduce_lib.Types.record_fields (is_open, label_fields)
+  let record = Record.make
 end
 
 module Singleton = struct
