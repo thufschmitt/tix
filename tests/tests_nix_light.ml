@@ -86,6 +86,8 @@ let testsuite =
       ("test_inherit",
        "{ inherit x; inherit (foo) y; }",
        "{ \"x\" = x; \"y\" = foo.\"y\"; }");
+      "interpol_string", "\"${foo}\"", "(foo + \"\")";
+      "interpol_string2", "\"blah${foo}bar\"", "(\"blah\" + (foo + \"bar\"))";
     ] @
   List.map (fun (name, input) ->
       name >:: test_parse_pp_str_fail input)

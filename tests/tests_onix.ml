@@ -93,4 +93,6 @@ let testsuite =
       "test_or", "x.y or z", "x.y or z";
       "test_bracket", "<foo>", "<foo>";
       "record_merge", "{} // { x = 1; }", "({ } // { x = 1; })";
+      "interpol_string", "\"${foo}\"", "(foo + \"\")";
+      "interpol_string2", "\"blah${foo}bar\"", "(\"blah\" + (foo + \"bar\"))";
     ]

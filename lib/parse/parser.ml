@@ -79,23 +79,63 @@ let bool = any
            << space
            <?> "boolean"
 
-let simple_string = P.char '"' >>
-  P.many_chars_until
-    P.any_char
-    (P.satisfy (fun c -> c = '"')
-     << P.prev_char_satisfies (fun c -> c <> '\\'))
-  << space
-  <?> "simple string"
+let schar escape delim =
+  (escape >> P.any_char)
+  <|>
+  (P.not_followed_by delim "end of string" >> P.any_char)
 
-let multiline_string = P.string "''" >>
-  P.many_chars_until
-    P.any_char
-    (P.char '\'' <<
-     P.followed_by (P.char '\'') "EOS") << P.skip_any_char
-  << space
-  <?> "multiline string"
+let string (expr : (A.expr, string) P.t) =
+  let antiQuot =
+    (add_loc (P.attempt @@ P.string "${" >> expr)) >>= fun e ->
+    P.char '}' >>
+    P.return (`Expr e)
+    <?> "anti quotation"
+  and plainChar escape delim =
+    (add_loc @@ schar escape delim)
+    |>> fun c -> `Char c
+  and flattenString loc l =
+    let rec aux loc cur_buf_opt lst =
+      match (cur_buf_opt, lst) with
+      | Some b, `Char { W.description = c; _ }::tl ->
+        Buffer.add_char b c;
+        aux loc (Some b) tl
+      | Some b, (`Expr e_wl::_ as l) ->
+        let current_string = Buffer.contents b in
+        Buffer.clear b;
+        let e = aux loc None l in
+        W.mk (W.loc e_wl)
+        @@ A.Ebinop (A.Oplus,
+                  W.mk loc
+                  @@ A.Econstant (A.Cstring current_string),
+                  e)
+      | None, `Char { W.description = c; location = loc; }::tl ->
+        let b = Buffer.create 127 in
+        Buffer.add_char b c;
+        aux loc (Some b) tl
+      | None, `Expr e_wl::tl ->
+        let e = W.description e_wl in
+        W.mk (W.loc e_wl) @@ A.Ebinop (A.Oplus, e, (aux loc None tl))
+      | None, [] -> W.mk loc @@ A.Econstant (A.Cstring "")
+      | Some b, [] -> W.mk loc @@ A.Econstant (A.Cstring (Buffer.contents b))
+    in aux loc None l
+  in
+  let str escape delim = delim >>
+    get_loc >>= fun loc ->
+    P.many (antiQuot <|> plainChar escape delim) << delim << space |>> flattenString loc
+  in
+  let simple_string =
+    str (P.char '\\') (P.char '"')
+    <?> "simple string"
+  and indented_string =
+    str
+      (P.attempt (P.string "''" << P.followed_by (P.char '$') "dollar escape"))
+      (P.string "''")
+    <?> "indented string"
+  in
+  simple_string <|> indented_string
 
-let string = any [simple_string; multiline_string]
+let litteral_string =
+  P.char '"' >> P.many_chars_until (schar (P.char '\\') (P.char '"')) (P.char '"') << space
 
 let litteral_path =
   ((P.attempt @@ P.string "./" <|> P.string "../") >>= fun prefix ->
@@ -178,7 +218,7 @@ let typ_bool =
   T.(Singleton (Singleton.Bool b))
 
 let typ_string =
-  string |>> fun s ->
+  litteral_string |>> fun s ->
   T.(Singleton (Singleton.String s))
 
 let typ_path =
@@ -301,11 +341,6 @@ let expr_bool = add_loc (
     A.Econstant (A.Cbool b)
   )
 
-let expr_string = add_loc (
-    string |>> fun s ->
-    A.Econstant (A.Cstring s)
-  )
-
 let expr_path = add_loc (
     litteral_path |>> fun s ->
     A.Econstant (A.Cpath s)
@@ -332,7 +367,7 @@ let pattern_ident = add_loc (
   )
 
 and expr_const =
-  (any [expr_int; expr_bool; expr_string; expr_path; expr_bracket])
+  (any [expr_int; expr_bool; expr_path; expr_bracket])
   <?> "constant"
 
 let rec expr i =
@@ -412,10 +447,12 @@ and expr_if i =
 and expr_atom i =
   i |> (
     any [expr_record; expr_list;
-         expr_const; expr_ident;
+         expr_string; expr_const; expr_ident;
          expr_paren; expr_annot
         ]
   )
+
+and expr_string i = string expr i
 
 and expr_record i = 
   i|> add_loc (
