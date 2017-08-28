@@ -71,7 +71,7 @@ let ident =
 
 let int = P.many1_chars P.digit << space |>> int_of_string
 
-let parens x = P.char '(' >> x << space << P.char ')' << space
+let parens x = P.char '(' >> space >> x << P.char ')' << space
 
 let bool = any
     [keyword "true" >> P.return true;
