@@ -42,25 +42,30 @@ let add_loc x =
 let any x = P.choice @@ List.map P.attempt x
 
 let block_comment =
-  (P.attempt (P.string "/*" << P.satisfy @@ (<>) ':'))
-  >> P.skip_many_chars_until
-    P.any_char
+  (P.attempt (P.string "/*" << P.satisfy @@ (<>) ':')) >>
+  P.skip_many_chars_until
+    P.any_char_or_nl
     (P.char '*' << P.char '/')
 
 let line_comment = P.char '#' << P.not_followed_by (P.string "::") ""
   >> P.skip_many_until P.any_char P.newline
 
-let comment = any [ block_comment; line_comment; ] <?> "comment"
+let comment = P.choice [ block_comment; line_comment; ] <?> "comment"
 
-let space = P.skip_many (P.skip P.space <|> comment <?> "whitespace")
+let one_space = (P.skip P.space <|> comment <?> "whitespace")
+let space = P.skip_many one_space
 
-let keyword k = P.string k << P.not_followed_by P.alphanum "" >> space
+let keyword k = P.string k <<
+                P.not_followed_by P.alphanum "not a keyword" << space
 
 let alphanum_ = P.alphanum <|> P.any_of "_-'"
 let letter_ = P.letter <|> P.char '_'
 
+let isolated_dot =
+  P.char '.' << P.not_followed_by (P.any_of "./") "begin of path"
+
 let ident =
-  (letter_ >>= fun c0 ->
+  P.attempt @@ (letter_ >>= fun c0 ->
    P.many_chars alphanum_ << space >>= fun end_name ->
    let name = (CCString.of_char c0) ^ end_name in
    if StrHash.mem keywords name then
@@ -69,27 +74,40 @@ let ident =
      P.return name)
   <?> "ident"
 
+let uri =
+  let scheme =
+    P.letter >>= fun c0 ->
+    P.many_chars (P.alphanum <|> P.any_of "+-.") |>> fun end_scheme ->
+    (CCString.of_char c0) ^ end_scheme
+  and uriEnd = P.many1_chars (P.alphanum <|> P.any_of "%/?:@&=+$,-_.!~*'")
+  in
+  P.attempt (scheme << P.char ':') >>= fun s ->
+  uriEnd << space |>> fun e ->
+  s ^ ":" ^ e
+
 let int = P.many1_chars P.digit << space |>> int_of_string
 
 let parens x = P.char '(' >> space >> x << P.char ')' << space
 
-let bool = any
+let bool = P.choice
     [keyword "true" >> P.return true;
      keyword "false" >> P.return false]
            << space
            <?> "boolean"
 
 let schar escape delim =
-  (escape >> P.any_char)
+  (escape >> P.any_char_or_nl)
   <|>
-  (P.not_followed_by delim "end of string" >> P.any_char)
+  (P.not_followed_by delim "end of string" >> P.any_char_or_nl)
+
+let antiQuot expr =
+  (P.attempt @@ P.string "${" >> expr) << P.char '}'
+  (* Don't skip spaces because it is used in strings *)
+  <?> "anti quotation"
 
 let string (expr : (A.expr, string) P.t) =
   let antiQuot =
-    (add_loc (P.attempt @@ P.string "${" >> expr)) >>= fun e ->
-    P.char '}' >>
-    P.return (`Expr e)
-    <?> "anti quotation"
+    add_loc (antiQuot expr) |>> fun e -> `Expr e
   and plainChar escape delim =
     (add_loc @@ schar escape delim)
     |>> fun c -> `Char c
@@ -139,13 +157,13 @@ let litteral_string =
 
 let litteral_path =
   ((P.attempt @@ P.string "./" <|> P.string "../") >>= fun prefix ->
-   P.many_chars (any [ P.alphanum; P.any_of "-/_." ]) << space |>> fun path ->
+   P.many_chars (P.choice [ P.alphanum; P.any_of "-/_.+" ]) << space |>> fun path ->
    prefix ^ path)
   <?> "Path"
 
 let bracketed_path =
   (P.char '<' >>
-   P.many_chars (any [ P.alphanum; P.any_of "-/_." ]) <<
+   P.many_chars (P.choice [ P.alphanum; P.any_of "-/_." ]) <<
    P.char '>' << space |>> fun content ->
    content)
   <?> "Bracketed path"
@@ -163,6 +181,9 @@ let infix_ops =
       P.return (fun e -> W.mk loc (f e)))
   in
   [
+    [ prefix "-" (fun e -> A.Emonop (A.Oneg, e));
+      prefix "!" (fun e -> A.Emonop (A.Onot, e));
+    ];
     [
       infix "==" (fun e1 e2 -> A.Ebinop (A.Oeq, e1, e2)) P.Assoc_left;
       infix "!=" (fun e1 e2 -> A.Ebinop (A.OnonEq, e1, e2)) P.Assoc_left;
@@ -174,9 +195,6 @@ let infix_ops =
       infix "&&" (fun e1 e2 -> A.Ebinop (A.Oand, e1, e2)) P.Assoc_left;
       infix "||" (fun e1 e2 -> A.Ebinop (A.Oor, e1, e2)) P.Assoc_left;
       infix "->" (fun e1 e2 -> A.Ebinop (A.Oimplies, e1, e2)) P.Assoc_left;
-    ];
-    [ prefix "-" (fun e -> A.Emonop (A.Oneg, e));
-      prefix "!" (fun e -> A.Emonop (A.Onot, e));
     ];
   ]
 
@@ -203,7 +221,7 @@ let typ_op =
 let typ_regex_postfix_op =
   get_loc >>= fun loc ->
   let mkloc = W.mk loc in
-  any [
+  P.choice [
     P.char '*' >> space >> P.return (fun r -> mkloc @@ Regex_list.Star r);
     P.char '+' >> space >> P.return (fun r -> mkloc @@ Regex_list.Plus r);
     P.char '?' >> space >> P.return (fun r -> mkloc @@ Regex_list.Maybe r);
@@ -230,7 +248,7 @@ let typ_ident i = i |> add_loc (
     <|>
     (P.char '?' >> space >> P.return T.Gradual))
 and typ_singleton i = i |> add_loc
-  @@ any [typ_int; typ_bool; typ_string; typ_path ]
+  @@ P.choice [typ_int; typ_bool; typ_string; typ_path ]
 
 let rec typ i =
   i |> (
@@ -255,10 +273,10 @@ and typ_binding i =
   )
 
 and typ_simple i = i |> (P.expression typ_op
-                        (any [typ_atom; typ_list; typ_record])
+                           (P.choice [typ_list; typ_record; typ_atom;])
                       <?> "type")
 
-and typ_atom i = i |> any [ typ_singleton; typ_ident; parens typ]
+and typ_atom i = i |> P.choice [ typ_singleton; typ_ident; parens typ]
 
 and typ_regex i =
   i |> (
@@ -309,12 +327,11 @@ and typ_record i =
       <?> "type record")
 
 and typ_record_fields i =
-  i |> any [
-    (typ_record_field << P.char ';' << space >>= fun field ->
+  i |> P.choice [
+    (typ_record_field << P.optional (P.char ';') << space >>= fun field ->
      typ_record_fields |>> fun (fields, is_open) ->
      (field :: fields, is_open));
     (P.string "..." >> space >> P.return ([], true));
-    (typ_record_field |>> fun field -> ([field], false));
     (P.return ([], false));
   ]
 
@@ -346,6 +363,11 @@ let expr_path = add_loc (
     A.Econstant (A.Cpath s)
   )
 
+let expr_uri = add_loc (
+    uri |>> fun s ->
+    A.Econstant (A.Cstring s)
+  )
+
 let expr_bracket = add_loc (
     bracketed_path |>> fun brack ->
     A.Econstant (A.Cbracketed brack)
@@ -367,14 +389,20 @@ let pattern_ident = add_loc (
   )
 
 and expr_const =
-  (any [expr_int; expr_bool; expr_path; expr_bracket])
+  (P.choice [expr_int; expr_bool; expr_path; expr_uri; expr_bracket])
   <?> "constant"
 
 let rec expr i =
   i |> (
-    any [
-      expr_pragma; expr_lambda; expr_let; expr_if; expr_infix;
-      expr_assert; expr_with; expr_apply; expr_apply_or_member
+    P.choice [
+      expr_pragma;
+      expr_let;
+      expr_if;
+      expr_assert;
+      expr_with;
+      expr_lambda;
+      P.attempt expr_infix;
+      expr_apply_or_member;
     ]
   )
 
@@ -386,7 +414,9 @@ and expr_pragma i =
       P.many1 warning_annot >>= fun warnings ->
       P.skip_many P.blank >> P.newline >> space >>
       expr |>> fun e ->
-      A.Epragma (Pragma.Warnings warnings, e)))
+      A.Epragma (Pragma.Warnings warnings, e))
+      <?> "Pragma"
+    )
 
 and warning_annot i =
   i |> (
@@ -416,8 +446,7 @@ and expr_assert i =
         W.mk loc (A.Econstant (A.Cstring "assertion failed")))))
 
 and expr_infix i =
-  i |> (
-    P.expression infix_ops expr_apply_or_member)
+  i |> (P.expression infix_ops expr_apply_or_member)
 
 and expr_infix_member i =
   i |> add_loc (
@@ -430,7 +459,8 @@ and expr_infix_member i =
 and expr_apply_or_member i =
   i |> (
     P.attempt expr_infix_member
-    <|> expr_apply)
+    <|> expr_apply
+  )
 
 and expr_if i =
   i |> (add_loc
@@ -446,17 +476,19 @@ and expr_if i =
 
 and expr_atom i =
   i |> (
-    any [expr_record; expr_list;
-         expr_string; expr_const; expr_ident;
-         expr_paren; expr_annot
+    P.choice [
+      expr_record; expr_list;
+      expr_string; expr_const; expr_ident;
+      expr_paren
         ]
+    <?> "atomic expression"
   )
 
 and expr_string i = string expr i
 
-and expr_record i = 
+and expr_record i =
   i|> add_loc (
-    P.option @@ keyword "rec" >>= fun maybe_isrec ->
+    P.option (P.attempt @@ keyword "rec") >>= fun maybe_isrec ->
     let recursive = CCOpt.is_some maybe_isrec in
     expr_record_nonrec |>> fun fields ->
     A.(Erecord { recursive; fields }))
@@ -466,6 +498,7 @@ and expr_record_nonrec i =
     P.char '{' >> space >>
     P.many (expr_record_field <|> expr_inherit)
     << P.char '}' << space
+    <?> "record"
   )
 
 and expr_record_field i =
@@ -497,20 +530,20 @@ and expr_list i =
     << P.char ']' << space
   )
 
-and expr_paren i = i |> parens expr
-
-and expr_annot i =
-  i |> add_loc (
+and expr_paren i =
+  i |> (
+    get_loc >>= fun loc ->
     parens (
       expr >>= fun e ->
-      type_annot |>> fun t ->
-      A.EtyAnnot (e, t)
+      P.option type_annot |>> function
+      | None -> e
+      | Some t -> W.mk loc @@ A.EtyAnnot (e, t)
     ))
 
 and expr_lambda i =
   i |> (add_loc (
-      pattern >>= fun pat ->
-      P.char ':' >> space >>
+      P.not_followed_by uri "uri" >>
+      P.attempt (pattern << P.char ':') >>= fun pat -> space >>
       expr |>> fun body ->
       A.Elambda (pat, body)
     )
@@ -533,14 +566,14 @@ and binding i =
    expr << P.char ';' << space |>> fun e ->
    A.Fdef (access_path, e))
 
-and pattern i = i |> (any [pattern_ident; pattern_complex] <?> "pattern")
+and pattern i = i |> (P.choice [pattern_ident; pattern_complex] <?> "pattern")
 
 and pattern_complex i =
-  i |> add_loc @@ any [
+  i |> add_loc (
     (pattern_record >>= fun record ->
      P.option (P.char '@' >> space >> ident) |>> fun alias_opt ->
      A.Pnontrivial (record, alias_opt));
-  ]
+  )
 
 
 and pattern_record_field i =
@@ -552,13 +585,10 @@ and pattern_record_field i =
       <?> "pattern record field")
 
 and pattern_inside i =
-  i |> any [
-    (pattern_record_field << P.char ',' << space >>= fun field ->
+  i |> P.choice [
+    (pattern_record_field << P.optional (P.char ',') << space >>= fun field ->
      pattern_inside |>> fun (A.NPrecord (fields, open_flag)) ->
      A.NPrecord (field::fields, open_flag));
-
-    (pattern_record_field |>> fun field ->
-     A.NPrecord ([field], A.Closed));
 
     (P.string "..." >> space >> P.return @@ A.NPrecord ([], A.Open));
 
@@ -579,18 +609,17 @@ and expr_apply i =
    List.fold_left (fun accu e -> W.mk loc (A.EfunApp (accu, e))) e0)
 
 and expr_select i =
-  i |> (P.attempt @@
-        add_loc (
-          expr_atom >>= fun e ->
-          P.char '.' >> space >>
+  i |> (add_loc (
+          P.attempt (expr_atom << isolated_dot) >>= fun e ->
+          space >>
           ap >>= fun a ->
           P.option (P.attempt expr_select_guard) |>> fun guard ->
-          A.Eaccess (e, a, guard)
-        )
+          A.Eaccess (e, a, guard))
         <|>
-        expr_atom)
+        expr_atom
+       )
 
-and ap i = i |> P.sep_by1 ap_field (P.char '.' >> space)
+and ap i = i |> P.sep_by1 ap_field (P.attempt isolated_dot >> space)
 
 and expr_select_guard i = i |> ( keyword "or" >> expr)
 
@@ -602,17 +631,11 @@ and ap_pattern i =
 
 and ap_field i =
   i |> add_loc (
-    (
-      P.attempt (P.string "${") >> space >>
-      expr >>= fun e ->
-      P.char '}' >> space >>
-      P.return (A.AFexpr e)
-    )
+    (antiQuot expr << space |>> fun e -> A.AFexpr e)
     <|>
-    (
-      ident |>> fun f_name ->
-      A.AFidentifier f_name
-    )
+    (expr_string |>> fun e -> A.AFexpr e)
+    <|>
+    (ident |>> fun f_name -> A.AFidentifier f_name)
   )
 
 let expr =
