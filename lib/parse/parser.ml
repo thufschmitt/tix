@@ -42,7 +42,7 @@ let add_loc x =
 let any x = P.choice @@ List.map P.attempt x
 
 let block_comment =
-  (P.attempt (P.string "/*" << P.next_char_satisfies @@ (<>) ':')) >>
+  (P.attempt (P.string "/*" << P.not_followed_by (P.char ':') "colon")) >>
   P.skip_many_chars_until P.any_char_or_nl (P.char '*' << P.char '/')
 
 let line_comment = P.char '#' << P.not_followed_by (P.string "::") ""
