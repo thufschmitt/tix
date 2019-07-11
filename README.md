@@ -1,4 +1,4 @@
-__Abandonned__ see https://github.com/regnat/ptyx
+__Abandoned__ see https://github.com/regnat/ptyx
 
 % tix
 % A (wip) type-inference engine for [nix](https://nixos.org/nix)
